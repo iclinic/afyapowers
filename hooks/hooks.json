@@ -1,10 +1,14 @@
 {
-  "hooks": [
-    {
-      "type": "UserPromptSubmit",
-      "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-start",
-      "triggers": ["startup", "resume", "clear", "compact"],
-      "asynchronous": false
-    }
-  ]
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-start"
+          }
+        ]
+      }
+    ]
+  }
 }
