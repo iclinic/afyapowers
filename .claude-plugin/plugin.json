@@ -2,6 +2,7 @@
   "name": "afyapowers",
   "description": "Deterministic, phase-gated development workflow with persistent state and auditability",
   "version": "0.1.0",
-  "author": "afyapowers",
-  "license": "MIT"
+  "author": {
+    "name": "afyapowers"
+  }
 }
