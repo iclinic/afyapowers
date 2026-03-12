@@ -1,0 +1,20 @@
+# IDE and editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Worktrees
+.worktrees/
+worktrees/
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# afyapowers feature state (per-project, not part of plugin)
+.afyapowers/
