@@ -1,6 +1,8 @@
 # afyapowers
 
-A deterministic, phase-gated development workflow plugin for Claude Code. Enforces structured feature development with persistent state, session continuity, and full auditability.
+A deterministic, phase-gated development workflow plugin for Claude Code, forked from [superpowers](https://github.com/obra/superpowers). Enforces structured feature development with persistent state, session continuity, and full auditability.
+
+afyapowers builds on superpowers' skills (brainstorming, TDD, systematic debugging, subagent-driven development, etc.) and adapts them into a 6-phase gated workflow where each phase produces a persistent artifact before the next can begin.
 
 ## Installation
 
