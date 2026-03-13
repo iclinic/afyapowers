@@ -2,7 +2,7 @@
 
 A deterministic, phase-gated development workflow plugin for Claude Code, forked from [superpowers](https://github.com/obra/superpowers). Enforces structured feature development with persistent state, session continuity, and full auditability.
 
-afyapowers builds on superpowers' skills (brainstorming, TDD, systematic debugging, subagent-driven development, etc.) and adapts them into a 6-phase gated workflow where each phase produces a persistent artifact before the next can begin.
+afyapowers builds on superpowers' skills (TDD, systematic debugging, subagent-driven development, etc.) and adapts them into a 5-phase gated workflow where each phase produces a persistent artifact before the next can begin.
 
 ## Installation
 
@@ -25,12 +25,11 @@ claude plugin install afyapowers
 
 ## Workflow Phases
 
-Every feature progresses through 6 ordered phases:
+Every feature progresses through 5 ordered phases:
 
 | Phase | What Happens | Artifact |
 |-------|-------------|----------|
-| **Brainstorm** | Clarify requirements, explore approaches, reach alignment | `brainstorm.md` |
-| **Design** | Produce detailed technical specification | `tech-spec.md` |
+| **Design** | Clarify requirements, explore approaches, define architecture | `design.md` |
 | **Plan** | Break design into bite-sized implementation tasks | `plan.md` |
 | **Implement** | Execute tasks with TDD and subagent-driven development | Updated `plan.md` |
 | **Review** | 2-step code review (spec compliance + quality) | `review.md` |
@@ -59,8 +58,7 @@ Phases are gated — you must complete the current phase's artifact before advan
     state.yaml              # Feature state (phase, status, artifacts)
     history.yaml            # Full event timeline
     artifacts/
-      brainstorm.md         # Brainstorm output
-      tech-spec.md          # Technical specification
+      design.md             # Design spec (requirements + architecture)
       plan.md               # Implementation plan with checkboxes
       review.md             # Code review findings and verdict
       completion.md         # Completion summary
@@ -69,9 +67,8 @@ Phases are gated — you must complete the current phase's artifact before advan
 ## Skills
 
 ### Phase Skills
-- **brainstorming** — Collaborative design exploration
-- **design** — Tech spec production from brainstorm output
-- **writing-plans** — Implementation plan creation from tech specs
+- **design** — Collaborative exploration + technical specification
+- **writing-plans** — Implementation plan creation from design spec
 - **implementing** — Subagent-driven task execution with two-stage review
 - **reviewing** — Spec compliance + code quality review
 - **completing** — Merge/PR/cleanup and summary

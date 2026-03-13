@@ -15,7 +15,7 @@ Execute the implementation plan by dispatching fresh subagent per task, with two
 2. Read `.afyapowers/<feature>/state.yaml` — confirm `current_phase` is `implement`
 3. If not in implement phase, tell the user the current phase and stop
 4. Read the plan from `.afyapowers/<feature>/artifacts/plan.md`
-5. Read the tech spec from `.afyapowers/<feature>/artifacts/tech-spec.md` for context
+5. Read the design from `.afyapowers/<feature>/artifacts/design.md` for context
 
 ## The Process
 

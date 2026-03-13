@@ -48,7 +48,7 @@ Read and follow `skills/auto-documentation/SKILL.md`.
 
 The following context is available from the current feature:
 - Feature name from `.afyapowers/active`
-- Artifacts: brainstorm.md, tech-spec.md, plan.md, review.md (in `.afyapowers/<feature>/artifacts/`)
+- Artifacts: design.md, plan.md, review.md (in `.afyapowers/<feature>/artifacts/`)
 - Git diff from the feature branch
 
 After documentation is updated, proceed to Step 4.
@@ -56,9 +56,9 @@ After documentation is updated, proceed to Step 4.
 ### Step 4: Produce Completion Artifact
 
 Read the template from `templates/completion.md`. Fill in:
-- Summary of what was delivered (from tech spec + review)
+- Summary of what was delivered (from design + review)
 - Key files and components changed (from git diff)
-- How to test (from tech spec's testing strategy)
+- How to test (from design's testing strategy)
 - PR/merge info (from Step 3)
 
 Save to `.afyapowers/<feature>/artifacts/completion.md`

@@ -14,11 +14,11 @@ Feature: <feature-name>
 History:
 
   [2026-03-12 10:30:00] feature_created — Feature 'add-submit-button' created (via /afyapowers:new)
-  [2026-03-12 10:30:00] phase_started — brainstorm
-  [2026-03-12 10:42:00] artifact_created — brainstorm.md (brainstorm phase)
-  [2026-03-12 10:45:00] phase_completed — brainstorm (via /afyapowers:next)
-  [2026-03-12 10:45:00] phase_started — design
-  [2026-03-12 10:50:00] artifact_created — tech-spec.md (design phase)
+  [2026-03-12 10:30:00] phase_started — design
+  [2026-03-12 10:42:00] artifact_created — design.md (design phase)
+  [2026-03-12 10:45:00] phase_completed — design (via /afyapowers:next)
+  [2026-03-12 10:45:00] phase_started — plan
+  [2026-03-12 10:50:00] artifact_created — plan.md (plan phase)
 ```
 
 Format each event on one line with timestamp, event type, and relevant details.

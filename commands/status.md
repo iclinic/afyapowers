@@ -16,12 +16,11 @@ Created: <date>
 Current Phase: <phase-name>
 
 Phases:
-  ✅ brainstorm    — completed (artifacts: brainstorm.md)
-  🔄 design        — in_progress (artifacts: tech-spec.md)
-  ⏳ plan          — pending
-  ⏳ implement     — pending
-  ⏳ review        — pending
-  ⏳ complete      — pending
+  ✅ design       — completed (artifacts: design.md)
+  🔄 plan         — in_progress
+  ⏳ implement    — pending
+  ⏳ review       — pending
+  ⏳ complete     — pending
 ```
 
 Use ✅ for completed, 🔄 for in_progress, ⏳ for pending, ❌ for aborted.

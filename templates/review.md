@@ -1,7 +1,7 @@
 # Code Review: {{feature_name}}
 
 ## Spec Compliance Review
-<!-- Does implementation match tech-spec? -->
+<!-- Does implementation match design spec? -->
 
 ### Findings
 

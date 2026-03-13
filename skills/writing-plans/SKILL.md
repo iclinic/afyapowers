@@ -18,13 +18,13 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 1. Read `.afyapowers/active` to get the active feature
 2. Read `.afyapowers/<feature>/state.yaml` — confirm `current_phase` is `plan`
 3. If not in plan phase, tell the user the current phase and stop
-4. Read the tech spec from `.afyapowers/<feature>/artifacts/tech-spec.md` as input
+4. Read the design from `.afyapowers/<feature>/artifacts/design.md` as input
 
 **Save plans to:** `.afyapowers/<feature>/artifacts/plan.md`
 
 ## Scope Check
 
-If the spec covers multiple independent subsystems, it should have been broken into sub-project specs during brainstorming. If it wasn't, suggest breaking this into separate plans — one per subsystem. Each plan should produce working, testable software on its own.
+If the spec covers multiple independent subsystems, it should have been broken into sub-project specs during design. If it wasn't, suggest breaking this into separate plans — one per subsystem. Each plan should produce working, testable software on its own.
 
 ## File Structure
 

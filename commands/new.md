@@ -28,14 +28,12 @@ Create `.afyapowers/<directory-name>/state.yaml`:
 feature: <feature-name-from-user>
 status: active
 created_at: <current-ISO-8601-timestamp>
-current_phase: brainstorm
+current_phase: design
 phases:
-  brainstorm:
+  design:
     status: in_progress
     started_at: <current-ISO-8601-timestamp>
     artifacts: []
-  design:
-    status: pending
   plan:
     status: pending
   implement:
@@ -52,30 +50,30 @@ Create `.afyapowers/<directory-name>/history.yaml`:
 events:
   - timestamp: <current-ISO-8601-timestamp>
     event: feature_created
-    phase: brainstorm
+    phase: design
     command: /afyapowers:new
     details: "Feature '<feature-name>' created"
   - timestamp: <current-ISO-8601-timestamp>
     event: phase_started
-    phase: brainstorm
+    phase: design
 ```
 
 ## Step 4: Set Active Feature
 
 Write the directory name (e.g., `2026-03-12-add-submit-button`) to `.afyapowers/active`.
 
-## Step 5: Confirm and Begin Brainstorming
+## Step 5: Confirm and Begin Design
 
 Tell the user:
 > Feature "<feature-name>" created at `.afyapowers/<directory-name>/`.
-> Current phase: **brainstorm**
+> Current phase: **design**
 >
-> Starting brainstorming...
+> Starting design...
 
-Then invoke the **brainstorming** skill to begin the brainstorm phase. The brainstorming skill will guide the conversation to clarify requirements, explore approaches, and reach alignment.
+Then invoke the **design** skill to begin the design phase. The design skill will guide the conversation to clarify requirements, explore approaches, define architecture, and reach alignment.
 
-When the brainstorming skill completes and produces the `brainstorm.md` artifact:
-1. Save it to `.afyapowers/<directory-name>/artifacts/brainstorm.md`
-2. Update `state.yaml` to add `brainstorm.md` to the brainstorm phase artifacts list
+When the design skill completes and produces the `design.md` artifact:
+1. Save it to `.afyapowers/<directory-name>/artifacts/design.md`
+2. Update `state.yaml` to add `design.md` to the design phase artifacts list
 3. Append an `artifact_created` event to `history.yaml`
-4. Tell the user: "Brainstorm phase complete. Run `/afyapowers:next` to proceed to **design**."
+4. Tell the user: "Design phase complete. Run `/afyapowers:next` to proceed to **plan**."

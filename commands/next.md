@@ -14,15 +14,14 @@ Check that the current phase has produced its required artifacts:
 
 | Current Phase | Validation |
 |--------------|------------|
-| brainstorm | `.afyapowers/<slug>/artifacts/brainstorm.md` exists |
-| design | `.afyapowers/<slug>/artifacts/tech-spec.md` exists |
+| design | `.afyapowers/<slug>/artifacts/design.md` exists |
 | plan | `.afyapowers/<slug>/artifacts/plan.md` exists |
 | implement | Zero unchecked `- [ ]` items in `.afyapowers/<slug>/artifacts/plan.md` |
 | review | `.afyapowers/<slug>/artifacts/review.md` exists AND its Verdict section contains "Approved" |
 | complete | `.afyapowers/<slug>/artifacts/completion.md` exists |
 
 If validation fails:
-- Tell the user what's still needed (e.g., "The brainstorm artifact is missing. Complete the brainstorm phase first.")
+- Tell the user what's still needed (e.g., "The design artifact is missing. Complete the design phase first.")
 - For implement: list the remaining unchecked tasks
 - For review: if verdict is "Changes Requested", report the findings and explain what needs fixing
 - Do NOT advance.
@@ -37,7 +36,7 @@ If the current phase is `complete` and validation passes:
 
 ## Step 4: Advance Phase
 
-Determine the next phase from the ordered list: brainstorm → design → plan → implement → review → complete.
+Determine the next phase from the ordered list: design → plan → implement → review → complete.
 
 1. Update `state.yaml`:
    - Set current phase's `status` to `completed` and `completed_at` to current timestamp
@@ -53,7 +52,6 @@ Tell the user which phase is starting, then invoke the appropriate skill:
 
 | Next Phase | Skill to Invoke | What It Does |
 |-----------|----------------|--------------|
-| design | **design** skill | Produce tech spec from brainstorm output |
 | plan | **writing-plans** skill | Break design into implementation tasks |
 | implement | **implementing** skill | Execute tasks with TDD + subagents |
 | review | **reviewing** skill | 2-step code review (spec compliance + quality) |

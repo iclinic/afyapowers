@@ -13,7 +13,7 @@ List all features and their current states.
 |---------|-------|--------|---------|
 | add-submit-button | implement | active | 2026-03-12 |
 | fix-auth-flow | complete | completed | 2026-03-10 |
-| refactor-api | brainstorm | aborted | 2026-03-11 |
+| refactor-api | design | aborted | 2026-03-11 |
 ```
 
 4. Indicate which feature is currently active (from `.afyapowers/active`) with a marker like `→` or `(active)`.

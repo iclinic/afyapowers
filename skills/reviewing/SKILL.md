@@ -17,14 +17,14 @@ Perform a comprehensive 2-step code review of the completed feature implementati
 
 ### Step 1: Gather Context
 
-1. Read `.afyapowers/<feature>/artifacts/tech-spec.md` — the requirements
+1. Read `.afyapowers/<feature>/artifacts/design.md` — the requirements
 2. Read `.afyapowers/<feature>/artifacts/plan.md` — the implementation plan
 3. Get the git diff for the feature's changes (use `git log` and `git diff` to identify the relevant commits)
 
 ### Step 2: Spec Compliance Review
 
 Dispatch a spec-reviewer subagent using `skills/implementing/spec-reviewer-prompt.md`:
-- Provide the tech spec content as "what was requested"
+- Provide the design spec content as "what was requested"
 - Provide a summary of implemented changes as "what was built"
 - Provide the relevant code diff
 

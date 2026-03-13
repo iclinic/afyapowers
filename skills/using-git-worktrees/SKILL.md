@@ -192,7 +192,7 @@ Ready to implement <feature-name>
 ## Integration
 
 **Called by:**
-- **brainstorming** - When design is approved and implementation follows
+- **design** - When design is approved and implementation follows
 - **implementing** - Before executing any tasks
 - Any skill needing isolated workspace
 
