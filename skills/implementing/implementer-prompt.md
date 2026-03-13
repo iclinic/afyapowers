@@ -41,6 +41,36 @@ Task tool (general-purpose):
     **While you work:** If you encounter something unexpected or unclear, **ask questions**.
     It's always OK to pause and clarify. Don't guess or make assumptions.
 
+    ## Test-Driven Development
+
+    You MUST follow the RED-GREEN-REFACTOR cycle for all implementation work.
+
+    **The Iron Law: No production code without a failing test first.**
+
+    ### The Cycle
+
+    1. **RED — Write one failing test** showing what should happen
+       - One behavior per test, clear name, real code (no mocks unless unavoidable)
+    2. **Verify RED — Run the test, confirm it fails**
+       - Must fail because the feature is missing (not typos or errors)
+       - If the test passes immediately, you're testing existing behavior — fix the test
+    3. **GREEN — Write minimal code to make the test pass**
+       - Simplest code that passes. Don't add features beyond the test.
+    4. **Verify GREEN — Run tests, confirm all pass**
+       - If the test fails, fix code not test. If other tests fail, fix now.
+    5. **REFACTOR — Clean up while staying green**
+       - Remove duplication, improve names, extract helpers. Don't add behavior.
+    6. **Repeat** for the next behavior.
+
+    ### Red Flags — STOP and Start Over
+
+    - Writing code before the test
+    - Test passes immediately (you're not testing new behavior)
+    - Skipping the "verify fail" step
+    - Over-engineering beyond what the current test requires
+
+    Wrote code before a test? Delete it. Implement fresh from tests.
+
     ## Code Organization
 
     You reason best about code you can hold in context at once, and your edits are more
