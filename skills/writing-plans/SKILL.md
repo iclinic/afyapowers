@@ -113,6 +113,15 @@ git commit -m "feat: add specific feature"
 - Exact commands with expected output
 - DRY, YAGNI, TDD, frequent commits
 
+## Required Sub-Skills
+
+**REQUIRED:** Dispatch plan-document-reviewer subagent after writing each plan chunk.
+
+- Announce: "Using plan-document-reviewer to validate the plan."
+- Dispatch subagent using `skills/writing-plans/plan-document-reviewer-prompt.md`
+- If issues found: fix and re-dispatch (max 5 iterations, then surface to human)
+- After approval: proceed to next chunk or completion
+
 ## Plan Review Loop
 
 After completing each chunk of the plan:
