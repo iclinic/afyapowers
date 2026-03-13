@@ -107,6 +107,15 @@ digraph design {
 - Where existing code has problems that affect the work (e.g., a file that's grown too large, unclear boundaries, tangled responsibilities), include targeted improvements as part of the design - the way a good developer improves code they're working in.
 - Don't propose unrelated refactoring. Stay focused on what serves the current goal.
 
+## Required Sub-Skills
+
+**REQUIRED:** Dispatch spec-document-reviewer subagent after writing the design artifact.
+
+- Announce: "Using spec-document-reviewer to validate the design."
+- Dispatch subagent using `skills/design/spec-document-reviewer-prompt.md`
+- If issues found: fix and re-dispatch (max 5 iterations, then surface to human)
+- After approval: resume the parent flow (user review gate)
+
 ## After the Design
 
 **Documentation:**
