@@ -93,41 +93,99 @@ Add a `## Required Sub-Skills` section formalizing the existing plan-document-re
 
 ### 3. `skills/implementing/SKILL.md`
 
-**Change type:** Rewrite to thin orchestrator
+**Change type:** Full rewrite (replaces entire file body after frontmatter)
 
-The implementing skill becomes a lightweight phase-level orchestrator:
+The implementing skill becomes a lightweight phase-level orchestrator. The entire current content (process flow diagram, Model Selection, Handling Implementer Status, Prompt Templates, Red Flags, and all per-task dispatch logic) is **removed** and replaced with the following structure:
 
-1. Phase gate (unchanged): read active feature, confirm phase, load plan and design
-2. Validate plan has uncompleted tasks
-3. **REQUIRED SUB-SKILL:** Invoke `afyapowers:subagent-driven-development` via Skill tool
-4. After SDD completes, verify all plan checkboxes are marked complete
-5. Suggest `/afyapowers:next`
+#### New file structure:
+
+```markdown
+---
+name: implementing
+description: "Use when the current afyapowers phase is implement — orchestrates implementation via subagent-driven-development"
+---
+
+# Implementing Phase
+
+Orchestrate plan execution by delegating to subagent-driven-development.
+
+**Announce at start:** "I'm using the implementing skill to execute the plan."
+
+## Phase Gate
+
+1. Read `.afyapowers/active` to get the active feature
+2. Read `.afyapowers/<feature>/state.yaml` — confirm `current_phase` is `implement`
+3. If not in implement phase, tell the user the current phase and stop
+4. Read the plan from `.afyapowers/<feature>/artifacts/plan.md`
+5. Read the design from `.afyapowers/<feature>/artifacts/design.md` for context
+
+## Validate Plan
+
+- Parse all tasks from the plan (checkbox items: `- [ ]` and `- [x]`)
+- If all tasks are already complete, tell the user and suggest `/afyapowers:next`
+- If uncompleted tasks remain, proceed to execution
+
+## Required Sub-Skills
+
+**REQUIRED:** Invoke `afyapowers:subagent-driven-development` via the Skill tool to execute all plan tasks.
+
+- Announce: "Using subagent-driven-development to execute implementation tasks."
+- Invoke the skill. Follow its instructions completely.
+- The plan content and design are already in the conversation context — SDD will use them directly.
+- After SDD completes, resume the parent flow below.
+
+## After SDD Completes
+
+1. Verify all plan checkboxes are marked complete (`- [x]`)
+2. If any remain unchecked, report which tasks are incomplete and ask the user how to proceed
+3. Update `state.yaml` to reflect progress
+4. Tell the user: "Implement phase complete. Run `/afyapowers:next` to proceed to **review**."
+```
+
+**What is removed** (all of this now lives in SDD):
+- The full process flow diagram (dot graph)
+- Model Selection section
+- Handling Implementer Status section (DONE, DONE_WITH_CONCERNS, NEEDS_CONTEXT, BLOCKED)
+- Prompt Templates section (references to implementer-prompt.md, spec-reviewer-prompt.md, code-quality-reviewer-prompt.md)
+- Red Flags section (subagent management rules)
+- All per-task dispatch logic
 
 **What implementing retains:**
 - Phase gate logic
-- Plan loading and validation
+- Plan loading, parsing, and validation
 - Phase completion (state.yaml update, suggesting next phase)
 
-**What implementing delegates to SDD:**
-- All per-task subagent dispatch (implementer, spec reviewer, code quality reviewer)
-- Task iteration and completion tracking
-- Model selection decisions
-- Handling implementer status (DONE, DONE_WITH_CONCERNS, NEEDS_CONTEXT, BLOCKED)
-- TDD enforcement (via embedded prompts)
-- All review loop logic
-- Red flags and constraints around subagent management
-
-**Context passing:** SDD receives context from the conversation — the plan content and design are already loaded by implementing before SDD is invoked. No explicit parameter passing needed.
+**Context passing:** SDD receives context from the conversation — the plan content and design are already loaded by implementing before SDD is invoked. SDD should use the plan content already in conversation context rather than re-reading the file. However, SDD's "Read plan, extract all tasks" step is kept as a fallback — if the plan is in context, SDD uses it directly; if invoked in another way in the future, SDD can still load the file itself.
 
 ### 4. `skills/subagent-driven-development/SKILL.md`
 
-**Change type:** Minor updates
+**Change type:** Targeted updates to 3 sections
 
-- Ensure it owns the full per-task cycle (already does)
-- Remove "When to Use" section comparing itself to executing-plans (no longer needed — SDD is always invoked by implementing)
-- Update `## Integration` section to reflect it's invoked by implementing as a REQUIRED SUB-SKILL
-- Keep all existing logic: process flow, model selection, handling implementer status, red flags
-- Add explicit statement that it reads the plan content from the conversation context (already loaded by implementing)
+**Remove "When to Use" section** (lines comparing SDD vs executing-plans). No longer needed — SDD is always invoked by implementing.
+
+**Remove "Advantages" section** (lines comparing SDD vs manual execution and executing-plans). These comparisons are obsolete now that SDD is the standard execution path.
+
+**Rewrite `## Integration` section** to:
+
+```markdown
+## Integration
+
+**Invoked by:**
+- **implementing** (REQUIRED SUB-SKILL) — implementing loads the plan and design, then invokes SDD to execute all tasks
+
+**Subagent prompts:**
+- `skills/implementing/implementer-prompt.md` — TDD rules are embedded directly in this prompt
+- `skills/implementing/spec-reviewer-prompt.md` — spec compliance review
+- `skills/implementing/code-quality-reviewer-prompt.md` — code quality review
+
+**Context:** When invoked by implementing, the plan and design are already in the conversation context. Use them directly. If the plan is not in context (e.g., invoked standalone), read it from `.afyapowers/<feature>/artifacts/plan.md`.
+```
+
+Note: The old Integration section's line "Subagents should use test-driven-development" is removed. TDD is now embedded directly in the implementer prompt — subagents don't invoke skills.
+
+**Keep unchanged:** Process flow diagram, Model Selection, Handling Implementer Status, Red Flags, all per-task dispatch logic.
+
+**Regarding SDD's final code review step:** SDD's process ends with "Dispatch final code reviewer for entire implementation" before "Complete." This step is kept — it serves as a post-implementation sanity check within the implement phase. The separate `reviewing` phase that follows is a more thorough, design-level review. These are complementary, not duplicative: SDD's final review catches obvious issues before the phase ends, while the reviewing phase does a full spec compliance + quality audit.
 
 ### 5. `skills/implementing/implementer-prompt.md`
 
