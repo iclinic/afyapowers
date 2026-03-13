@@ -13,6 +13,16 @@ Finalize the feature: verify everything works, merge or create PR, produce compl
 2. Read `.afyapowers/<feature>/state.yaml` — confirm `current_phase` is `complete`
 3. If not in complete phase, tell the user the current phase and stop
 
+## Required Sub-Skills
+
+**REQUIRED:** Invoke `afyapowers:auto-documentation` via the Skill tool after executing the user's completion choice (Step 3).
+
+- Announce: "Using auto-documentation to update project documentation."
+- Invoke the skill. Follow its instructions completely.
+- After it completes, resume the parent flow (Step 4: produce completion artifact).
+
+This is the formal declaration. The actual invocation point is Step 3.5 below.
+
 ## Process
 
 ### Step 1: Final Verification
@@ -44,14 +54,16 @@ Execute the user's chosen option:
 
 ### Step 3.5: Update Documentation
 
-Read and follow `skills/auto-documentation/SKILL.md`.
+**REQUIRED SUB-SKILL:** Invoke `afyapowers:auto-documentation` via the Skill tool.
 
-The following context is available from the current feature:
+Announce: "Using auto-documentation to update project documentation."
+
+The auto-documentation skill will use the following context from the current feature:
 - Feature name from `.afyapowers/active`
 - Artifacts: design.md, plan.md, review.md (in `.afyapowers/<feature>/artifacts/`)
 - Git diff from the feature branch
 
-After documentation is updated, proceed to Step 4.
+After the skill completes, proceed to Step 4.
 
 ### Step 4: Produce Completion Artifact
 
