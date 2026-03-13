@@ -1,0 +1,25 @@
+{
+  "name": "afyapowers",
+  "displayName": "Afyapowers",
+  "description": "Deterministic, phase-gated development workflow with persistent state and auditability",
+  "version": "0.3.0",
+  "author": {
+    "name": "Rafael Papastamatiou",
+    "email": "rafael.rodrigues@afya.com.br"
+  },
+  "homepage": "https://github.com/iclinic/afyapowers",
+  "repository": "https://github.com/iclinic/afyapowers",
+  "license": "MIT",
+  "keywords": [
+    "skills",
+    "tdd",
+    "debugging",
+    "collaboration",
+    "best-practices",
+    "workflows"
+  ],
+  "skills": "./skills/",
+  "agents": "./agents/",
+  "commands": "./commands/",
+  "hooks": "./hooks/hooks.json"
+}

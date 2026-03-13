@@ -3,6 +3,7 @@
   "description": "Deterministic, phase-gated development workflow with persistent state and auditability",
   "version": "0.3.0",
   "author": {
-    "name": "afyapowers"
+    "name": "Rafael Papastamatiou",
+    "email": "rafael.rodrigues@afya.com.br"
   }
 }
