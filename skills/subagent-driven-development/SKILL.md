@@ -9,14 +9,6 @@ Execute plan by dispatching fresh subagent per task, with two-stage review after
 
 **Core principle:** Fresh subagent per task + two-stage review (spec then quality) = high quality, fast iteration
 
-## When to Use
-
-**vs. Executing Plans (parallel session):**
-- Same session (no context switch)
-- Fresh subagent per task (no context pollution)
-- Two-stage review after each task: spec compliance first, then code quality
-- Faster iteration (no human-in-loop between tasks)
-
 ## The Process
 
 ```dot
@@ -98,25 +90,6 @@ Implementer subagents report one of four statuses:
 - `skills/implementing/spec-reviewer-prompt.md` - Dispatch spec compliance reviewer subagent
 - `skills/implementing/code-quality-reviewer-prompt.md` - Dispatch code quality reviewer subagent
 
-## Advantages
-
-**vs. Manual execution:**
-- Subagents follow TDD naturally
-- Fresh context per task (no confusion)
-- Parallel-safe (subagents don't interfere)
-- Subagent can ask questions (before AND during work)
-
-**vs. Executing Plans:**
-- Same session (no handoff)
-- Continuous progress (no waiting)
-- Review checkpoints automatic
-
-**Quality gates:**
-- Self-review catches issues before handoff
-- Two-stage review: spec compliance, then code quality
-- Review loops ensure fixes actually work
-- Spec compliance prevents over/under-building
-
 ## Red Flags
 
 **Never:**
@@ -150,9 +123,12 @@ Implementer subagents report one of four statuses:
 
 ## Integration
 
-**Required workflow skills:**
-- **using-git-worktrees** - Set up isolated workspace before starting
-- **writing-plans** - Creates the plan this skill executes
+**Invoked by:**
+- **implementing** (REQUIRED SUB-SKILL) — implementing loads the plan and design, then invokes SDD to execute all tasks
 
-**Subagents should use:**
-- **test-driven-development** - Follow TDD for each task
+**Subagent prompts:**
+- `skills/implementing/implementer-prompt.md` — TDD rules are embedded directly in this prompt
+- `skills/implementing/spec-reviewer-prompt.md` — spec compliance review
+- `skills/implementing/code-quality-reviewer-prompt.md` — code quality review
+
+**Context:** When invoked by implementing, the plan and design are already in the conversation context. Use them directly. If the plan is not in context (e.g., invoked standalone), read it from `.afyapowers/<feature>/artifacts/plan.md`.
