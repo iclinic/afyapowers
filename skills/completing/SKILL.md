@@ -42,6 +42,17 @@ Execute the user's chosen option:
 - **Keep:** No git operations
 - **Discard:** Confirm, then clean up
 
+### Step 3.5: Update Documentation
+
+Read and follow `skills/auto-documentation/SKILL.md`.
+
+The following context is available from the current feature:
+- Feature name from `.afyapowers/active`
+- Artifacts: brainstorm.md, tech-spec.md, plan.md, review.md (in `.afyapowers/<feature>/artifacts/`)
+- Git diff from the feature branch
+
+After documentation is updated, proceed to Step 4.
+
 ### Step 4: Produce Completion Artifact
 
 Read the template from `templates/completion.md`. Fill in:
