@@ -1,6 +1,6 @@
 ---
 name: auto-documentation
-description: "Use after any implementation is finished to automatically generate or update feature documentation in .afyapowers/docs/ — analyzes changes, matches to existing docs by domain area, and maintains living documentation with changelog"
+description: "Use after any implementation is finished to automatically generate or update feature documentation in docs/afyapowers/ — analyzes changes, matches to existing docs by domain area, and maintains living documentation with changelog"
 ---
 
 # Auto-Documentation
@@ -36,18 +36,18 @@ fi
 
 ### Step 2: Prepare Documentation Directory
 
-1. Check if `.afyapowers/docs/` exists in the project root. If not, create it.
-2. Ensure `.afyapowers/docs/` is **not gitignored**. Check the project's `.gitignore` — if it contains a pattern that would exclude `.afyapowers/docs/` (e.g., `.afyapowers/`), add a negation pattern:
+1. Check if `docs/afyapowers/` exists in the project root. If not, create it.
+2. Ensure `docs/afyapowers/` is **not gitignored**. Check the project's `.gitignore` — if it contains a pattern that would exclude `docs/afyapowers/`, add a negation pattern:
 
 ```
-!.afyapowers/docs/
+!docs/afyapowers/
 ```
 
 This ensures documentation files can be committed to the repository.
 
 ### Step 3: Scan Existing Docs
 
-Read all `.afyapowers/docs/*.md` files. For each file, extract:
+Read all `docs/afyapowers/*.md` files. For each file, extract:
 - The feature name (from the `# Title` heading)
 - The Overview section (to understand what domain area it covers)
 - The Key Files section (to understand which parts of the codebase it documents)
@@ -83,8 +83,8 @@ This is a judgment call — use the diff content and existing docs to make the b
 Commit the documentation changes:
 
 ```bash
-git add .afyapowers/docs/
-git commit -m "docs: update .afyapowers/docs/<feature-name>.md"
+git add docs/afyapowers/
+git commit -m "docs: update docs/afyapowers/<feature-name>.md"
 ```
 
 If multiple docs were updated, adjust the commit message accordingly:
@@ -95,7 +95,7 @@ git commit -m "docs: update feature documentation"
 
 ## Document Format
 
-Each `.afyapowers/docs/FEATURE-NAME.md` follows this structure:
+Each `docs/afyapowers/FEATURE-NAME.md` follows this structure:
 
 ```markdown
 # Feature Name
