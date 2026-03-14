@@ -26,6 +26,7 @@ Task tool (general-purpose):
     | File Size | Would any new or modified file likely grow large enough to be hard to reason about as a whole? |
     | Task Syntax | Checkbox syntax (`- [ ]`) on steps for tracking |
     | Chunk Size | Each chunk under 1000 lines |
+    | Dependencies | Every task has `**Depends on:**` line, references valid task numbers, no circular deps |
 
     ## CRITICAL
 
@@ -35,6 +36,9 @@ Task tool (general-purpose):
     - Incomplete task definitions
     - Missing verification steps or expected outputs
     - Files planned to hold multiple responsibilities or likely to grow unwieldy
+    - Tasks missing a `**Depends on:**` line
+    - Dependency references to non-existent task numbers
+    - Parallel-eligible tasks (no mutual dependency) that share files in their `**Files:**` lists
 
     ## Output Format
 
