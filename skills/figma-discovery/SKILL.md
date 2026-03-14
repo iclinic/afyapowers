@@ -61,9 +61,9 @@ Display all discovered nodes in a structured list:
 
 Wait for the user to confirm. If the user confirms zero nodes, exit the skill — no Figma References section will be written.
 
-### Step 5: Write to Spec
+### Step 5: Output Figma References
 
-Append a `## Figma References` section to the design spec with the confirmed nodes. Format each entry as a full URL with the node ID embedded, followed by the label:
+Present the confirmed nodes as a `## Figma References` section that the Design skill will incorporate into the spec. Format each entry as a full URL with the node ID embedded, followed by the label:
 
 ```markdown
 ## Figma References
@@ -73,6 +73,8 @@ Append a `## Figma References` section to the design spec with the confirmed nod
 ```
 
 The URL should be the original Figma file/page URL with `?node-id=X:Y` appended (or preserved if the original URL already targeted a specific node).
+
+**Note:** This skill runs before the design spec is written. Do NOT attempt to write to a file. Instead, hold the confirmed references in the conversation and the Design skill will include them when writing the spec document in the next step.
 
 ## Key Constraints
 

@@ -58,7 +58,8 @@ digraph design {
     "User approves design?" -> "Present design sections" [label="no, revise"];
     "Figma discovery\n(UI features only)" [shape=box];
 
-    "User approves design?" -> "Figma discovery\n(UI features only)" [label="yes"];
+    "User approves design?" -> "Figma discovery\n(UI features only)" [label="yes, has UI"];
+    "User approves design?" -> "Write design doc" [label="yes, no UI"];
     "Figma discovery\n(UI features only)" -> "Write design doc";
     "Write design doc" -> "Spec review loop";
     "Spec review loop" -> "Spec review passed?";
@@ -108,7 +109,7 @@ digraph design {
 **Figma discovery (UI features only):**
 
 - After the user approves the design sections, check whether the feature involves front-end/UI work (based on the design conversation context — components, screens, layouts, visual elements)
-- If it does → invoke the `figma-discovery` skill (located at `skills/figma-discovery/SKILL.md`). The skill will ask about Figma layouts, discover nodes, and write a `## Figma References` section to the design spec.
+- If it does → invoke the `figma-discovery` skill (located at `skills/figma-discovery/SKILL.md`). The skill will ask about Figma layouts, discover nodes, and output a `## Figma References` section. Include this section in the design spec when writing it in the next step.
 - If it doesn't (purely backend, infrastructure, data pipeline, etc.) → skip entirely and proceed to writing the spec
 - Do NOT ask about Figma yourself — delegate entirely to the Figma discovery skill
 
