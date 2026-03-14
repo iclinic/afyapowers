@@ -11,13 +11,13 @@ if [ ! -d "$AFYA_DIR" ]; then
 fi
 
 ACTIVE_FEATURE=""
-ACTIVE_FILE="$AFYA_DIR/active"
+ACTIVE_FILE="$AFYA_DIR/features/active"
 
 # Try reading the active file first
 if [ -f "$ACTIVE_FILE" ]; then
   ACTIVE_FEATURE=$(cat "$ACTIVE_FILE" | tr -d '[:space:]')
   # Validate it points to an existing feature
-  if [ ! -d "$AFYA_DIR/$ACTIVE_FEATURE" ]; then
+  if [ ! -d "$AFYA_DIR/features/$ACTIVE_FEATURE" ]; then
     ACTIVE_FEATURE=""
   fi
 fi
@@ -25,7 +25,7 @@ fi
 # Fallback: scan for features with in_progress phases
 if [ -z "$ACTIVE_FEATURE" ]; then
   IN_PROGRESS_FEATURES=()
-  for state_file in "$AFYA_DIR"/*/state.yaml; do
+  for state_file in "$AFYA_DIR"/features/*/state.yaml; do
     [ -f "$state_file" ] || continue
     if grep -q "status: in_progress" "$state_file" 2>/dev/null; then
       feature_dir=$(dirname "$state_file")
@@ -57,7 +57,7 @@ if [ -z "$ACTIVE_FEATURE" ]; then
 fi
 
 # Read state.yaml for the active feature
-STATE_FILE="$AFYA_DIR/$ACTIVE_FEATURE/state.yaml"
+STATE_FILE="$AFYA_DIR/features/$ACTIVE_FEATURE/state.yaml"
 if [ ! -f "$STATE_FILE" ]; then
   echo '{}'
   exit 0
@@ -71,7 +71,7 @@ CREATED_AT=$(grep "^created_at:" "$STATE_FILE" | sed 's/^created_at: *//')
 
 # Collect artifacts
 ARTIFACTS=""
-ARTIFACT_DIR="$AFYA_DIR/$ACTIVE_FEATURE/artifacts"
+ARTIFACT_DIR="$AFYA_DIR/features/$ACTIVE_FEATURE/artifacts"
 if [ -d "$ARTIFACT_DIR" ]; then
   ARTIFACTS=$(ls "$ARTIFACT_DIR" 2>/dev/null | tr '\n' ', ' | sed 's/,$//')
 fi
