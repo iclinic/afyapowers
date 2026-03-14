@@ -9,8 +9,8 @@ Finalize the feature: verify everything works, merge or create PR, produce compl
 
 ## Phase Gate
 
-1. Read `.afyapowers/active` to get the active feature
-2. Read `.afyapowers/<feature>/state.yaml` — confirm `current_phase` is `complete`
+1. Read `.afyapowers/features/active` to get the active feature
+2. Read `.afyapowers/features/<feature>/state.yaml` — confirm `current_phase` is `complete`
 3. If not in complete phase, tell the user the current phase and stop
 
 ## Required Sub-Skills
@@ -29,7 +29,7 @@ This is the formal declaration. The actual invocation point is Step 3.5 below.
 
 1. Run the project's test suite — all tests must pass
 2. Verify no uncommitted changes remain
-3. Read `.afyapowers/<feature>/artifacts/review.md` — confirm verdict is "Approved"
+3. Read `.afyapowers/features/<feature>/artifacts/review.md` — confirm verdict is "Approved"
 
 If anything fails, report to the user and work to resolve before proceeding.
 
@@ -59,8 +59,8 @@ Execute the user's chosen option:
 Announce: "Using auto-documentation to update project documentation."
 
 The auto-documentation skill will use the following context from the current feature:
-- Feature name from `.afyapowers/active`
-- Artifacts: design.md, plan.md, review.md (in `.afyapowers/<feature>/artifacts/`)
+- Feature name from `.afyapowers/features/active`
+- Artifacts: design.md, plan.md, review.md (in `.afyapowers/features/<feature>/artifacts/`)
 - Git diff from the feature branch
 
 After the skill completes, proceed to Step 4.
@@ -73,7 +73,7 @@ Read the template from `templates/completion.md`. Fill in:
 - How to test (from design's testing strategy)
 - PR/merge info (from Step 3)
 
-Save to `.afyapowers/<feature>/artifacts/completion.md`
+Save to `.afyapowers/features/<feature>/artifacts/completion.md`
 
 ### Step 5: Complete
 
