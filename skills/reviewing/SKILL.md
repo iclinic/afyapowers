@@ -9,16 +9,16 @@ Perform a comprehensive 2-step code review of the completed feature implementati
 
 ## Phase Gate
 
-1. Read `.afyapowers/active` to get the active feature
-2. Read `.afyapowers/<feature>/state.yaml` — confirm `current_phase` is `review`
+1. Read `.afyapowers/features/active` to get the active feature
+2. Read `.afyapowers/features/<feature>/state.yaml` — confirm `current_phase` is `review`
 3. If not in review phase, tell the user the current phase and stop
 
 ## Process
 
 ### Step 1: Gather Context
 
-1. Read `.afyapowers/<feature>/artifacts/design.md` — the requirements
-2. Read `.afyapowers/<feature>/artifacts/plan.md` — the implementation plan
+1. Read `.afyapowers/features/<feature>/artifacts/design.md` — the requirements
+2. Read `.afyapowers/features/<feature>/artifacts/plan.md` — the implementation plan
 3. Get the git diff for the feature's changes (use `git log` and `git diff` to identify the relevant commits)
 
 ### Step 2: Spec Compliance Review
@@ -52,7 +52,7 @@ Read the template from `templates/review.md`. Fill in:
 - Code quality findings and resolutions
 - Final verdict: "Approved" (only if both reviews pass)
 
-Save to `.afyapowers/<feature>/artifacts/review.md`
+Save to `.afyapowers/features/<feature>/artifacts/review.md`
 
 ### Step 5: Complete
 
