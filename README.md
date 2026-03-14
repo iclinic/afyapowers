@@ -53,15 +53,17 @@ Phases are gated — you must complete the current phase's artifact before advan
 
 ```
 .afyapowers/
-  active                    # Current active feature slug
-  <date>-<slug>/
-    state.yaml              # Feature state (phase, status, artifacts)
-    history.yaml            # Full event timeline
-    artifacts/
-      design.md             # Design spec (requirements + architecture)
-      plan.md               # Implementation plan with checkboxes
-      review.md             # Code review findings and verdict
-      completion.md         # Completion summary
+  .gitignore                # Auto-created; gitignores features/active
+  features/
+    active                  # Current active feature slug (gitignored)
+    <date>-<slug>/
+      state.yaml            # Feature state (phase, status, artifacts)
+      history.yaml          # Full event timeline
+      artifacts/
+        design.md           # Design spec (requirements + architecture)
+        plan.md             # Implementation plan with checkboxes
+        review.md           # Code review findings and verdict
+        completion.md       # Completion summary
 ```
 
 ## Skills
