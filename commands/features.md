@@ -4,7 +4,7 @@ List all features and their current states.
 
 ## Steps
 
-1. Scan all directories under `.afyapowers/` (skip the `active` file)
+1. Scan all directories under `.afyapowers/features/` (skip the `active` file)
 2. For each directory, read `state.yaml`
 3. Display a table:
 
@@ -16,6 +16,6 @@ List all features and their current states.
 | refactor-api | design | aborted | 2026-03-11 |
 ```
 
-4. Indicate which feature is currently active (from `.afyapowers/active`) with a marker like `→` or `(active)`.
+4. Indicate which feature is currently active (from `.afyapowers/features/active`) with a marker like `→` or `(active)`.
 
-If no `.afyapowers/` directory exists or it's empty, tell the user: "No features found. Run `/afyapowers:new` to start one."
+If no `.afyapowers/features/` directory exists or it's empty, tell the user: "No features found. Run `/afyapowers:new` to start one."
