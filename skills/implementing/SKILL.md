@@ -11,11 +11,11 @@ Orchestrate plan execution by delegating to subagent-driven-development.
 
 ## Phase Gate
 
-1. Read `.afyapowers/active` to get the active feature
-2. Read `.afyapowers/<feature>/state.yaml` — confirm `current_phase` is `implement`
+1. Read `.afyapowers/features/active` to get the active feature
+2. Read `.afyapowers/features/<feature>/state.yaml` — confirm `current_phase` is `implement`
 3. If not in implement phase, tell the user the current phase and stop
-4. Read the plan from `.afyapowers/<feature>/artifacts/plan.md`
-5. Read the design from `.afyapowers/<feature>/artifacts/design.md` for context
+4. Read the plan from `.afyapowers/features/<feature>/artifacts/plan.md`
+5. Read the design from `.afyapowers/features/<feature>/artifacts/design.md` for context
 
 ## Validate Plan
 
