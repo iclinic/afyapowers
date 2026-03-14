@@ -5,7 +5,7 @@ description: Use when executing implementation plans with independent tasks in t
 
 # Subagent-Driven Development
 
-Execute plan by dispatching fresh subagent per task, with two-stage review after each: spec compliance review first, then code quality review.
+Execute plan by dispatching subagents per task with two-stage review (spec compliance then code quality). Tasks with no mutual dependencies run in parallel waves for faster execution.
 
 **Core principle:** Fresh subagent per task + two-stage review (spec then quality) = high quality, fast iteration
 
@@ -15,46 +15,160 @@ Execute plan by dispatching fresh subagent per task, with two-stage review after
 digraph process {
     rankdir=TB;
 
-    subgraph cluster_per_task {
-        label="Per Task";
-        "Dispatch implementer subagent" [shape=box];
-        "Implementer subagent asks questions?" [shape=diamond];
-        "Answer questions, provide context" [shape=box];
-        "Implementer implements, tests, commits, self-reviews" [shape=box];
-        "Dispatch spec reviewer subagent" [shape=box];
-        "Spec reviewer confirms code matches spec?" [shape=diamond];
-        "Implementer fixes spec gaps" [shape=box];
-        "Dispatch code quality reviewer subagent" [shape=box];
-        "Code quality reviewer approves?" [shape=diamond];
-        "Implementer fixes quality issues" [shape=box];
-        "Mark task complete" [shape=box];
-    }
-
-    "Read plan, extract all tasks" [shape=box];
-    "More tasks remain?" [shape=diamond];
-    "Dispatch final code reviewer for entire implementation" [shape=box];
+    "Read plan, parse tasks and dependencies" [shape=box];
+    "Check for circular dependencies" [shape=diamond];
+    "Report cycle, stop" [shape=box, style=filled, fillcolor=red, fontcolor=white];
+    "Compute ready set" [shape=box];
+    "Any tasks ready?" [shape=diamond];
+    "Validate file overlap in ready set" [shape=box];
+    "Cap at max 3, dispatch parallel Agent calls" [shape=box];
+    "Wait for all agents to return" [shape=box];
+    "Process results" [shape=box];
+    "All tasks done?" [shape=diamond];
+    "Final code review" [shape=box];
     "Complete" [shape=doublecircle];
 
-    "Read plan, extract all tasks" -> "Dispatch implementer subagent";
-    "Dispatch implementer subagent" -> "Implementer subagent asks questions?";
-    "Implementer subagent asks questions?" -> "Answer questions, provide context" [label="yes"];
-    "Answer questions, provide context" -> "Dispatch implementer subagent";
-    "Implementer subagent asks questions?" -> "Implementer implements, tests, commits, self-reviews" [label="no"];
-    "Implementer implements, tests, commits, self-reviews" -> "Dispatch spec reviewer subagent";
-    "Dispatch spec reviewer subagent" -> "Spec reviewer confirms code matches spec?";
-    "Spec reviewer confirms code matches spec?" -> "Implementer fixes spec gaps" [label="no"];
-    "Implementer fixes spec gaps" -> "Dispatch spec reviewer subagent" [label="re-review"];
-    "Spec reviewer confirms code matches spec?" -> "Dispatch code quality reviewer subagent" [label="yes"];
-    "Dispatch code quality reviewer subagent" -> "Code quality reviewer approves?";
-    "Code quality reviewer approves?" -> "Implementer fixes quality issues" [label="no"];
-    "Implementer fixes quality issues" -> "Dispatch code quality reviewer subagent" [label="re-review"];
-    "Code quality reviewer approves?" -> "Mark task complete" [label="yes"];
-    "Mark task complete" -> "More tasks remain?";
-    "More tasks remain?" -> "Dispatch implementer subagent" [label="yes"];
-    "More tasks remain?" -> "Dispatch final code reviewer for entire implementation" [label="no"];
-    "Dispatch final code reviewer for entire implementation" -> "Complete";
+    "Read plan, parse tasks and dependencies" -> "Check for circular dependencies";
+    "Check for circular dependencies" -> "Report cycle, stop" [label="cycle found"];
+    "Check for circular dependencies" -> "Compute ready set" [label="no cycles"];
+    "Compute ready set" -> "Any tasks ready?";
+    "Any tasks ready?" -> "Final code review" [label="all done"];
+    "Any tasks ready?" -> "Validate file overlap in ready set" [label="yes"];
+    "Validate file overlap in ready set" -> "Cap at max 3, dispatch parallel Agent calls";
+    "Cap at max 3, dispatch parallel Agent calls" -> "Wait for all agents to return";
+    "Wait for all agents to return" -> "Process results";
+    "Process results" -> "All tasks done?";
+    "All tasks done?" -> "Compute ready set" [label="more tasks"];
+    "All tasks done?" -> "Final code review" [label="yes"];
+    "Final code review" -> "Complete";
 }
 ```
+
+Each dispatched Agent runs the full task pipeline: implement → spec review → quality review. Multiple pipelines run concurrently.
+
+## Wave Execution Algorithm
+
+Follow these steps exactly to resolve dependencies and dispatch tasks in parallel waves.
+
+### Step 1: Parse Tasks
+
+Read the plan and extract all tasks. For each task, record:
+- Task number (from `### Task N:` heading)
+- Dependencies (from `**Depends on:**` line — parse as list of task numbers, or empty if `none`)
+- File list (from `**Files:**` section — all file paths mentioned)
+- Status: pending, in-flight, completed, or needs-retry
+
+Example:
+```
+Task 1: deps=[]      files=[src/a.py, tests/test_a.py]     status=pending
+Task 2: deps=[]      files=[src/b.py, tests/test_b.py]     status=pending
+Task 3: deps=[1,2]   files=[src/c.py, tests/test_c.py]     status=pending
+Task 4: deps=[1,2]   files=[src/d.py, tests/test_d.py]     status=pending
+Task 5: deps=[3,4]   files=[src/e.py, tests/test_e.py]     status=pending
+```
+
+### Step 2: Check for Cycles
+
+Before executing anything, verify no circular dependencies exist. If task A depends on B and B depends on A (directly or transitively), report: "Circular dependency detected — the following tasks form a cycle: [list]. Please fix the plan." Do NOT proceed until cycles are resolved.
+
+### Step 3: Compute Ready Set
+
+A task is **ready** if:
+- Status is `pending` or `needs-retry`
+- All tasks in its `deps` list have status `completed`
+
+```
+Completed: [1, 2]
+Ready: [3, 4]    (deps [1,2] all completed)
+Waiting: [5]     (dep 3 not completed)
+```
+
+### Step 4: Validate File Overlap
+
+Check every pair of tasks in the ready set. If two tasks share any file path in their file lists, remove one from the ready set (move it back to waiting). It will be picked up in the next cycle.
+
+### Step 5: Cap Concurrency
+
+If more than 3 tasks are ready, dispatch only the first 3 (by task number). The rest wait for the next cycle.
+
+### Step 6: Dispatch
+
+Dispatch all ready tasks as parallel Agent tool calls in a single message. Each agent gets:
+- Full task text (steps, file list, code) — paste directly, don't make agent read files
+- Design spec content for context
+- File constraint: "You may ONLY modify these files: [list from task's Files: section]"
+- Return format: status (DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED) + summary
+
+### Step 7: Wait and Process Results
+
+All Agent calls return together. For each result:
+- **DONE** (passed both reviews): mark task `completed`, update plan checkbox to `- [x]`
+- **DONE_WITH_CONCERNS**: read concerns. If about correctness/scope, address before marking complete. If observations only, note and mark `completed`
+- **NEEDS_CONTEXT**: surface question to user. Mark task `needs-retry`. Continue with other tasks — do NOT pause the entire execution
+- **BLOCKED**: assess blocker per standard SDD rules (more context, more capable model, break into pieces, or escalate). Mark task `needs-retry`
+
+### Step 8: Repeat
+
+Go back to Step 3. Recompute the ready set from scratch based on current task statuses. Continue until all tasks are `completed`.
+
+If no tasks are ready and not all tasks are completed, there's a problem:
+- If tasks are `needs-retry`: surface all blockers to the user
+- If tasks are waiting on incomplete tasks that aren't in-flight: there may be a cycle that wasn't caught — report it
+
+### Worked Example
+
+```
+Plan: 5 tasks. Task 1,2 have no deps. Task 3,4 depend on 1,2. Task 5 depends on 3,4.
+
+--- Cycle 1 ---
+Completed: []
+Ready: [1, 2] → no file overlap → dispatch both
+  → Agent(Task 1), Agent(Task 2) dispatched in parallel
+  → Both return DONE, pass reviews
+Completed: [1, 2]
+
+--- Cycle 2 ---
+Ready: [3, 4] (deps [1,2] all completed) → no file overlap → dispatch both
+  → Agent(Task 3), Agent(Task 4) dispatched in parallel
+  → Task 3 fails spec review, gets fixed, passes on re-review
+  → Task 4 passes
+Completed: [1, 2, 3, 4]
+
+--- Cycle 3 ---
+Ready: [5] (deps [3,4] all completed) → dispatch
+  → Agent(Task 5) dispatched
+  → Passes
+Completed: [1, 2, 3, 4, 5] → Done
+```
+
+### Fallback to Sequential
+
+If the plan has no `**Depends on:**` lines on any task, warn: "Plan is missing dependency declarations. Falling back to sequential execution." Then execute tasks one at a time in order, identical to pre-parallel SDD behavior.
+
+If a plan has all tasks depending on the previous one (linear chain), the wave executor naturally dispatches one task at a time — no special case needed.
+
+### Post-Wave Verification
+
+After each wave completes:
+1. **Review each agent's summary** — understand what changed
+2. **Check for conflicts** — did any agents edit the same code despite file validation?
+3. **Run the test suite** — verify all changes work together
+4. **Spot check** — agents can make systematic errors, especially in parallel
+
+## Agent Prompt Best Practices
+
+When dispatching implementer subagents (whether sequential or parallel), craft focused prompts:
+
+1. **Focused** — One clear task per agent. Don't combine unrelated work.
+2. **Self-contained** — Paste all context the agent needs. Don't make it search or read plan files.
+3. **Constrained** — Specify which files may be modified. Specify what NOT to do.
+4. **Specific about output** — Define the exact return format (status + summary).
+
+**Common mistakes:**
+- Too broad: "Implement the feature" — agent gets lost
+- No context: "Fix the function" — agent doesn't know which
+- No constraints: agent refactors everything
+- Vague output: "Fix it" — you don't know what changed
 
 ## Model Selection
 
@@ -96,7 +210,8 @@ Implementer subagents report one of four statuses:
 - Start implementation on main/master branch without explicit user consent
 - Skip reviews (spec compliance OR code quality)
 - Proceed with unfixed issues
-- Dispatch multiple implementation subagents in parallel (conflicts)
+- Dispatch implementation subagents that modify the same files in parallel (file overlap = sequential)
+- Dispatch more than 3 implementation subagents simultaneously
 - Make subagent read plan file (provide full text instead)
 - Skip scene-setting context
 - Ignore subagent questions

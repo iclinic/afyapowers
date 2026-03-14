@@ -3,6 +3,8 @@ name: dispatching-parallel-agents
 description: Use when facing 2+ independent tasks that can be worked on without shared state or sequential dependencies
 ---
 
+> **Note:** This skill is for ad-hoc parallel investigation (debugging, test fixing, research). For parallel execution of implementation plan tasks, see the wave execution algorithm in `skills/subagent-driven-development/SKILL.md`.
+
 # Dispatching Parallel Agents
 
 ## Overview

@@ -16,6 +16,15 @@ Task tool (general-purpose):
 
     [Scene-setting: where this fits, dependencies, architectural context]
 
+    ## File Constraint
+
+    You may ONLY modify the files listed in your task's **Files:** section:
+    [LIST OF FILES FROM TASK]
+
+    Do NOT create, modify, or delete any other files. If you believe you need to
+    touch a file not in this list, report back with status NEEDS_CONTEXT and explain
+    what file you need and why.
+
     ## Before You Begin
 
     If you have questions about:

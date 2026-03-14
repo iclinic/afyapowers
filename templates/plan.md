@@ -1,14 +1,32 @@
 # Implementation Plan: {{feature_name}}
 
-## Tasks
-<!-- Ordered, bite-sized tasks (2-5 min each) -->
+> **For agentic workers:** REQUIRED: Use the afyapowers implementing skill to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-- [ ] Task 1: ...
-- [ ] Task 2: ...
-- [ ] Task 3: ...
+**Goal:** [One sentence describing what this builds]
 
-## Dependencies Between Tasks
-<!-- Which tasks block others -->
+**Architecture:** [2-3 sentences about approach]
 
-## Testing Approach
-<!-- RED-GREEN-REFACTOR per task -->
+**Tech Stack:** [Key technologies/libraries]
+
+---
+
+### Task 1: [Component Name]
+
+**Files:**
+- Create: `exact/path/to/file`
+- Modify: `exact/path/to/existing:lines`
+- Test: `tests/exact/path/to/test`
+
+**Depends on:** none
+
+- [ ] Step 1: ...
+- [ ] Step 2: ...
+
+### Task 2: [Component Name]
+
+**Files:**
+- Create: `exact/path/to/file`
+
+**Depends on:** Task 1
+
+- [ ] Step 1: ...

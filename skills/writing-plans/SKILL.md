@@ -46,6 +46,25 @@ This structure informs the task decomposition. Each task should produce self-con
 - "Run the tests and make sure they pass" - step
 - "Commit" - step
 
+## Dependency Declaration
+
+Every task MUST have a `**Depends on:**` line immediately after the `**Files:**` block.
+
+- Use `none` if the task has no dependencies
+- Use `Task N` or `Task N, Task M` (comma-separated) to declare dependencies on other tasks
+- Dependencies are by task number, matching the `### Task N:` heading
+
+**What counts as a dependency:**
+- Task B modifies a file that Task A creates → Task B depends on Task A
+- Task B imports a module that Task A creates → Task B depends on Task A
+- Task B builds on an interface that Task A defines → Task B depends on Task A
+- Task B and Task A are completely independent → no dependency needed
+
+**Plan-time file overlap validation:**
+After declaring dependencies, check that tasks which could run in parallel (no mutual dependency) don't share files in their `**Files:**` lists. If two parallel-eligible tasks touch the same file, add a dependency between them to force sequential execution.
+
+File overlap validation is a safety net, not a substitute for thinking about task ordering. Always declare logical dependencies (imports, shared interfaces) explicitly.
+
 ## Plan Document Header
 
 **Every plan MUST start with this header:**
@@ -73,6 +92,7 @@ This structure informs the task decomposition. Each task should produce self-con
 - Create: `exact/path/to/file.py`
 - Modify: `exact/path/to/existing.py:123-145`
 - Test: `tests/exact/path/to/test.py`
+**Depends on:** none | Task X, Task Y
 
 - [ ] **Step 1: Write the failing test**
 
