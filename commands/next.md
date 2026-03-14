@@ -4,9 +4,9 @@ You are advancing the active feature to the next workflow phase. Follow these st
 
 ## Step 1: Identify Active Feature
 
-1. Read `.afyapowers/active` to get the active feature slug
+1. Read `.afyapowers/features/active` to get the active feature slug
 2. If no active feature, tell the user: "No active feature. Run `/afyapowers:new` to start one, or `/afyapowers:switch` to select an existing feature."
-3. Read `.afyapowers/<slug>/state.yaml`
+3. Read `.afyapowers/features/<slug>/state.yaml`
 
 ## Step 2: Validate Current Phase Completion
 
@@ -14,11 +14,11 @@ Check that the current phase has produced its required artifacts:
 
 | Current Phase | Validation |
 |--------------|------------|
-| design | `.afyapowers/<slug>/artifacts/design.md` exists |
-| plan | `.afyapowers/<slug>/artifacts/plan.md` exists |
-| implement | Zero unchecked `- [ ]` items in `.afyapowers/<slug>/artifacts/plan.md` |
-| review | `.afyapowers/<slug>/artifacts/review.md` exists AND its Verdict section contains "Approved" |
-| complete | `.afyapowers/<slug>/artifacts/completion.md` exists |
+| design | `.afyapowers/features/<slug>/artifacts/design.md` exists |
+| plan | `.afyapowers/features/<slug>/artifacts/plan.md` exists |
+| implement | Zero unchecked `- [ ]` items in `.afyapowers/features/<slug>/artifacts/plan.md` |
+| review | `.afyapowers/features/<slug>/artifacts/review.md` exists AND its Verdict section contains "Approved" |
+| complete | `.afyapowers/features/<slug>/artifacts/completion.md` exists |
 
 If validation fails:
 - Tell the user what's still needed (e.g., "The design artifact is missing. Complete the design phase first.")
@@ -58,7 +58,7 @@ Tell the user which phase is starting, then invoke the appropriate skill:
 | complete | **completing** skill | Merge/PR/cleanup, produce completion summary |
 
 When the skill completes and produces its artifact:
-1. Save the artifact to `.afyapowers/<slug>/artifacts/`
+1. Save the artifact to `.afyapowers/features/<slug>/artifacts/`
 2. Update `state.yaml` to add the artifact to the current phase's artifacts list
 3. Append an `artifact_created` event to `history.yaml`
 4. Tell the user: "Phase '<current-phase>' complete. Run `/afyapowers:next` to proceed to **<next-phase>**."
