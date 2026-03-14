@@ -145,6 +145,6 @@ Each entry under a date heading contains:
 
 When generating documentation, use these sources in priority order:
 
-1. **Afyapowers artifacts** — If `.afyapowers/<feature>/artifacts/` exists, read `design.md`, `plan.md`, and `review.md` for rich context about requirements, architecture, and decisions. These are optional but produce significantly better docs.
+1. **Afyapowers artifacts** — If `.afyapowers/features/<feature>/artifacts/` exists, read `design.md`, `plan.md`, and `review.md` for rich context about requirements, architecture, and decisions. These are optional but produce significantly better docs.
 2. **Git diff** — Always available. The primary source for understanding what changed.
 3. **Existing docs** — Used for matching and understanding the current documented state of features.
