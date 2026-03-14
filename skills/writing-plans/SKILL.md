@@ -65,6 +65,27 @@ After declaring dependencies, check that tasks which could run in parallel (no m
 
 File overlap validation is a safety net, not a substitute for thinking about task ordering. Always declare logical dependencies (imports, shared interfaces) explicitly.
 
+## Figma References
+
+If the design spec contains a `## Figma References` section, assign relevant Figma nodes to tasks using a `**Figma:**` line after `**Depends on:**`.
+
+- Each task that involves implementing a UI element with a corresponding Figma reference should include the relevant node URLs
+- Tasks with no relevant Figma nodes omit the `**Figma:**` section entirely
+- The `**Figma:**` section uses the same bulleted list format as `**Files:**`
+
+**Example:**
+
+```markdown
+### Task 3: Login Screen
+**Files:**
+- Create: `src/components/LoginScreen.tsx`
+- Test: `src/components/__tests__/LoginScreen.test.tsx`
+**Depends on:** Task 1, Task 2
+**Figma:**
+- `https://figma.com/file/abc123?node-id=12:34` — Login form
+- `https://figma.com/file/abc123?node-id=12:56` — Error states
+```
+
 ## Plan Document Header
 
 **Every plan MUST start with this header:**
@@ -93,6 +114,8 @@ File overlap validation is a safety net, not a substitute for thinking about tas
 - Modify: `exact/path/to/existing.py:123-145`
 - Test: `tests/exact/path/to/test.py`
 **Depends on:** none | Task X, Task Y
+**Figma:** _(optional — only for tasks with Figma references)_
+- `https://figma.com/file/...?node-id=X:Y` — Description
 
 - [ ] **Step 1: Write the failing test**
 
