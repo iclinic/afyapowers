@@ -125,6 +125,7 @@ Key behaviors:
 - Agnostic to which Figma MCP server is configured — subagent discovers available tools at runtime
 - Fetches details only for node IDs listed in its task, not the whole file
 - If no `**Figma:**` section exists, proceeds normally without Figma calls
+- If Figma MCP tools are unavailable or calls fail, the subagent proceeds without visual context but must include a `**Figma Status: unavailable**` note in its task completion output. The orchestrator should surface this when marking the task done, so it's visible that the task was implemented without Figma reference
 
 ## Data Flow
 
@@ -156,7 +157,7 @@ Implement phase
 | Figma URL is invalid or inaccessible | Skill reports the error for that specific URL and asks user to provide a corrected URL or skip it. Other URLs continue processing. |
 | MCP call returns no nodes | Skill informs user that no frames/components were found under the URL. Asks if the URL is correct or if they want to skip it. |
 | User confirms zero nodes | Skill exits — no `## Figma References` section is written. Design continues normally. |
-| Subagent can't access Figma MCP during implementation | Subagent proceeds without visual context, notes in its output that Figma details could not be fetched. Implementation is not blocked. |
+| Subagent can't access Figma MCP during implementation | Subagent proceeds without visual context and includes `**Figma Status: unavailable**` in its task completion output. The orchestrator surfaces this when marking the task done, making it visible that the task was implemented without Figma reference. Implementation is not blocked. |
 
 ## Testing Strategy
 
