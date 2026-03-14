@@ -35,6 +35,25 @@ Task tool (general-purpose):
 
     **Ask them now.** Raise any concerns before starting work.
 
+    ## Figma References
+
+    If your task has a `**Figma:**` section, you MUST use Figma MCP tools to fetch
+    visual details for those nodes BEFORE writing code:
+
+    1. Inspect the available MCP tools in your environment to find Figma-related tools
+       (do NOT hardcode tool names — different Figma MCP servers use different names)
+    2. For each node URL in your `**Figma:**` section, call the appropriate Figma MCP
+       tool to fetch layout, component structure, and visual specs for that node ID
+    3. Use the fetched visual details to guide your implementation — match the design's
+       structure, hierarchy, and visual intent
+
+    **If no Figma MCP tools are available** or calls fail: proceed without visual
+    context, but you MUST include `**Figma Status: unable to access Figma MCP**` in
+    your task completion report. The orchestrator will surface this so it's visible
+    that the task was implemented without Figma reference.
+
+    If your task does NOT have a `**Figma:**` section, ignore this — proceed normally.
+
     ## Your Job
 
     Once you're clear on requirements:
@@ -145,6 +164,7 @@ Task tool (general-purpose):
     - Files changed
     - Self-review findings (if any)
     - Any issues or concerns
+    - **Figma Status:** (only if task had `**Figma:**` section) — accessed successfully | unable to access Figma MCP
 
     Use DONE_WITH_CONCERNS if you completed the work but have doubts about correctness.
     Use BLOCKED if you cannot complete the task. Use NEEDS_CONTEXT if you need
