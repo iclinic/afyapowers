@@ -147,6 +147,29 @@ If the plan has no `**Depends on:**` lines on any task, warn: "Plan is missing d
 
 If a plan has all tasks depending on the previous one (linear chain), the wave executor naturally dispatches one task at a time — no special case needed.
 
+### Post-Wave Verification
+
+After each wave completes:
+1. **Review each agent's summary** — understand what changed
+2. **Check for conflicts** — did any agents edit the same code despite file validation?
+3. **Run the test suite** — verify all changes work together
+4. **Spot check** — agents can make systematic errors, especially in parallel
+
+## Agent Prompt Best Practices
+
+When dispatching implementer subagents (whether sequential or parallel), craft focused prompts:
+
+1. **Focused** — One clear task per agent. Don't combine unrelated work.
+2. **Self-contained** — Paste all context the agent needs. Don't make it search or read plan files.
+3. **Constrained** — Specify which files may be modified. Specify what NOT to do.
+4. **Specific about output** — Define the exact return format (status + summary).
+
+**Common mistakes:**
+- Too broad: "Implement the feature" — agent gets lost
+- No context: "Fix the function" — agent doesn't know which
+- No constraints: agent refactors everything
+- Vague output: "Fix it" — you don't know what changed
+
 ## Model Selection
 
 Use the least powerful model that can handle each role to conserve cost and increase speed.
