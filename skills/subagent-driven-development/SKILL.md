@@ -131,4 +131,4 @@ Implementer subagents report one of four statuses:
 - `skills/implementing/spec-reviewer-prompt.md` — spec compliance review
 - `skills/implementing/code-quality-reviewer-prompt.md` — code quality review
 
-**Context:** When invoked by implementing, the plan and design are already in the conversation context. Use them directly. If the plan is not in context (e.g., invoked standalone), read it from `.afyapowers/<feature>/artifacts/plan.md`.
+**Context:** When invoked by implementing, the plan and design are already in the conversation context. Use them directly. If the plan is not in context (e.g., invoked standalone), read it from `.afyapowers/features/<feature>/artifacts/plan.md`.
