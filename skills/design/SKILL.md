@@ -31,9 +31,10 @@ You MUST complete these items in order:
 2. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
 3. **Propose 2-3 approaches** — with trade-offs and your recommendation
 4. **Present design** — in sections scaled to their complexity, get user approval after each section
-5. **Write design doc** — save to `.afyapowers/features/<feature>/artifacts/design.md`
-6. **Spec review loop** — dispatch spec-document-reviewer subagent; fix issues and re-dispatch until approved (max 5 iterations, then surface to human)
-7. **User reviews written spec** — ask user to review the spec file before proceeding
+5. **Figma discovery** (UI features only) — if the feature involves front-end/UI work, invoke the `figma-discovery` skill to identify Figma references before writing the spec
+6. **Write design doc** — save to `.afyapowers/features/<feature>/artifacts/design.md`
+7. **Spec review loop** — dispatch spec-document-reviewer subagent; fix issues and re-dispatch until approved (max 5 iterations, then surface to human)
+8. **User reviews written spec** — ask user to review the spec file before proceeding
 
 ## Process Flow
 
@@ -55,7 +56,10 @@ digraph design {
     "Propose 2-3 approaches" -> "Present design sections";
     "Present design sections" -> "User approves design?";
     "User approves design?" -> "Present design sections" [label="no, revise"];
-    "User approves design?" -> "Write design doc" [label="yes"];
+    "Figma discovery\n(UI features only)" [shape=box];
+
+    "User approves design?" -> "Figma discovery\n(UI features only)" [label="yes"];
+    "Figma discovery\n(UI features only)" -> "Write design doc";
     "Write design doc" -> "Spec review loop";
     "Spec review loop" -> "Spec review passed?";
     "Spec review passed?" -> "Spec review loop" [label="issues found,\nfix and re-dispatch"];
@@ -100,6 +104,13 @@ digraph design {
 - For each unit, you should be able to answer: what does it do, how do you use it, and what does it depend on?
 - Can someone understand what a unit does without reading its internals? Can you change the internals without breaking consumers? If not, the boundaries need work.
 - Smaller, well-bounded units are also easier for you to work with - you reason better about code you can hold in context at once, and your edits are more reliable when files are focused. When a file grows large, that's often a signal that it's doing too much.
+
+**Figma discovery (UI features only):**
+
+- After the user approves the design sections, check whether the feature involves front-end/UI work (based on the design conversation context — components, screens, layouts, visual elements)
+- If it does → invoke the `figma-discovery` skill (located at `skills/figma-discovery/SKILL.md`). The skill will ask about Figma layouts, discover nodes, and write a `## Figma References` section to the design spec.
+- If it doesn't (purely backend, infrastructure, data pipeline, etc.) → skip entirely and proceed to writing the spec
+- Do NOT ask about Figma yourself — delegate entirely to the Figma discovery skill
 
 **Working in existing codebases:**
 
