@@ -15,8 +15,8 @@ Do NOT invoke any implementation skill, write any code, scaffold any project, or
 
 ## Phase Gate
 
-1. Read `.afyapowers/active` to get the active feature
-2. Read `.afyapowers/<feature>/state.yaml` — confirm `current_phase` is `design`
+1. Read `.afyapowers/features/active` to get the active feature
+2. Read `.afyapowers/features/<feature>/state.yaml` — confirm `current_phase` is `design`
 3. If not in design phase, tell the user the current phase and stop
 
 ## Anti-Pattern: "This Is Too Simple To Need A Design"
@@ -31,7 +31,7 @@ You MUST complete these items in order:
 2. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
 3. **Propose 2-3 approaches** — with trade-offs and your recommendation
 4. **Present design** — in sections scaled to their complexity, get user approval after each section
-5. **Write design doc** — save to `.afyapowers/<feature>/artifacts/design.md`
+5. **Write design doc** — save to `.afyapowers/features/<feature>/artifacts/design.md`
 6. **Spec review loop** — dispatch spec-document-reviewer subagent; fix issues and re-dispatch until approved (max 5 iterations, then surface to human)
 7. **User reviews written spec** — ask user to review the spec file before proceeding
 
@@ -120,7 +120,7 @@ digraph design {
 
 **Documentation:**
 
-- Write the validated design to `.afyapowers/<feature>/artifacts/design.md`
+- Write the validated design to `.afyapowers/features/<feature>/artifacts/design.md`
   - Use the template from `templates/design.md`
 - Commit the design document to git
 
@@ -134,7 +134,7 @@ After writing the spec document:
 **User Review Gate:**
 After the spec review loop passes, ask the user to review the written spec before proceeding:
 
-> "Design written to `.afyapowers/<feature>/artifacts/design.md`. Please review it and let me know if you want to make any changes."
+> "Design written to `.afyapowers/features/<feature>/artifacts/design.md`. Please review it and let me know if you want to make any changes."
 
 Wait for the user's response. If they request changes, make them and re-run the spec review loop. Only proceed once the user approves.
 
