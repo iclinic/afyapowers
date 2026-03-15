@@ -37,20 +37,40 @@ Task tool (general-purpose):
 
     ## Figma References
 
-    If your task has a `**Figma:**` section, you MUST use Figma MCP tools to fetch
-    visual details for those nodes BEFORE writing code:
+    If your task has a `**Figma:**` section, you MUST fetch visual details from Figma
+    BEFORE writing any code. Follow this sequence for each node URL:
 
-    1. Inspect the available MCP tools in your environment to find Figma-related tools
-       (do NOT hardcode tool names — different Figma MCP servers use different names)
-    2. For each node URL in your `**Figma:**` section, call the appropriate Figma MCP
-       tool to fetch layout, component structure, and visual specs for that node ID
-    3. Use the fetched visual details to guide your implementation — match the design's
-       structure, hierarchy, and visual intent
+    ### Figma Tool Sequence (in order)
 
-    **If no Figma MCP tools are available** or calls fail: proceed without visual
-    context, but you MUST include `**Figma Status: unable to access Figma MCP**` in
-    your task completion report. The orchestrator will surface this so it's visible
-    that the task was implemented without Figma reference.
+    1. **Screenshot** — Find a screenshot/render tool in the available Figma MCP tools
+       and fetch a visual capture of the node. Look at it. Understand what you're
+       building before reading any data.
+
+    2. **Design Context** — Find a design-context tool that returns styling and layout
+       information. Before calling it, detect the project's frontend stack by inspecting
+       `package.json` and framework config files (e.g., `next.config.*`, `vite.config.*`,
+       `nuxt.config.*`, `angular.json`). Request output in the detected framework format.
+       If the stack is ambiguous, use the tool's default output format.
+
+    3. **Metadata** — Find a metadata tool that returns the node's structural hierarchy
+       (layer IDs, types, positions, sizes). Use this to understand nesting, layout
+       direction, and component structure.
+
+    4. **Design Tokens** — Find a variables/tokens tool that returns design system
+       variables (colors, spacing, typography). If available, use token names in your
+       code when they map to the project's existing design system.
+
+    **Order matters.** Screenshot first (mental model), then code context, then
+    structure, then tokens. Cross-reference all sources when implementing.
+
+    **Graceful degradation:** If any tool fails or is unavailable, proceed with
+    whatever data you have. The screenshot is most critical. If even screenshots
+    fail, report `**Figma Status: partial access**`.
+
+    Do NOT hardcode Figma MCP tool names — discover available tools at runtime.
+
+    **If no Figma MCP tools are available:** Proceed without visual context, but
+    include `**Figma Status: unable to access Figma MCP**` in your report.
 
     If your task does NOT have a `**Figma:**` section, ignore this — proceed normally.
 
@@ -68,6 +88,38 @@ Task tool (general-purpose):
     5. Use Playwright MCP tools to verify your fixes match before reporting back
 
     Report status as usual. Include `**Figma Status: fixes applied**` in your report.
+
+    ## Component Preview
+
+    If your task implements an isolated component (not a full page with its own route),
+    you MUST create a preview surface so the visual fidelity reviewer can see it.
+
+    **Detection:**
+    1. Check if Storybook exists: look for `.storybook/` directory or `storybook`
+       in `package.json` devDependencies
+    2. If Storybook exists → create a story file following the project's existing
+       story conventions (look at existing `*.stories.*` files for the pattern)
+    3. If no Storybook → create a temporary preview route at a path like
+       `/dev/preview/ComponentName` (adapt to the project's routing framework)
+
+    **Preview requirements:**
+    - Render the component with representative props/data that exercise the visual
+      states shown in Figma
+    - If Figma shows multiple states (hover, disabled, error), render all states
+      vertically on the same preview page
+    - Keep the preview minimal — no extra layout, navigation, or decoration
+
+    **File constraint exemption:** Preview files are exempt from the "you may ONLY
+    modify files in your task's **Files:** section" constraint. You may create preview
+    files without them being listed in your task.
+
+    **If Storybook is detected but story creation fails:** Fall back to the temporary
+    route approach.
+
+    **If preview creation fails entirely:** Report BLOCKED with details.
+
+    **Page-level tasks:** If your task implements a full page that already has a route,
+    skip preview creation — the reviewer will navigate to the actual route.
 
     ## Your Job
 
@@ -179,7 +231,9 @@ Task tool (general-purpose):
     - Files changed
     - Self-review findings (if any)
     - Any issues or concerns
-    - **Figma Status:** (only if task had `**Figma:**` section) — accessed successfully | unable to access Figma MCP | fixes applied
+    - **Figma Status:** (only if task had `**Figma:**` section) — accessed successfully | unable to access Figma MCP | partial access | fixes applied
+    - **Preview URL:** (only if preview was created) — URL where the component can be viewed (e.g., http://localhost:3000/dev/preview/LoginForm)
+    - **Preview File:** (only if preview was created) — path to the preview file created (e.g., src/app/dev/preview/LoginForm/page.tsx)
 
     Use DONE_WITH_CONCERNS if you completed the work but have doubts about correctness.
     Use BLOCKED if you cannot complete the task. Use NEEDS_CONTEXT if you need
