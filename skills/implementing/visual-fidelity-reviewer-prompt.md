@@ -22,8 +22,9 @@ Task tool (general-purpose):
 
     ## Dev Server
 
-    [DEV SERVER URL — e.g., http://localhost:3000]
-    [ROUTE OR PAGE WHERE THE COMPONENT CAN BE FOUND — e.g., /login]
+    [DEV SERVER BASE URL — e.g., http://localhost:3000]
+    [PREVIEW URL OR PAGE ROUTE — from implementer's **Preview URL:** field,
+     or the actual page route if implementing a full page]
 
     ## What Implementer Claims They Built
 
@@ -39,14 +40,15 @@ Task tool (general-purpose):
     Inspect the available MCP tools in your environment to find Figma-related
     tools (do NOT hardcode tool names — different servers use different names).
 
-    For each node URL in the Figma references, fetch:
-    - Layout structure and hierarchy
-    - Spacing and sizing values (padding, margin, gap, width, height)
-    - Colors (fill, stroke, background — exact hex/rgba values)
-    - Typography (font family, size, weight, line height, letter spacing)
-    - Design tokens if available
-    - Component states (hover, active, disabled, focus) if defined
-    - Responsive behavior / constraints if specified
+    For each node URL in the Figma references:
+    1. **Screenshot** — Fetch a visual capture of the node to see the design
+    2. **Design Context** — Fetch styling and layout info for comparison data
+    3. **Metadata** — Fetch structural hierarchy (positions, sizes, nesting)
+    4. **Design Tokens** — Fetch variables (colors, spacing, typography) if available
+
+    Use all available data to build your comparison baseline. If some tools
+    are unavailable, work with what you have — screenshot + design context
+    is sufficient for most comparisons.
 
     ### Step 2: Inspect the Running Implementation
 
@@ -62,36 +64,43 @@ Task tool (general-purpose):
 
     ### Step 3: Compare
 
-    For each Figma reference, compare the implementation against the design on:
+    For each Figma reference, compare the implementation against the design.
 
-    | Aspect | What to Check |
-    |--------|---------------|
-    | Layout | Element hierarchy, positioning, flex/grid structure |
-    | Spacing | Padding, margin, gap values (exact match) |
-    | Sizing | Width, height, min/max constraints |
-    | Colors | Background, text, border, shadow colors (exact hex match) |
-    | Typography | Font family, size, weight, line height, letter spacing |
-    | States | Hover, active, disabled, focus appearances |
-    | Responsive | Breakpoint behavior if specified in Figma |
+    **Report as a discrepancy (FAIL):**
+    - Wrong layout structure (missing elements, wrong nesting, wrong flex/grid direction)
+    - Visibly wrong colors (not sub-shade rendering differences)
+    - Wrong typography (wrong font family, significantly wrong size/weight)
+    - Significantly wrong spacing (off by more than ~4px, or visually noticeable gaps)
+    - Missing component states (hover/disabled/error not implemented when specified in Figma)
+    - Wrong proportions or sizing that changes the visual character
 
-    **Be precise.** Compare actual values, not approximations. A 2px spacing
-    difference or a slightly different shade of blue counts as a discrepancy.
+    **Tolerate (PASS):**
+    - Sub-pixel rounding differences (1-2px)
+    - Minor font rendering differences between Figma and browser
+    - Slight color variations due to color space conversion (sRGB vs display-P3)
+    - Anti-aliasing differences
+    - Differences in shadow/blur rendering between Figma and CSS
+
+    **Guiding principle:** "Would a human reviewer flag this in a PR review?" If not,
+    it passes.
 
     ### Step 4: Report
 
     Report your findings:
 
     - **✅ Visual fidelity passed** — implementation matches Figma design
+      (minor rendering differences within tolerance are acceptable)
     - **❌ Visual fidelity failed** — list each discrepancy:
       - Element: [which element]
       - Aspect: [layout/spacing/color/typography/states/responsive]
-      - Expected (Figma): [exact value]
-      - Actual (Implementation): [exact value]
+      - Expected (Figma): [value]
+      - Actual (Implementation): [value]
       - Fix required: [what needs to change]
 
-    **CRITICAL:** Do NOT pass a review with known discrepancies. If there is
-    any mismatch between the Figma design and the implementation, report it
-    as failed. The implementer will be re-dispatched to fix the issues.
+    **CRITICAL:** Do NOT pass a review with significant discrepancies. Focus on
+    issues that a human reviewer would flag in a PR review — structural problems,
+    visibly wrong colors, missing states, significantly wrong spacing. Tolerate
+    minor rendering differences inherent to Figma-to-browser translation.
 ```
 
 **Reviewer returns:** Pass/Fail with detailed discrepancy report if failed.
