@@ -20,6 +20,11 @@ Task tool (general-purpose):
 
     [LIST OF FILES THE IMPLEMENTER MODIFIED]
 
+    ## Dev Server
+
+    [DEV SERVER URL — e.g., http://localhost:3000]
+    [ROUTE OR PAGE WHERE THE COMPONENT CAN BE FOUND — e.g., /login]
+
     ## What Implementer Claims They Built
 
     [FROM IMPLEMENTER'S REPORT]
@@ -49,7 +54,7 @@ Task tool (general-purpose):
     tools (do NOT hardcode tool names).
 
     Using Playwright MCP tools:
-    1. Navigate to the relevant page/component in the running dev server
+    1. Navigate to the dev server URL and route provided above
     2. Take screenshots of the implemented component(s)
     3. Inspect computed styles, dimensions, and spacing of key elements
     4. Check component states if defined in Figma (hover, active, disabled, etc.)
