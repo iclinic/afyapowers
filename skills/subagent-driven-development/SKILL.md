@@ -249,11 +249,12 @@ After code quality review passes, if the task has a `**Figma:**` section AND vis
 
 **Provide to the reviewer:**
 - The task's `**Figma:**` references
-- The dev server URL and route to the component
+- The dev server base URL
+- The preview URL or page route: use the implementer's `**Preview URL:**` field if present, otherwise use the actual page route for the component
 - The list of files the implementer modified
 - The implementer's report summary
 
-**If ✅ Visual fidelity passed:** Mark task as completed.
+**If ✅ Visual fidelity passed:** Mark task as completed. Then check if the implementer reported a `**Preview File:**` path. If so, immediately delete that file to clean up the temporary preview before proceeding to the next task or wave.
 
 **If ❌ Visual fidelity failed:** Re-dispatch the implementer with the discrepancy report:
 
