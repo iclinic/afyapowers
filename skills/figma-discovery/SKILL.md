@@ -7,7 +7,7 @@ description: "Discovers Figma node references for UI features during the Design 
 
 Identify and map Figma design references for UI features, so implementation subagents can fetch visual details from Figma MCP tools when building components.
 
-**This skill is invoked by the Design skill** — do not invoke it directly. It runs late in the Design phase, after the design is shaped but before writing the spec document.
+**This skill is invoked by the Design skill** — do not invoke it directly. It runs early in the Design phase (step 2, after context exploration), so discovered layouts inform the entire design conversation.
 
 ## Flow
 
@@ -60,6 +60,26 @@ Display all discovered nodes in a structured list:
 > "Which of these are relevant? You can list the numbers (e.g., '1, 3') and add descriptions (e.g., '1 — Login form, 3 — Dashboard header')."
 
 Wait for the user to confirm. If the user confirms zero nodes, exit the skill — no Figma References section will be written.
+
+### Step 4.5: Fetch Screenshots
+
+For each confirmed node, fetch a screenshot to provide visual context for the design conversation:
+
+1. Look for a screenshot-related Figma MCP tool (e.g., one that captures or renders a node as an image)
+2. Call it for each confirmed node
+3. Present the screenshots inline in the conversation
+
+This gives the design skill actual visual context — the agent can now see what the layouts look like, not just their names.
+
+**If no screenshot tool is available:** Warn the user:
+
+> "Screenshot tool not available in the current Figma MCP server. Continuing without visual previews — discovery still produces references as normal."
+
+Continue to Step 5.
+
+**If a screenshot fails for a specific node:** Warn for that node and continue with the others. Not every node needs a screenshot for discovery to be useful.
+
+**Note:** Screenshots are conversational context only — they inform the design discussion but are NOT written to the spec document. The implementer fetches its own screenshots later during implementation.
 
 ### Step 5: Output Figma References
 
