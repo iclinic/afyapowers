@@ -118,6 +118,10 @@ Task tool (general-purpose):
 
     **If preview creation fails entirely:** Report BLOCKED with details.
 
+    **Important:** Always report the preview file path in `**Preview File:**` for both
+    Storybook stories and temporary routes — all preview files are cleaned up after
+    visual fidelity passes.
+
     **Page-level tasks:** If your task implements a full page that already has a route,
     skip preview creation — the reviewer will navigate to the actual route.
 
