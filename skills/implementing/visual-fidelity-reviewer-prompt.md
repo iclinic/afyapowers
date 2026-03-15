@@ -2,9 +2,9 @@
 
 Use this template when dispatching a visual fidelity reviewer subagent.
 
-**Purpose:** Verify implementation visually matches Figma design (layout, spacing, colors, typography, states)
+**Purpose:** Verify implementation visually matches Figma design using a two-pass comparison (visual judgment + structured CSS extraction)
 
-**Only dispatch after code quality review passes, and only for tasks with `**Figma:**` references.**
+**Only dispatch after spec compliance review passes, and only for tasks with `**Figma:**` references.**
 
 ```
 Task tool (general-purpose):
@@ -32,47 +32,69 @@ Task tool (general-purpose):
 
     ## Your Job
 
-    Compare the running implementation against the Figma design. You must use
-    both Figma MCP tools and Playwright MCP tools to perform this review.
+    Compare the running implementation against the Figma design using a two-pass
+    approach. You must use both Figma MCP tools and Playwright MCP tools.
 
-    ### Step 1: Fetch Figma Visual Details
+    Do NOT hardcode any MCP tool names — discover available tools at runtime.
 
-    Inspect the available MCP tools in your environment to find Figma-related
-    tools (do NOT hardcode tool names — different servers use different names).
+    ### Pass 1: Visual Judgment
 
-    For each node URL in the Figma references:
+    **Fetch Figma visual details:**
+
+    Inspect available MCP tools for Figma-related tools. For each node URL in the
+    Figma references:
     1. **Screenshot** — Fetch a visual capture of the node to see the design
     2. **Design Context** — Fetch styling and layout info for comparison data
     3. **Metadata** — Fetch structural hierarchy (positions, sizes, nesting)
     4. **Design Tokens** — Fetch variables (colors, spacing, typography) if available
 
-    Use all available data to build your comparison baseline. If some tools
-    are unavailable, work with what you have — screenshot + design context
-    is sufficient for most comparisons.
+    Use all available data to build your comparison baseline. If some tools are
+    unavailable, work with what you have — screenshot + design context is sufficient.
 
-    ### Step 2: Inspect the Running Implementation
-
-    Inspect the available MCP tools in your environment to find Playwright-related
-    tools (do NOT hardcode tool names).
+    **Inspect the running implementation:**
 
     Using Playwright MCP tools:
     1. Navigate to the dev server URL and route provided above
-    2. Take screenshots of the implemented component(s)
-    3. Inspect computed styles, dimensions, and spacing of key elements
-    4. Check component states if defined in Figma (hover, active, disabled, etc.)
-    5. Check responsive behavior if specified in Figma
+    2. Take a screenshot of the implemented component(s)
 
-    ### Step 3: Compare
+    **Compare visually:**
 
-    For each Figma reference, compare the implementation against the design.
+    Look at both screenshots side by side. Identify obvious issues:
+    - Missing or extra elements
+    - Wrong layout direction or structure
+    - Clearly wrong colors
+    - Missing component states (hover, disabled, error)
+    - Wrong proportions or visual character
 
-    **Report as a discrepancy (FAIL):**
+    ### Pass 2: Structured Comparison
+
+    Use a Playwright snapshot tool first to identify the DOM structure, then use
+    an evaluate tool with `getComputedStyle` on targeted elements. Target elements
+    by role, text content, or CSS selectors.
+
+    **Important:** `getComputedStyle` returns colors in `rgb()` format. Convert to
+    hex before comparing against Figma values.
+
+    Compare numerically against Figma design data:
+    - Colors: exact hex match (tolerate color space conversion differences)
+    - Spacing: within 4px tolerance
+    - Typography: exact font-family, size within 2px, exact weight
+    - Dimensions: within 4px tolerance
+    - Border radius: within 2px
+
+    Also check:
+    - Component states if defined in Figma (hover, active, disabled, etc.)
+    - Responsive behavior if specified in Figma
+
+    ### Tolerance Thresholds
+
+    **Report as discrepancy (FAIL):**
     - Wrong layout structure (missing elements, wrong nesting, wrong flex/grid direction)
     - Visibly wrong colors (not sub-shade rendering differences)
     - Wrong typography (wrong font family, significantly wrong size/weight)
-    - Significantly wrong spacing (off by more than ~4px, or visually noticeable gaps)
-    - Missing component states (hover/disabled/error not implemented when specified in Figma)
-    - Wrong proportions or sizing that changes the visual character
+    - Spacing off by more than ~4px or visually noticeable
+    - Missing component states when specified in Figma
+    - Wrong proportions or sizing that changes visual character
 
     **Tolerate (PASS):**
     - Sub-pixel rounding differences (1-2px)
@@ -84,18 +106,21 @@ Task tool (general-purpose):
     **Guiding principle:** "Would a human reviewer flag this in a PR review?" If not,
     it passes.
 
-    ### Step 4: Report
+    ### Report
 
     Report your findings:
 
     - **✅ Visual fidelity passed** — implementation matches Figma design
       (minor rendering differences within tolerance are acceptable)
-    - **❌ Visual fidelity failed** — list each discrepancy:
-      - Element: [which element]
+
+    - **❌ Visual fidelity failed** — list each discrepancy with precise values:
+
+      Discrepancy N: [short description]
+      - Element: [CSS selector or description of the element]
       - Aspect: [layout/spacing/color/typography/states/responsive]
-      - Expected (Figma): [value]
-      - Actual (Implementation): [value]
-      - Fix required: [what needs to change]
+      - Expected (Figma): [exact value from Figma]
+      - Actual (Implementation): [exact value from getComputedStyle or visual inspection]
+      - Fix required: [specific instruction on what to change]
 
     **CRITICAL:** Do NOT pass a review with significant discrepancies. Focus on
     issues that a human reviewer would flag in a PR review — structural problems,
