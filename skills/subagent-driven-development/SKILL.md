@@ -278,7 +278,7 @@ After the implementer fixes, run the visual fidelity review again (skip spec com
 
 **Never:**
 - Start implementation on main/master branch without explicit user consent
-- Skip reviews (spec compliance OR code quality)
+- Skip any review stage (spec compliance, code quality, or visual fidelity)
 - Proceed with unfixed issues
 - Dispatch implementation subagents that modify the same files in parallel (file overlap = sequential)
 - Dispatch more than 3 implementation subagents simultaneously
@@ -291,7 +291,7 @@ After the implementer fixes, run the visual fidelity review again (skip spec com
 - **Start code quality review before spec compliance passes** (wrong order)
 - **Start visual fidelity review before code quality passes** (wrong order)
 - Skip visual fidelity review for tasks with `**Figma:**` references (unless user opted out during pre-execution checks)
-- Move to next task while either review has open issues
+- Move to next task while any review has open issues
 
 **If subagent asks questions:**
 - Answer clearly and completely
