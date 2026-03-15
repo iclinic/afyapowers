@@ -50,6 +50,7 @@ The figma-discovery skill gains a new step between confirmation (Step 4) and out
 - For each confirmed node, call `get_screenshot` via Figma MCP
 - Present screenshots inline in the conversation as visual context
 - The design skill can now reference actual layouts ("looking at the login form, I see it uses a two-column split")
+- If `get_screenshot` is not available as a tool (node discovery used a different tool), warn the user and continue without screenshots. Discovery still produces references as before.
 
 Screenshots are conversational context only — they are not written to the spec document. The implementer fetches its own screenshots later.
 
@@ -70,6 +71,8 @@ Replace the vague "fetch visual specs" instruction in the implementer prompt wit
 
 **Order matters:** Screenshot first (mental model), then code context, then structure, then tokens. The implementer cross-references all four sources when making implementation decisions.
 
+**Graceful degradation:** If any tool in the sequence fails or is unavailable, the implementer proceeds with whatever data it has. Only `get_screenshot` is critical — if even screenshots fail, the implementer reports `Figma Status: partial access`. The 4-tool sequence is best-effort after the screenshot step.
+
 **Stack detection:** The implementer inspects the project (package.json, framework config files) to determine the stack and passes that context to `get_design_context`. No hardcoded framework.
 
 ### Component 3: Component Preview for Visual Fidelity Testing
@@ -86,9 +89,11 @@ The implementer creates a preview surface for each component-level task before v
 - If Figma shows multiple states (hover, disabled, error), render all states vertically on the same preview
 - Keep the preview minimal — no extra layout, navigation, or decoration around the component
 
-**Reporting:** The implementer includes the preview URL in its completion report (e.g., `http://localhost:3000/dev/preview/LoginForm` or Storybook URL). The visual fidelity reviewer uses this URL.
+**File constraint exemption:** Preview files (story files and temporary route files) are exempt from the implementer's file constraint ("you may ONLY modify files in your task's **Files:** section"). The implementer may create preview files without them being listed in the task's file list.
 
-**Cleanup:** After visual fidelity passes, the SDD orchestrator deletes the temporary preview file. If using Storybook and the project already has stories as a convention, the story can optionally be kept — the orchestrator asks the user.
+**Reporting:** The implementer includes a `**Preview URL:**` field in its completion report (e.g., `**Preview URL:** http://localhost:3000/dev/preview/LoginForm` or Storybook URL). It also includes a `**Preview File:**` field with the path to the created file (e.g., `**Preview File:** src/app/dev/preview/LoginForm/page.tsx`). The SDD orchestrator uses the URL to fill the visual fidelity reviewer's `## Dev Server` section, and the file path for cleanup.
+
+**Cleanup:** After visual fidelity passes, the SDD orchestrator immediately deletes the temporary preview file (before proceeding to the next task or wave). Storybook stories are always deleted — if the user wants permanent stories, they can add that as a separate task. This avoids blocking the pipeline with interactive prompts mid-execution.
 
 **Page-level tasks:** If the task implements a full page that already has a route, no preview is needed — the reviewer navigates to the actual route.
 
@@ -161,9 +166,9 @@ Implement phase (post-execution)
 ### Modified Files
 
 1. **`skills/figma-discovery/SKILL.md`** — Add Step 4.5: fetch `get_screenshot` for each confirmed node and present inline as visual context.
-2. **`skills/implementing/implementer-prompt.md`** — Replace vague Figma instructions with specific 4-tool consumption sequence. Add stack detection instructions. Add component preview creation instructions (Storybook detection + temp route fallback). Add preview URL to report format.
-3. **`skills/implementing/visual-fidelity-reviewer-prompt.md`** — Replace pixel-perfect threshold with practical fidelity standard. Update to use preview URL from implementer report.
-4. **`skills/subagent-driven-development/SKILL.md`** — Add preview cleanup step after visual fidelity passes. Pass preview URL from implementer report to visual fidelity reviewer.
+2. **`skills/implementing/implementer-prompt.md`** — Replace vague Figma instructions with specific 4-tool consumption sequence. Add stack detection instructions. Add component preview creation instructions (Storybook detection + temp route fallback). Add file constraint exemption for preview files. Add `**Preview URL:**` and `**Preview File:**` fields to report format.
+3. **`skills/implementing/visual-fidelity-reviewer-prompt.md`** — Replace pixel-perfect threshold with practical fidelity standard. The `## Dev Server` section's route field will be populated by the SDD orchestrator using the preview URL from the implementer's report (or the actual page route for page-level tasks).
+4. **`skills/subagent-driven-development/SKILL.md`** — Add preview cleanup step (immediate, per-task, after visual fidelity passes). Pass preview URL from implementer's `**Preview URL:**` field to the visual fidelity reviewer's `## Dev Server` section. Parse `**Preview File:**` for cleanup path.
 
 ### Unchanged Files
 
@@ -176,6 +181,7 @@ Implement phase (post-execution)
 |---|---|
 | `get_screenshot` fails during discovery | Warn user, continue without screenshot for that node. Discovery still produces references. |
 | `get_design_context` fails during implementation | Implementer proceeds with screenshot + metadata. Reports `Figma Status: partial access` |
+| `get_metadata` or `get_variable_defs` fails during implementation | Implementer proceeds with whatever data it has. These are supplementary — screenshot + design context are sufficient. Reports `Figma Status: partial access` |
 | Storybook detected but story creation fails | Fall back to temporary route approach |
 | Temporary route creation fails | Implementer reports BLOCKED with details. Orchestrator surfaces to user. |
 | Preview URL unreachable by visual fidelity reviewer | Reviewer reports failure. Orchestrator asks user for guidance. |
