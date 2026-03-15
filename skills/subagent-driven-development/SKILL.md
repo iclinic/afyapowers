@@ -16,6 +16,8 @@ digraph process {
     rankdir=TB;
 
     "Read plan, parse tasks and dependencies" [shape=box];
+    "Any tasks have Figma refs?" [shape=diamond];
+    "Pre-execution checks\n(Figma MCP, Playwright MCP, dev server)" [shape=box];
     "Check for circular dependencies" [shape=diamond];
     "Report cycle, stop" [shape=box, style=filled, fillcolor=red, fontcolor=white];
     "Compute ready set" [shape=box];
@@ -25,26 +27,65 @@ digraph process {
     "Wait for all agents to return" [shape=box];
     "Process results" [shape=box];
     "All tasks done?" [shape=diamond];
+    "Kill dev server\n(if started)" [shape=box];
     "Final code review" [shape=box];
     "Complete" [shape=doublecircle];
 
-    "Read plan, parse tasks and dependencies" -> "Check for circular dependencies";
+    "Read plan, parse tasks and dependencies" -> "Any tasks have Figma refs?";
+    "Any tasks have Figma refs?" -> "Pre-execution checks\n(Figma MCP, Playwright MCP, dev server)" [label="yes"];
+    "Any tasks have Figma refs?" -> "Check for circular dependencies" [label="no"];
+    "Pre-execution checks\n(Figma MCP, Playwright MCP, dev server)" -> "Check for circular dependencies";
     "Check for circular dependencies" -> "Report cycle, stop" [label="cycle found"];
     "Check for circular dependencies" -> "Compute ready set" [label="no cycles"];
     "Compute ready set" -> "Any tasks ready?";
-    "Any tasks ready?" -> "Final code review" [label="all done"];
+    "Any tasks ready?" -> "Kill dev server\n(if started)" [label="all done"];
     "Any tasks ready?" -> "Validate file overlap in ready set" [label="yes"];
     "Validate file overlap in ready set" -> "Cap at max 3, dispatch parallel Agent calls";
     "Cap at max 3, dispatch parallel Agent calls" -> "Wait for all agents to return";
     "Wait for all agents to return" -> "Process results";
     "Process results" -> "All tasks done?";
     "All tasks done?" -> "Compute ready set" [label="more tasks"];
-    "All tasks done?" -> "Final code review" [label="yes"];
+    "All tasks done?" -> "Kill dev server\n(if started)" [label="yes"];
+    "Kill dev server\n(if started)" -> "Final code review";
     "Final code review" -> "Complete";
 }
 ```
 
 Each dispatched Agent runs the full task pipeline: implement → spec review → quality review. Multiple pipelines run concurrently.
+
+## Pre-Execution Checks (Figma Tasks)
+
+Before dispatching the first wave, if ANY task in the plan has a `**Figma:**` section, perform these checks once:
+
+### Check 1: Figma MCP Tools
+
+Inspect available MCP tools for Figma-related tools. If none are found:
+
+> "Figma MCP tools are not available. Visual fidelity validation requires them to verify your implementation matches the Figma designs. Please install a Figma MCP server and return to this conversation. Do you want to continue without visual validation?"
+
+If the user chooses to continue without validation, skip the visual fidelity review stage for all tasks. Note this decision in the execution log.
+
+### Check 2: Playwright MCP Tools
+
+Inspect available MCP tools for Playwright-related tools. If none are found:
+
+> "Playwright MCP tools are not available. Visual fidelity validation requires them to inspect your running implementation in the browser. Please install Playwright MCP tools and return to this conversation. Do you want to continue without visual validation?"
+
+Same behavior as Check 1 — user can opt to continue without validation.
+
+### Check 3: Dev Server
+
+Inspect the codebase to determine how to start the dev server:
+1. Read `package.json` — look for `dev`, `start`, or framework-specific scripts
+2. Check for framework config files (e.g., `next.config.*`, `vite.config.*`, `angular.json`) to understand the framework
+3. Start the dev server in the background using the identified command
+4. Wait for it to be ready (check that the port is responding)
+
+If the dev server fails to start:
+
+> "Could not start the dev server automatically. Please start it manually and confirm when it's ready."
+
+The dev server stays running across all waves. After the final wave completes, kill the dev server process.
 
 ## Wave Execution Algorithm
 
