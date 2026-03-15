@@ -179,7 +179,7 @@ Task tool (general-purpose):
     - Files changed
     - Self-review findings (if any)
     - Any issues or concerns
-    - **Figma Status:** (only if task had `**Figma:**` section) — accessed successfully | unable to access Figma MCP
+    - **Figma Status:** (only if task had `**Figma:**` section) — accessed successfully | unable to access Figma MCP | fixes applied
 
     Use DONE_WITH_CONCERNS if you completed the work but have doubts about correctness.
     Use BLOCKED if you cannot complete the task. Use NEEDS_CONTEXT if you need
