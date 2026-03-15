@@ -5,9 +5,9 @@ description: Use when executing implementation plans with independent tasks in t
 
 # Subagent-Driven Development
 
-Execute plan by dispatching subagents per task with two-stage review (spec compliance then code quality). Tasks with no mutual dependencies run in parallel waves for faster execution.
+Execute plan by dispatching subagents per task with three-stage review (spec compliance → code quality → visual fidelity). Tasks with no mutual dependencies run in parallel waves for faster execution.
 
-**Core principle:** Fresh subagent per task + two-stage review (spec then quality) = high quality, fast iteration
+**Core principle:** Fresh subagent per task + three-stage review (spec compliance → code quality → visual fidelity) = high quality, fast iteration
 
 ## The Process
 
@@ -51,7 +51,7 @@ digraph process {
 }
 ```
 
-Each dispatched Agent runs the full task pipeline: implement → spec review → quality review. Multiple pipelines run concurrently.
+Each dispatched Agent runs the full task pipeline: implement → spec review → quality review → visual fidelity review (if task has Figma refs). Multiple pipelines run concurrently.
 
 ## Pre-Execution Checks (Figma Tasks)
 
@@ -239,11 +239,40 @@ Implementer subagents report one of four statuses:
 
 **Never** ignore an escalation or force retry without changes.
 
+## Visual Fidelity Review (Third Stage)
+
+After code quality review passes, if the task has a `**Figma:**` section AND visual validation was not skipped during pre-execution checks, dispatch a visual fidelity reviewer.
+
+**Dispatch using:** `skills/implementing/visual-fidelity-reviewer-prompt.md`
+
+**Provide to the reviewer:**
+- The task's `**Figma:**` references
+- The dev server URL and route to the component
+- The list of files the implementer modified
+- The implementer's report summary
+
+**If ✅ Visual fidelity passed:** Mark task as completed.
+
+**If ❌ Visual fidelity failed:** Re-dispatch the implementer with the discrepancy report:
+
+> "Your implementation has visual fidelity issues. Fix each discrepancy listed below. Do not make unrelated changes."
+>
+> [PASTE FULL DISCREPANCY REPORT FROM REVIEWER]
+
+After the implementer fixes, run the visual fidelity review again (skip spec compliance and code quality — those already passed).
+
+**Iteration cap:** If visual fidelity fails 3 times for the same task, stop retrying. Mark the task as `BLOCKED` with the accumulated discrepancy reports and surface to the user:
+
+> "Task N has failed visual fidelity review 3 times. The following discrepancies could not be resolved automatically: [list]. Please review and provide guidance."
+
+**Tasks without `**Figma:**` references:** Skip this stage entirely. Mark task as completed after code quality review passes.
+
 ## Prompt Templates
 
 - `skills/implementing/implementer-prompt.md` - Dispatch implementer subagent
 - `skills/implementing/spec-reviewer-prompt.md` - Dispatch spec compliance reviewer subagent
 - `skills/implementing/code-quality-reviewer-prompt.md` - Dispatch code quality reviewer subagent
+- `skills/implementing/visual-fidelity-reviewer-prompt.md` - Dispatch visual fidelity reviewer subagent
 
 ## Red Flags
 
@@ -260,6 +289,8 @@ Implementer subagents report one of four statuses:
 - Skip review loops
 - Let implementer self-review replace actual review
 - **Start code quality review before spec compliance passes** (wrong order)
+- **Start visual fidelity review before code quality passes** (wrong order)
+- Skip visual fidelity review for tasks with `**Figma:**` references (unless user opted out during pre-execution checks)
 - Move to next task while either review has open issues
 
 **If subagent asks questions:**
@@ -286,5 +317,6 @@ Implementer subagents report one of four statuses:
 - `skills/implementing/implementer-prompt.md` — TDD rules are embedded directly in this prompt
 - `skills/implementing/spec-reviewer-prompt.md` — spec compliance review
 - `skills/implementing/code-quality-reviewer-prompt.md` — code quality review
+- `skills/implementing/visual-fidelity-reviewer-prompt.md` — visual fidelity review (third stage, Figma tasks only)
 
 **Context:** When invoked by implementing, the plan and design are already in the conversation context. Use them directly. If the plan is not in context (e.g., invoked standalone), read it from `.afyapowers/features/<feature>/artifacts/plan.md`.
