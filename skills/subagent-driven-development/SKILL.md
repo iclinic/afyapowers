@@ -87,6 +87,8 @@ If the dev server fails to start:
 
 The dev server stays running across all waves. After the final wave completes, kill the dev server process.
 
+**Important:** Visual fidelity review requires BOTH Figma MCP and Playwright MCP tools. If the user opts out of either check, skip the visual fidelity review stage for all tasks.
+
 ## Wave Execution Algorithm
 
 Follow these steps exactly to resolve dependencies and dispatch tasks in parallel waves.
