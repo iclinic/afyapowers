@@ -54,6 +54,21 @@ Task tool (general-purpose):
 
     If your task does NOT have a `**Figma:**` section, ignore this — proceed normally.
 
+    ## Visual Fidelity Re-Dispatch
+
+    If you are being re-dispatched due to a visual fidelity review failure, you
+    will receive a discrepancy report listing specific elements with expected vs
+    actual values.
+
+    **Your job on re-dispatch:**
+    1. Read each discrepancy carefully — element, aspect, expected value, actual value
+    2. Fix each listed discrepancy precisely (match the exact Figma values)
+    3. Do NOT make unrelated changes — only fix what's in the discrepancy report
+    4. Use Figma MCP tools to re-verify the expected values if needed
+    5. Use Playwright MCP tools to verify your fixes match before reporting back
+
+    Report status as usual. Include `**Figma Status: fixes applied**` in your report.
+
     ## Your Job
 
     Once you're clear on requirements:
