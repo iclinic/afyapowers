@@ -28,10 +28,10 @@ Every project goes through this process. A todo list, a single-function utility,
 You MUST complete these items in order:
 
 1. **Explore project context** — check files, docs, recent commits
-2. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
-3. **Propose 2-3 approaches** — with trade-offs and your recommendation
-4. **Present design** — in sections scaled to their complexity, get user approval after each section
-5. **Figma discovery** (UI features only) — if the feature involves front-end/UI work, invoke the `figma-discovery` skill to identify Figma references before writing the spec
+2. **Figma discovery** (UI features only) — if the feature involves front-end/UI work, invoke the `figma-discovery` skill to discover Figma layouts that will inform the design conversation
+3. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria. Skip questions that the discovered Figma layouts already answer.
+4. **Propose 2-3 approaches** — with trade-offs and your recommendation, informed by Figma layout constraints when available
+5. **Present design** — in sections scaled to their complexity, get user approval after each section
 6. **Write design doc** — save to `.afyapowers/features/<feature>/artifacts/design.md`
 7. **Spec review loop** — dispatch spec-document-reviewer subagent; fix issues and re-dispatch until approved (max 5 iterations, then surface to human)
 8. **User reviews written spec** — ask user to review the spec file before proceeding
@@ -41,6 +41,9 @@ You MUST complete these items in order:
 ```dot
 digraph design {
     "Explore project context" [shape=box];
+    "UI feature?" [shape=diamond];
+    "Figma discovery" [shape=box];
+    "Ask clarifying questions\n(skip what Figma answers)" [shape=box];
     "Ask clarifying questions" [shape=box];
     "Propose 2-3 approaches" [shape=box];
     "Present design sections" [shape=box];
@@ -51,16 +54,16 @@ digraph design {
     "User reviews spec?" [shape=diamond];
     "Suggest /afyapowers:next" [shape=doublecircle];
 
-    "Explore project context" -> "Ask clarifying questions";
+    "Explore project context" -> "UI feature?";
+    "UI feature?" -> "Figma discovery" [label="yes"];
+    "UI feature?" -> "Ask clarifying questions" [label="no"];
+    "Figma discovery" -> "Ask clarifying questions\n(skip what Figma answers)";
+    "Ask clarifying questions\n(skip what Figma answers)" -> "Propose 2-3 approaches";
     "Ask clarifying questions" -> "Propose 2-3 approaches";
     "Propose 2-3 approaches" -> "Present design sections";
     "Present design sections" -> "User approves design?";
     "User approves design?" -> "Present design sections" [label="no, revise"];
-    "Figma discovery\n(UI features only)" [shape=box];
-
-    "User approves design?" -> "Figma discovery\n(UI features only)" [label="yes, has UI"];
-    "User approves design?" -> "Write design doc" [label="yes, no UI"];
-    "Figma discovery\n(UI features only)" -> "Write design doc";
+    "User approves design?" -> "Write design doc" [label="yes"];
     "Write design doc" -> "Spec review loop";
     "Spec review loop" -> "Spec review passed?";
     "Spec review passed?" -> "Spec review loop" [label="issues found,\nfix and re-dispatch"];
@@ -108,9 +111,9 @@ digraph design {
 
 **Figma discovery (UI features only):**
 
-- After the user approves the design sections, check whether the feature involves front-end/UI work (based on the design conversation context — components, screens, layouts, visual elements)
-- If it does → invoke the `figma-discovery` skill (located at `skills/figma-discovery/SKILL.md`). The skill will ask about Figma layouts, discover nodes, and output a `## Figma References` section. Include this section in the design spec when writing it in the next step.
-- If it doesn't (purely backend, infrastructure, data pipeline, etc.) → skip entirely and proceed to writing the spec
+- Right after exploring the project context, check whether the feature involves front-end/UI work (based on the user's request — components, screens, layouts, visual elements)
+- If it does → invoke the `figma-discovery` skill (located at `skills/figma-discovery/SKILL.md`). The skill will ask about Figma layouts, discover nodes, and output a `## Figma References` section. The discovered layouts become working context for the rest of the design conversation — use them to inform your clarifying questions, approach proposals, and design sections. Skip questions that the Figma layouts already answer.
+- If it doesn't (purely backend, infrastructure, data pipeline, etc.) → skip entirely and proceed to clarifying questions
 - Do NOT ask about Figma yourself — delegate entirely to the Figma discovery skill
 
 **Working in existing codebases:**
