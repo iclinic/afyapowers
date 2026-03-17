@@ -29,11 +29,12 @@ You MUST complete these items in order:
 
 1. **Explore project context** — check files, docs, recent commits
 2. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
-3. **Propose 2-3 approaches** — with trade-offs and your recommendation
-4. **Present design** — in sections scaled to their complexity, get user approval after each section
-5. **Write design doc** — save to `.afyapowers/features/<feature>/artifacts/design.md`
-6. **Spec review loop** — dispatch spec-document-reviewer subagent; fix issues and re-dispatch until approved (max 5 iterations, then surface to human)
-7. **User reviews written spec** — ask user to review the spec file before proceeding
+3. **Figma discovery (conditional)** — if the feature involves UI/frontend work, run the Figma discovery process (see below)
+4. **Propose 2-3 approaches** — with trade-offs and your recommendation
+5. **Present design** — in sections scaled to their complexity, get user approval after each section
+6. **Write design doc** — save to `.afyapowers/features/<feature>/artifacts/design.md`
+7. **Spec review loop** — dispatch spec-document-reviewer subagent; fix issues and re-dispatch until approved (max 5 iterations, then surface to human)
+8. **User reviews written spec** — ask user to review the spec file before proceeding
 
 ## Process Flow
 
@@ -41,6 +42,8 @@ You MUST complete these items in order:
 digraph design {
     "Explore project context" [shape=box];
     "Ask clarifying questions" [shape=box];
+    "UI/frontend work?" [shape=diamond];
+    "Figma discovery" [shape=box];
     "Propose 2-3 approaches" [shape=box];
     "Present design sections" [shape=box];
     "User approves design?" [shape=diamond];
@@ -51,7 +54,10 @@ digraph design {
     "Suggest /afyapowers:next" [shape=doublecircle];
 
     "Explore project context" -> "Ask clarifying questions";
-    "Ask clarifying questions" -> "Propose 2-3 approaches";
+    "Ask clarifying questions" -> "UI/frontend work?";
+    "UI/frontend work?" -> "Figma discovery" [label="yes"];
+    "UI/frontend work?" -> "Propose 2-3 approaches" [label="no"];
+    "Figma discovery" -> "Propose 2-3 approaches";
     "Propose 2-3 approaches" -> "Present design sections";
     "Present design sections" -> "User approves design?";
     "User approves design?" -> "Present design sections" [label="no, revise"];
@@ -79,6 +85,43 @@ digraph design {
 - Only one question per message - if a topic needs more exploration, break it into multiple questions
 - Focus on understanding: purpose, constraints, success criteria
 
+**Figma discovery (conditional):**
+
+If the feature involves UI/frontend work, ask the user:
+
+> "Does this feature have Figma designs? If so, please share the Figma URL(s)."
+
+If the user provides Figma URL(s):
+
+1. **Parse each URL** to extract the file key and node ID
+   - URL format: `https://figma.com/design/:fileKey/:fileName?node-id=X-Y`
+   - Extract `:fileKey` (segment after `/design/`) and `X-Y` (value of `node-id` parameter)
+
+2. **Fetch structural metadata** using `get_metadata` for each provided node
+   ```
+   get_metadata(fileKey=":fileKey", nodeId="X-Y")
+   ```
+   This returns a sparse XML representation with node IDs, names, types, positions, and sizes. Use this to build the hierarchical Node Map for the design doc.
+
+3. **Fetch top-level frame analysis** using `get_design_context` on top-level frames only
+   ```
+   get_design_context(fileKey=":fileKey", nodeId="<top_level_frame_id>")
+   ```
+   Use this to discover breakpoints and overall layout patterns. Do NOT fetch `get_design_context` for every node — only top-level frames. This keeps discovery lightweight.
+
+4. **Build the `## Figma Resources` section** for the design doc using the data gathered:
+   - File info (URL, file key)
+   - Breakpoints (discovered from top-level frame analysis)
+   - Node Map (hierarchical structure from `get_metadata`: page → section → component)
+
+   Use the template from `templates/design.md` for the section structure.
+
+**If the Figma MCP server is unavailable:** Warn the user and suggest checking the MCP server connection. You cannot proceed with Figma discovery without it, but you can still continue the design process without the Figma Resources section.
+
+**If no Figma designs:** Proceed normally. Do not include the Figma Resources section in the design doc.
+
+**Design tokens are NOT extracted during design phase.** They are deferred to implementation time — the implementer subagent will fetch them via `get_variable_defs` when needed.
+
 **Exploring approaches:**
 
 - Propose 2-3 different approaches with trade-offs
@@ -92,6 +135,7 @@ digraph design {
 - Scale each section to its complexity: a few sentences if straightforward, up to 200-300 words if nuanced
 - Ask after each section whether it looks right so far
 - Cover all sections from the design template: problem statement, requirements, constraints, chosen approach, architecture, data flow, interfaces, error handling, testing strategy, dependencies
+- If Figma discovery was performed, include the `## Figma Resources` section with file info, breakpoints, and node map
 - Be ready to go back and clarify if something doesn't make sense
 
 **Design for isolation and clarity:**
