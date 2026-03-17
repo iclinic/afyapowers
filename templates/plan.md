@@ -30,3 +30,26 @@
 **Depends on:** Task 1
 
 - [ ] Step 1: ...
+
+### Task N: [UI Component Name] (Figma)
+
+**Files:**
+- Create: `exact/path/to/component`
+
+**Depends on:** none | Task X
+
+**Figma:**
+- **File Key:** `<file_key>`
+- **Breakpoints:** <breakpoint_name> (<width>px), ...
+- **Nodes:**
+  | Node ID | Name | Type | Parent |
+  |---------|------|------|--------|
+  | `<id>` | <name> | <type> | <parent> |
+
+- [ ] Step 1: Fetch design context for all task nodes
+- [ ] Step 2: Capture screenshot for visual reference
+- [ ] Step 3: Download required assets (images, icons, SVGs)
+- [ ] Step 4: Translate to project conventions
+- [ ] Step 5: Achieve 1:1 visual parity across all breakpoints
+- [ ] Step 6: Validate against Figma screenshot
+- [ ] Step 7: Commit
