@@ -21,7 +21,7 @@ digraph process {
     "Compute ready set" [shape=box];
     "Any tasks ready?" [shape=diamond];
     "Validate file overlap in ready set" [shape=box];
-    "Cap at max 3, dispatch parallel Agent calls" [shape=box];
+    "Dispatch parallel Agent calls" [shape=box];
     "Wait for all agents to return" [shape=box];
     "Process results" [shape=box];
     "All tasks done?" [shape=diamond];
@@ -34,8 +34,8 @@ digraph process {
     "Compute ready set" -> "Any tasks ready?";
     "Any tasks ready?" -> "Final code review" [label="all done"];
     "Any tasks ready?" -> "Validate file overlap in ready set" [label="yes"];
-    "Validate file overlap in ready set" -> "Cap at max 3, dispatch parallel Agent calls";
-    "Cap at max 3, dispatch parallel Agent calls" -> "Wait for all agents to return";
+    "Validate file overlap in ready set" -> "Dispatch parallel Agent calls";
+    "Dispatch parallel Agent calls" -> "Wait for all agents to return";
     "Wait for all agents to return" -> "Process results";
     "Process results" -> "All tasks done?";
     "All tasks done?" -> "Compute ready set" [label="more tasks"];
@@ -87,11 +87,7 @@ Waiting: [5]     (dep 3 not completed)
 
 Check every pair of tasks in the ready set. If two tasks share any file path in their file lists, remove one from the ready set (move it back to waiting). It will be picked up in the next cycle.
 
-### Step 5: Cap Concurrency
-
-If more than 3 tasks are ready, dispatch only the first 3 (by task number). The rest wait for the next cycle.
-
-### Step 6: Dispatch
+### Step 5: Dispatch
 
 Dispatch all ready tasks as parallel Agent tool calls in a single message. Each agent gets:
 - Full task text (steps, file list, code) — paste directly, don't make agent read files
@@ -99,7 +95,7 @@ Dispatch all ready tasks as parallel Agent tool calls in a single message. Each 
 - File constraint: "You may ONLY modify these files: [list from task's Files: section]"
 - Return format: status (DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED) + summary
 
-### Step 7: Wait and Process Results
+### Step 6: Wait and Process Results
 
 All Agent calls return together. For each result:
 - **DONE** (passed both reviews): mark task `completed`, update plan checkbox to `- [x]`
@@ -107,7 +103,7 @@ All Agent calls return together. For each result:
 - **NEEDS_CONTEXT**: surface question to user. Mark task `needs-retry`. Continue with other tasks — do NOT pause the entire execution
 - **BLOCKED**: assess blocker per standard SDD rules (more context, more capable model, break into pieces, or escalate). Mark task `needs-retry`
 
-### Step 8: Repeat
+### Step 7: Repeat
 
 Go back to Step 3. Recompute the ready set from scratch based on current task statuses. Continue until all tasks are `completed`.
 
@@ -211,7 +207,6 @@ Implementer subagents report one of four statuses:
 - Skip reviews (spec compliance OR code quality)
 - Proceed with unfixed issues
 - Dispatch implementation subagents that modify the same files in parallel (file overlap = sequential)
-- Dispatch more than 3 implementation subagents simultaneously
 - Make subagent read plan file (provide full text instead)
 - Skip scene-setting context
 - Ignore subagent questions
