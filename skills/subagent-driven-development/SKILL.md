@@ -93,8 +93,14 @@ If more than 3 tasks are ready, dispatch only the first 3 (by task number). The 
 
 ### Step 6: Dispatch
 
-Dispatch all ready tasks as parallel Agent tool calls in a single message. Each agent gets:
-- Full task text (steps, file list, code) — paste directly, don't make agent read files
+Dispatch all ready tasks as parallel Agent tool calls in a single message.
+
+**Prompt routing:** Select the correct implementer prompt based on the task type:
+- If the task text contains a `**Figma:**` section → use `skills/implementing/implement-figma-design.md` prompt template. Include the Figma metadata (file key, nodes table, breakpoints) in the agent context.
+- If the task does NOT contain a `**Figma:**` section → use `skills/implementing/implementer-prompt.md` prompt template (standard TDD implementer).
+
+Each agent gets:
+- Full task text (steps, file list, code/Figma metadata) — paste directly, don't make agent read files
 - Design spec content for context
 - File constraint: "You may ONLY modify these files: [list from task's Files: section]"
 - Return format: status (DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED) + summary
@@ -200,7 +206,8 @@ Implementer subagents report one of four statuses:
 
 ## Prompt Templates
 
-- `skills/implementing/implementer-prompt.md` - Dispatch implementer subagent
+- `skills/implementing/implementer-prompt.md` - Dispatch standard implementer subagent (TDD workflow)
+- `skills/implementing/implement-figma-design.md` - Dispatch Figma design implementer subagent (visual fidelity workflow)
 - `skills/implementing/spec-reviewer-prompt.md` - Dispatch spec compliance reviewer subagent
 - `skills/implementing/code-quality-reviewer-prompt.md` - Dispatch code quality reviewer subagent
 
@@ -242,7 +249,8 @@ Implementer subagents report one of four statuses:
 - **implementing** (REQUIRED SUB-SKILL) — implementing loads the plan and design, then invokes SDD to execute all tasks
 
 **Subagent prompts:**
-- `skills/implementing/implementer-prompt.md` — TDD rules are embedded directly in this prompt
+- `skills/implementing/implementer-prompt.md` — TDD rules are embedded directly in this prompt (used for standard tasks)
+- `skills/implementing/implement-figma-design.md` — Figma implement-design workflow (used for tasks with `**Figma:**` section)
 - `skills/implementing/spec-reviewer-prompt.md` — spec compliance review
 - `skills/implementing/code-quality-reviewer-prompt.md` — code quality review
 
