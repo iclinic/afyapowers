@@ -28,8 +28,8 @@ Every project goes through this process. A todo list, a single-function utility,
 You MUST complete these items in order:
 
 1. **Explore project context** — check files, docs, recent commits
-2. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
-3. **Figma discovery (conditional)** — if the feature involves UI/frontend work, run the Figma discovery process (see below)
+2. **Figma discovery (trigger-based)** — check user request against trigger keywords (see below); if match, ask about Figma and run discovery before clarifying questions
+3. **Ask clarifying questions** — if Figma data is available, use confirmation-style questions (see below); otherwise, standard one-at-a-time clarifying questions
 4. **Propose 2-3 approaches** — with trade-offs and your recommendation
 5. **Present design** — in sections scaled to their complexity, get user approval after each section
 6. **Write design doc** — save to `.afyapowers/features/<feature>/artifacts/design.md`
@@ -41,9 +41,11 @@ You MUST complete these items in order:
 ```dot
 digraph design {
     "Explore project context" [shape=box];
-    "Ask clarifying questions" [shape=box];
-    "UI/frontend work?" [shape=diamond];
+    "Trigger keywords match?" [shape=diamond];
+    "Ask Figma question" [shape=box];
     "Figma discovery" [shape=box];
+    "Confirmation-style questions" [shape=box];
+    "Standard clarifying questions" [shape=box];
     "Propose 2-3 approaches" [shape=box];
     "Present design sections" [shape=box];
     "User approves design?" [shape=diamond];
@@ -53,11 +55,14 @@ digraph design {
     "User reviews spec?" [shape=diamond];
     "Suggest /afyapowers:next" [shape=doublecircle];
 
-    "Explore project context" -> "Ask clarifying questions";
-    "Ask clarifying questions" -> "UI/frontend work?";
-    "UI/frontend work?" -> "Figma discovery" [label="yes"];
-    "UI/frontend work?" -> "Propose 2-3 approaches" [label="no"];
-    "Figma discovery" -> "Propose 2-3 approaches";
+    "Explore project context" -> "Trigger keywords match?";
+    "Trigger keywords match?" -> "Ask Figma question" [label="yes"];
+    "Trigger keywords match?" -> "Standard clarifying questions" [label="no"];
+    "Ask Figma question" -> "Figma discovery" [label="user provides URLs"];
+    "Ask Figma question" -> "Standard clarifying questions" [label="no Figma designs"];
+    "Figma discovery" -> "Confirmation-style questions";
+    "Confirmation-style questions" -> "Propose 2-3 approaches";
+    "Standard clarifying questions" -> "Propose 2-3 approaches";
     "Propose 2-3 approaches" -> "Present design sections";
     "Present design sections" -> "User approves design?";
     "User approves design?" -> "Present design sections" [label="no, revise"];
@@ -85,11 +90,19 @@ digraph design {
 - Only one question per message - if a topic needs more exploration, break it into multiple questions
 - Focus on understanding: purpose, constraints, success criteria
 
-**Figma discovery (conditional):**
+**Figma discovery (trigger-based):**
 
-If the feature involves UI/frontend work, ask the user:
+After exploring project context, check the user's request for these trigger keywords (case-insensitive, word-level matching):
+
+> page, landing page, screen, view, layout, header, footer, navbar, sidebar, UI component, form, modal, dialog, card, hero, section, banner, responsive, breakpoint, mobile, desktop, dashboard, panel, widget
+
+If any keyword matches, ask the user:
 
 > "Does this feature have Figma designs? If so, please share the Figma URL(s)."
+
+If a keyword matches but the request is clearly not UI work (e.g., "write unit tests for the landing page API endpoint"), use judgment — when in doubt, ask.
+
+If no keywords match, skip Figma discovery and proceed to clarifying questions.
 
 If the user provides Figma URL(s):
 
@@ -121,6 +134,19 @@ If the user provides Figma URL(s):
 **If no Figma designs:** Proceed normally. Do not include the Figma Resources section in the design doc.
 
 **Design tokens are NOT extracted during design phase.** They are deferred to implementation time — the implementer subagent will fetch them via `get_variable_defs` when needed.
+
+**Clarifying questions (Figma-informed):**
+
+When Figma data was gathered in the previous step, replace open-ended clarifying questions with confirmation-style:
+
+- Present what Figma shows (structure, breakpoints, component hierarchy) and ask the user to confirm or correct
+- Then only ask about things not visible in the design: business logic, data sources, interactions, dynamic behavior
+
+Example:
+- **Open-ended (without Figma):** "How should the page be structured?"
+- **Confirmation-style (with Figma):** "The Figma design shows a hero section, a 3-column feature grid, and a CTA footer across 3 breakpoints (mobile/tablet/desktop). Does this match what you want, or do you need changes?"
+
+When no Figma data is available, use the standard approach: ask questions one at a time to understand purpose, constraints, and success criteria.
 
 **Exploring approaches:**
 
