@@ -39,11 +39,20 @@ This structure informs the task decomposition. Each task should produce self-con
 
 ## Bite-Sized Task Granularity
 
-**Each step is one action (2-5 minutes):**
+**For standard (non-Figma) tasks, each step is one action (2-5 minutes):**
 - "Write the failing test" - step
 - "Run it to make sure it fails" - step
 - "Implement the minimal code to make the test pass" - step
 - "Run the tests and make sure they pass" - step
+- "Commit" - step
+
+**For Figma tasks, steps follow the implement-design workflow instead of TDD:**
+- "Fetch design context for all task nodes" - step
+- "Capture screenshot for visual reference" - step
+- "Download required assets" - step
+- "Translate to project conventions" - step
+- "Achieve 1:1 visual parity across all breakpoints" - step
+- "Validate against Figma screenshot" - step
 - "Commit" - step
 
 ## Dependency Declaration
@@ -127,11 +136,53 @@ git commit -m "feat: add specific feature"
 ```
 ````
 
+## Figma Task Structure
+
+Use this format for tasks that implement UI components with Figma designs. The design doc's `## Figma Resources` section provides the source data for the Figma block.
+
+**How to identify Figma tasks:** If the component being implemented has corresponding nodes in the design doc's `## Figma Resources` Node Map, it is a Figma task. Backend tasks, API routes, data models, business logic, and other non-UI tasks use the standard task structure above.
+
+**No TDD, no code snippets.** Figma tasks describe what to achieve — the implementer subagent uses the Figma MCP tools and the implement-figma-design workflow to determine how.
+
+```markdown
+### Task N: [UI Component Name] (Figma)
+
+**Files:**
+- Create: `exact/path/to/component`
+- Create: `exact/path/to/styles` (if applicable)
+**Depends on:** none | Task X, Task Y
+
+**Figma:**
+- **File Key:** `<file_key>`
+- **Breakpoints:** <breakpoint_name> (<width>px), <breakpoint_name> (<width>px)
+- **Nodes:**
+  | Node ID | Name | Type | Parent |
+  |---------|------|------|--------|
+  | `<id>` | <name> | <type> | <parent> |
+  | `<id>` | <name> | <type> | <parent> |
+
+- [ ] Step 1: Fetch design context for all task nodes
+- [ ] Step 2: Capture screenshot for visual reference
+- [ ] Step 3: Download required assets (images, icons, SVGs)
+- [ ] Step 4: Translate to project conventions
+- [ ] Step 5: Achieve 1:1 visual parity across all breakpoints
+- [ ] Step 6: Validate against Figma screenshot
+- [ ] Step 7: Commit
+```
+
+**Building the Figma block:**
+- **File Key:** Copy from the design doc's `## Figma Resources` section
+- **Breakpoints:** Include only the breakpoints relevant to this task's component (not all breakpoints in the design)
+- **Nodes:** Select the nodes from the design doc's Node Map that correspond to this task's component and its children. Include the node ID, name, type, and parent for each.
+
+**Mixed plans:** Figma and non-Figma tasks coexist in the same plan with standard dependency handling. A feature might have Tasks 1-2 as data models (standard TDD), Tasks 3-5 as UI components (Figma), and Task 6 as integration (standard TDD).
+
 ## Remember
 - Exact file paths always
-- Complete code in plan (not "add validation")
+- Complete code in plan (not "add validation") — except for Figma tasks which use design-workflow steps instead of code
 - Exact commands with expected output
-- DRY, YAGNI, TDD, frequent commits
+- DRY, YAGNI, TDD (standard tasks), frequent commits
+- Figma tasks: no TDD, no code snippets — steps describe what to achieve, not how to code it
 
 ## Required Sub-Skills
 
