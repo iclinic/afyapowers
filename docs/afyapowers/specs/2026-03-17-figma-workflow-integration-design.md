@@ -25,7 +25,7 @@ The goal is to add conditional Figma support across the design, planning, and im
 
 ## Constraints
 
-- Figma MCP server must be available (remote mode) for Figma discovery and implementation
+- Figma MCP server must be available (remote or local mode) for Figma discovery and implementation
 - Design phase Figma discovery uses `get_metadata` (structural) for all nodes and `get_design_context` only for top-level frames (to discover breakpoints and layout patterns) — keeps the phase lightweight
 - Design tokens are NOT extracted during design phase — deferred to implementation time via `get_variable_defs`
 - Asset URLs come from the remote Figma MCP server — no localhost assumption
