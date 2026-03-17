@@ -96,6 +96,10 @@ Task tool (general-purpose):
       payload
     - DO NOT use or create placeholders if a source URL is provided by the MCP server
     - If an asset URL is inaccessible, note it as a concern but continue with the rest
+    - **Icons must be saved as SVG**, not as raster image formats (PNG, JPG, WebP, etc.).
+      When downloading icons from Figma, request them in SVG format and save them as
+      `.svg` files. Other assets like background images, photos, and illustrations may
+      remain as raster images.
 
     ### Step 4: Translate to Project Conventions
 
