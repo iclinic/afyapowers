@@ -41,6 +41,7 @@
 
 ## Figma Resources
 <!-- Only included when feature has Figma designs. Remove this section if not applicable. -->
+<!-- If the feature spans multiple Figma files, repeat the File/File Key/Node Map structure for each file. -->
 
 **File:** `<figma_url>`
 **File Key:** `<file_key>`

@@ -48,7 +48,7 @@ Task tool (general-purpose):
 
     - Figma MCP server must be connected and accessible
       - Before proceeding, verify the Figma MCP server is connected by checking if
-        Figma MCP tools (e.g., get_design_context) are available.
+        Figma MCP tools (e.g., get_design_context, get_variable_defs) are available.
       - If the tools are not available, report back with status BLOCKED and explain
         that the Figma MCP server is required but not accessible.
 
