@@ -38,3 +38,21 @@
 
 ## Open Questions
 <!-- Anything unresolved -->
+
+## Figma Resources
+<!-- Only included when feature has Figma designs. Remove this section if not applicable. -->
+
+**File:** `<figma_url>`
+**File Key:** `<file_key>`
+
+### Breakpoints
+<!-- Discovered from top-level frame analysis via get_design_context -->
+- <breakpoint_name>: <width>px (Frame "<frame_name>", node `<node_id>`)
+
+### Node Map
+<!-- Hierarchical structure from get_metadata -->
+
+#### Page: <page_name>
+- **<section_name>** (node `<node_id>`, <type>, <width>x<height>)
+  - <component_name> (node `<node_id>`, <type>)
+    - <child_name> (node `<node_id>`, <type>)
