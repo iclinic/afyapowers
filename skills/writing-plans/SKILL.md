@@ -30,37 +30,61 @@ If the spec covers multiple independent subsystems, it should have been broken i
 
 Before defining tasks, check if the design doc (`.afyapowers/features/<feature>/artifacts/design.md`) contains a `## Figma Resources` section.
 
-**If Figma Resources are present:**
+> **Why this is required:** The design phase only performs surface-level Figma analysis (top-level frames, breakpoints). Deep discovery — identifying components, sections, nested structures — is essential for generating granular, focused implementation tasks.
 
-1. **Dispatch the figma-discovery skill** as a subagent with:
-   - File Key(s) from the `## Figma Resources` section
-   - Root Node ID(s) from the Node Map in `## Figma Resources`
-   - Breakpoints (if listed in `## Figma Resources`)
+**If Figma Resources are present — you MUST run discovery before generating any Figma tasks.**
 
-   ```
-   Agent tool (general-purpose):
-     description: "Figma component discovery"
-     prompt: |
-       You are running the figma-discovery skill.
-       Read and follow: skills/figma-discovery/SKILL.md
+### Step 1: Parse the Node Map
 
-       Input:
-       - File Key: <file_key>
-       - Root Node IDs: <node_ids>
-       - Breakpoints: <breakpoints_if_known>
-       - Feature: <feature_name>
+Read the `## Figma Resources` section from the design doc. Extract:
+- **File Key** from the Figma URL or metadata
+- **Breakpoints** (if listed)
+- **Top-level entries** from the `### Node Map` — each line starting with `- **<section_name>**` under `#### Page:` headings represents a top-level frame/node with its own node ID
 
-       Write output to: .afyapowers/features/<feature>/artifacts/figma-component-mapping.md
-   ```
+### Step 2: Dispatch parallel subagents (one per top-level frame)
 
-2. **Read the resulting component mapping** from `.afyapowers/features/<feature>/artifacts/figma-component-mapping.md`
+For **each** top-level frame/node identified in the Node Map, dispatch a **separate** subagent **in parallel** using a single message with multiple Agent tool calls:
 
-3. **Use the mapping to generate layered tasks:**
-   - **Layer 1 — Reusable components:** One task per component marked as `reusable-component` or `design-system-component`. These have no page-level dependencies and can be built first.
-   - **Layer 2 — Page sections:** One task per `page-section`, with dependencies on any reusable components it uses as children.
-   - **Layer 3 — Page assembly:** A final task composing all sections into the full page, depending on all section tasks.
+```
+Agent tool (general-purpose):
+  description: "Figma discovery: <frame_name>"
+  prompt: |
+    You are running the figma-discovery skill.
+    Read and follow: skills/figma-discovery/SKILL.md
 
-   Each Figma task uses the Figma Task Structure format (see below) with node IDs and breakpoints from the component mapping.
+    Input:
+    - File Key: <file_key>
+    - Root Node IDs: <this_frame_node_id>
+    - Breakpoints: <breakpoints_if_known>
+    - Feature: <feature_name>
+
+    Write output to: .afyapowers/features/<feature>/artifacts/figma/figma-discovery-<frame_name_slug>.md
+```
+
+Where `<frame_name_slug>` is the frame name lowercased with spaces replaced by hyphens (e.g., "Hero Section" → `hero-section`).
+
+**Important:** All subagents MUST be dispatched in a single message to maximize parallelism. Do not dispatch them sequentially.
+
+### Step 3: Merge discovery results
+
+After **all** subagents complete:
+
+1. **Read** all `figma-discovery-*.md` files from `.afyapowers/features/<feature>/artifacts/figma/`
+2. **Merge and deduplicate** into a single `.afyapowers/features/<feature>/artifacts/figma-component-mapping.md`:
+   - Combine component lists from all frames
+   - Deduplicate components that appear in multiple frames (same component used across breakpoints or sections)
+   - Cross-reference components across frames for breakpoint matching — a component found in both "Desktop" and "Mobile" frames should be unified with both breakpoint variants noted
+3. **Flag unmatched components** — if a component appears in one breakpoint but has no counterpart in others, add a `⚠️ breakpoint-gap` note in the mapping for user review
+
+### Step 4: Generate layered tasks from the merged mapping
+
+**Read the resulting component mapping** from `.afyapowers/features/<feature>/artifacts/figma-component-mapping.md` and use it to generate layered tasks:
+
+- **Layer 1 — Reusable components:** One task per component marked as `reusable-component` or `design-system-component`. These have no page-level dependencies and can be built first.
+- **Layer 2 — Page sections:** One task per `page-section`, with dependencies on any reusable components it uses as children.
+- **Layer 3 — Page assembly:** A final task composing all sections into the full page, depending on all section tasks.
+
+Each Figma task uses the Figma Task Structure format (see below) with node IDs and breakpoints from the component mapping.
 
 **If no Figma Resources:** Skip this section entirely. Proceed with standard task generation.
 
