@@ -5,9 +5,9 @@ description: Use when executing implementation plans with independent tasks in t
 
 # Subagent-Driven Development
 
-Execute plan by dispatching subagents per task with two-stage review (spec compliance then code quality). Tasks with no mutual dependencies run in parallel waves for faster execution.
+Execute plan by dispatching subagents per task. Tasks with no mutual dependencies run in parallel waves for faster execution.
 
-**Core principle:** Fresh subagent per task + two-stage review (spec then quality) = high quality, fast iteration
+**Core principle:** Fresh subagent per task + self-review + concerns collection = fast iteration with deferred quality review
 
 ## The Process
 
@@ -25,26 +25,26 @@ digraph process {
     "Wait for all agents to return" [shape=box];
     "Process results" [shape=box];
     "All tasks done?" [shape=diamond];
-    "Final code review" [shape=box];
+    "Write implementation-concerns.md" [shape=box];
     "Complete" [shape=doublecircle];
 
     "Read plan, parse tasks and dependencies" -> "Check for circular dependencies";
     "Check for circular dependencies" -> "Report cycle, stop" [label="cycle found"];
     "Check for circular dependencies" -> "Compute ready set" [label="no cycles"];
     "Compute ready set" -> "Any tasks ready?";
-    "Any tasks ready?" -> "Final code review" [label="all done"];
+    "Any tasks ready?" -> "Write implementation-concerns.md" [label="all done"];
     "Any tasks ready?" -> "Validate file overlap in ready set" [label="yes"];
     "Validate file overlap in ready set" -> "Dispatch parallel Agent calls";
     "Dispatch parallel Agent calls" -> "Wait for all agents to return";
     "Wait for all agents to return" -> "Process results";
     "Process results" -> "All tasks done?";
     "All tasks done?" -> "Compute ready set" [label="more tasks"];
-    "All tasks done?" -> "Final code review" [label="yes"];
-    "Final code review" -> "Complete";
+    "All tasks done?" -> "Write implementation-concerns.md" [label="yes"];
+    "Write implementation-concerns.md" -> "Complete";
 }
 ```
 
-Each dispatched Agent runs the full task pipeline: implement → spec review → quality review. Multiple pipelines run concurrently.
+Each dispatched Agent implements the task, performs a self-review, and returns a status with any concerns. Multiple agents run concurrently.
 
 ## Wave Execution Algorithm
 
