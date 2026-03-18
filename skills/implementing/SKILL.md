@@ -37,4 +37,5 @@ Orchestrate plan execution by delegating to subagent-driven-development.
 1. Verify all plan checkboxes are marked complete (`- [x]`)
 2. If any remain unchecked, report which tasks are incomplete and ask the user how to proceed
 3. Update `state.yaml` to reflect progress
-4. Tell the user: "Implement phase complete. Run `/afyapowers:next` to proceed to **review**."
+4. If `.afyapowers/features/<feature>/artifacts/implementation-concerns.md` exists, mention it to the user: "Implementation concerns were collected — they will be prioritized during the review phase."
+5. Tell the user: "Implement phase complete. Run `/afyapowers:next` to proceed to **review**."
