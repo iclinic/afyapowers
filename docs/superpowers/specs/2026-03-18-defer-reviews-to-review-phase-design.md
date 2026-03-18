@@ -56,14 +56,23 @@ Collected during implementation phase. Priority areas for the review phase.
 - [concern text from implementer report]
 ```
 
-**Update status handling:**
+**Update "Handling Implementer Status" section** (currently lines 185-201) to reflect the new flow:
 - `DONE`: Mark task `completed`, update plan checkbox. No review dispatch.
-- `DONE_WITH_CONCERNS`: Read concerns. If about correctness/scope, store in concerns list and mark `completed`. If the concern indicates the task is fundamentally broken (e.g., "I couldn't get tests to pass"), treat as `BLOCKED` instead.
+- `DONE_WITH_CONCERNS`: Read concerns. If about correctness/scope, store in concerns list and mark `completed`. If the concern indicates the task is fundamentally broken (e.g., "I couldn't get tests to pass", "tests fail and I can't figure out why"), treat as `BLOCKED` instead. Examples of store-and-continue concerns: "I'm not sure this edge case is handled correctly", "The API response format might differ in production", "This works but the approach feels fragile."
 - `NEEDS_CONTEXT` and `BLOCKED`: Unchanged.
+
+**Note:** This is a deliberate relaxation of the current correctness gate. Currently, correctness/scope concerns must be *addressed* before marking complete. The new behavior stores them and defers to the review phase. The rationale: the review phase has better cross-task context to evaluate correctness concerns holistically, and per-task correctness loops were a major source of implementation slowdowns.
 
 **Update process graph:** Remove "Final code review" node. The path goes from "All tasks done?" directly to "Complete".
 
-**Update Prompt Templates section:** Remove references to `spec-reviewer-prompt.md` and `code-quality-reviewer-prompt.md` as SDD subagent prompts. These templates still exist — they're used by the review phase — but SDD no longer dispatches them.
+**Update Prompt Templates section** (currently lines 203-209): Remove `spec-reviewer-prompt.md` and `code-quality-reviewer-prompt.md` from the list. These templates still exist — they're used by the review phase — but SDD no longer dispatches them.
+
+**Update Integration section** (currently lines 241-252): Remove `spec-reviewer-prompt.md` and `code-quality-reviewer-prompt.md` from the "Subagent prompts" list. Keep the implementer prompts.
+
+**Update file description and core principle** (currently lines 6-10): Replace the "two-stage review" language:
+- Line 8 ("Execute plan by dispatching subagents per task with two-stage review..."): Change to "Execute plan by dispatching subagents per task. Tasks with no mutual dependencies run in parallel waves for faster execution."
+- Line 10 ("Fresh subagent per task + two-stage review..."): Change to "Fresh subagent per task + self-review + concerns collection = fast iteration with deferred quality review"
+- Line 47 ("Each dispatched Agent runs the full task pipeline: implement → spec review → quality review..."): Change to "Each dispatched Agent implements the task, performs a self-review, and returns a status with any concerns."
 
 **Update Red Flags section:** Remove:
 - "Skip reviews (spec compliance OR code quality)" — no longer applies per-task
@@ -75,6 +84,8 @@ Collected during implementation phase. Priority areas for the review phase.
 
 Add:
 - "Silently discard DONE_WITH_CONCERNS notes — always collect and persist them"
+
+**Remove "If reviewer finds issues" block** (currently lines 232-236) — this describes the per-task review fix loop which no longer applies. The review phase in `skills/reviewing/SKILL.md` has its own fix loop instructions.
 
 **Update worked example:** Remove review references:
 ```
@@ -104,13 +115,16 @@ Completed: [1, 2, 3, 4, 5] → Write implementation-concerns.md → Done
 
 No structural changes to the template. The prompt does not currently reference review subagents being dispatched after it — it focuses on the implementer's own workflow. The self-review section stays as-is.
 
-**Add** to the "Report Format" section, after the existing status descriptions:
+**Add** to the "Report Format" section (currently lines 139-152), supplementing the existing `DONE_WITH_CONCERNS` guidance (which says "Use DONE_WITH_CONCERNS if you completed the work but have doubts about correctness"):
 
 ```
 Be thorough with DONE_WITH_CONCERNS — this is your primary channel for flagging
 issues to the review phase. If anything feels uncertain, incomplete, or fragile,
-flag it. The review phase will prioritize your concerns.
+flag it. The review phase will prioritize your concerns. Err on the side of
+flagging — a false alarm costs nothing, a missed concern costs a review cycle.
 ```
+
+This supplements rather than replaces the existing guidance.
 
 ### 3. Figma Implementer Prompt Changes
 
