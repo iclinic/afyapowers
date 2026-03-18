@@ -189,9 +189,9 @@ Use the least powerful model that can handle each role to conserve cost and incr
 
 Implementer subagents report one of four statuses:
 
-**DONE:** Proceed to spec compliance review.
+**DONE:** Mark task `completed`, update plan checkbox. No review dispatch.
 
-**DONE_WITH_CONCERNS:** Read concerns before proceeding. If about correctness/scope, address first. If observations, note and proceed.
+**DONE_WITH_CONCERNS:** Read concerns. Store in concerns list and mark `completed`. If the concern indicates the task is fundamentally broken (e.g., "I couldn't get tests to pass", "Core dependency is missing and I had to stub the entire integration"), treat as `BLOCKED` instead. Examples of store-and-continue concerns: "I'm not sure this edge case is handled correctly", "The API response format might differ in production", "This works but the approach feels fragile."
 
 **NEEDS_CONTEXT:** Provide missing context and re-dispatch.
 
@@ -207,35 +207,21 @@ Implementer subagents report one of four statuses:
 
 - `skills/implementing/implementer-prompt.md` - Dispatch standard implementer subagent (TDD workflow)
 - `skills/implementing/implement-figma-design.md` - Dispatch Figma design implementer subagent (visual fidelity workflow)
-- `skills/implementing/spec-reviewer-prompt.md` - Dispatch spec compliance reviewer subagent
-- `skills/implementing/code-quality-reviewer-prompt.md` - Dispatch code quality reviewer subagent
 
 ## Red Flags
 
 **Never:**
 - Start implementation on main/master branch without explicit user consent
-- Skip reviews (spec compliance OR code quality)
-- Proceed with unfixed issues
 - Dispatch implementation subagents that modify the same files in parallel (file overlap = sequential)
 - Make subagent read plan file (provide full text instead)
 - Skip scene-setting context
 - Ignore subagent questions
-- Accept "close enough" on spec compliance
-- Skip review loops
-- Let implementer self-review replace actual review
-- **Start code quality review before spec compliance passes** (wrong order)
-- Move to next task while either review has open issues
+- Silently discard DONE_WITH_CONCERNS notes — always collect and persist them
 
 **If subagent asks questions:**
 - Answer clearly and completely
 - Provide additional context if needed
 - Don't rush them into implementation
-
-**If reviewer finds issues:**
-- Implementer (same subagent) fixes them
-- Reviewer reviews again
-- Repeat until approved
-- Don't skip the re-review
 
 **If subagent fails task:**
 - Dispatch fix subagent with specific instructions
@@ -249,7 +235,23 @@ Implementer subagents report one of four statuses:
 **Subagent prompts:**
 - `skills/implementing/implementer-prompt.md` — TDD rules are embedded directly in this prompt (used for standard tasks)
 - `skills/implementing/implement-figma-design.md` — Figma implement-design workflow (used for tasks with `**Figma:**` section)
-- `skills/implementing/spec-reviewer-prompt.md` — spec compliance review
-- `skills/implementing/code-quality-reviewer-prompt.md` — code quality review
 
 **Context:** When invoked by implementing, the plan and design are already in the conversation context. Use them directly. If the plan is not in context (e.g., invoked standalone), read it from `.afyapowers/features/<feature>/artifacts/plan.md`.
+
+## Concerns Collection
+
+After all tasks complete, if any `DONE_WITH_CONCERNS` notes were collected during execution, write them to `.afyapowers/features/<feature>/artifacts/implementation-concerns.md`:
+
+```markdown
+# Implementation Concerns
+
+Collected during implementation phase. Priority areas for the review phase.
+
+## Task N: [task name verbatim from plan heading]
+- [concern text from implementer report]
+
+## Task M: [task name verbatim from plan heading]
+- [concern text from implementer report]
+```
+
+If the implementation phase is re-run (e.g., after fixing a blocked task), overwrite `implementation-concerns.md` with fresh data from the current run — do not append to stale concerns from a previous run. If no concerns were collected, do not create the file.
