@@ -11,7 +11,7 @@ The goal is a dedicated skill that performs deep, dynamic analysis of Figma file
 1. A dedicated `figma-discovery` skill that performs deep analysis of Figma files
 2. Two modes of operation based on file type detection:
    - **Page mode** — identifies page sections, logical components, matches across breakpoints
-   - **Design system mode** — catalogs components with their variants, states, and tokens
+   - **Design system mode** — catalogs components with their variants and states (node IDs only, no design tokens)
 3. Two-phase execution: lightweight **Scan** → targeted **Analyze**
 4. Component identification using multiple heuristics: naming patterns, structural depth, Figma node types (FRAME, GROUP, COMPONENT, INSTANCE), size/position analysis, repetition detection, and Figma Component/Instance markers when present
 5. Breakpoint matching across frames: name-first, structural-similarity fallback
@@ -74,7 +74,13 @@ Scan → Identify component candidates → Map each candidate in detail.
 
 ### Phase 1: Scan
 
-A single agent performs a lightweight scan using `get_metadata` on the root node(s) from the design doc's Figma Resources section. It produces a scan report with:
+A single agent performs a lightweight scan using multiple Figma MCP tools on the root node(s) from the design doc's Figma Resources section:
+
+- `get_metadata` — structural hierarchy (node IDs, names, types, positions, sizes)
+- `get_screenshot` — visual understanding of page organization, section boundaries, and layout patterns
+- `get_code_connect_map` — check if Code Connect mappings already exist (provides direct node-to-component mapping if the design team has configured it)
+
+It produces a scan report with:
 
 - **File type detection** — page vs design system. Signals:
   - Design system files: many top-level Component/ComponentSet nodes, no page-like layout
@@ -82,21 +88,24 @@ A single agent performs a lightweight scan using `get_metadata` on the root node
 - **Breakpoint strategy** — multi-frame (separate frames per breakpoint, detected by naming patterns like "Desktop"/"Mobile" or by similar structures at different widths) vs. single responsive (one frame with auto-layout)
 - **Top-level structure** — list of top-level frames with names, sizes, types
 - **Candidate regions** — areas worth deep-diving into (avoids wasting API calls on decorative/trivial nodes)
+- **Existing Code Connect mappings** — if available, these provide pre-existing node-to-component mappings that supplement or shortcut the heuristic engine
 
 ### Phase 2: Analyze
 
 A parent agent reads the scan report and dispatches **one subagent per candidate region/group**. Each subagent:
 
-1. Receives the scan report context + its assigned region's node IDs
+1. Receives the scan report context (including any Code Connect mappings) + its assigned region's node IDs
 2. Uses `get_metadata` for structural traversal deeper into the tree
-3. Uses `get_design_context` for detailed analysis of specific nodes (layout properties, spacing, typography, constraints)
-4. Applies the heuristic engine to identify components:
+3. Uses `get_design_context` for structural analysis of specific nodes (layout structure, children, component boundaries — not for token extraction)
+4. Uses `get_screenshot` for visual reference to help identify component boundaries and visual grouping
+5. Uses `get_code_connect_suggestions` to supplement heuristic analysis with Figma's own component detection
+6. Applies the heuristic engine to identify components:
    - **Figma component markers** — any COMPONENT or INSTANCE node is automatically a component candidate
    - **Naming patterns** — nodes named "Hero", "Header", "Card", "Footer", "Nav", "Sidebar", etc.
    - **Structural depth** — a FRAME with 3+ meaningful children (not just wrappers) is likely a component
    - **Size/position analysis** — full-width frames at top level = page sections; smaller repeated elements = reusable components
    - **Repetition detection** — if the same structure appears multiple times (same children types/count), it's a reusable component
-5. Returns its local component mapping for that region
+7. Returns its local component mapping for that region
 
 The parent agent then merges results:
 - Deduplicates repeated components across regions
@@ -117,7 +126,7 @@ The parent agent then merges results:
 
 ### Single Responsive Frame Handling
 
-When the scan detects a single responsive frame (auto-layout, constraints, min/max sizing), the analysis captures responsive behavior metadata instead of breakpoint node IDs — auto-layout direction, constraints, min/max widths — so the implementer knows how to build responsiveness.
+When the scan detects a single responsive frame (auto-layout, constraints, min/max sizing), the analysis notes the responsive strategy and captures the single node ID — the implementer will fetch detailed responsive properties (auto-layout direction, constraints, min/max widths) at implementation time via `get_design_context`.
 
 ## Data Flow
 
@@ -126,16 +135,20 @@ Writing-Plans detects ## Figma Resources in design doc
         │
         ▼
 [Figma Discovery Skill — Phase 1: Scan]
-  ├── get_metadata on root nodes
+  ├── get_metadata on root nodes (structural hierarchy)
+  ├── get_screenshot on root nodes (visual understanding of organization)
+  ├── get_code_connect_map (check for existing component mappings)
   ├── Detect file type (page vs design system)
   ├── Detect breakpoint strategy (multi-frame vs single responsive)
-  └── Output: scan report with candidate regions
+  └── Output: scan report with candidate regions + existing mappings
         │
         ▼
 [Figma Discovery Skill — Phase 2: Analyze]
   ├── Parent dispatches subagent per region
-  │     ├── get_metadata (structural traversal)
-  │     ├── get_design_context (detailed analysis)
+  │     ├── get_metadata (deeper structural traversal)
+  │     ├── get_design_context (component boundary analysis)
+  │     ├── get_screenshot (visual reference for grouping)
+  │     ├── get_code_connect_suggestions (Figma's component detection)
   │     ├── Apply heuristics → identify components
   │     └── Return local component mapping
   ├── Parent merges results
@@ -208,7 +221,7 @@ Writing-Plans detects ## Figma Resources in design doc
 - **Responsive strategy:** single-frame (auto-layout)
 - **Node ID:** `42-15`
 - **Size:** 1440x600 (min-width: 375px)
-- **Layout:** auto-layout, direction: vertical, wraps at breakpoint
+- **Note:** Responsive properties (auto-layout, constraints) to be fetched at implementation time
 - **Children:**
   - Heading (TEXT, node `42-16`)
   - Subtitle (TEXT, node `42-17`)
@@ -229,12 +242,12 @@ Writing-Plans detects ## Figma Resources in design doc
 - **Description:** Primary action button with multiple variants and states
 - **Node ID:** `10-5` (ComponentSet)
 - **Variants:**
-  | Variant | Node ID | Properties |
-  |---------|---------|------------|
-  | Primary / Default | `10-6` | fill: blue-500, text: white |
-  | Primary / Hover | `10-7` | fill: blue-600 |
-  | Primary / Disabled | `10-8` | fill: gray-300, text: gray-500 |
-  | Secondary / Default | `10-9` | fill: transparent, border: blue-500 |
+  | Variant | Node ID |
+  |---------|---------|
+  | Primary / Default | `10-6` |
+  | Primary / Hover | `10-7` |
+  | Primary / Disabled | `10-8` |
+  | Secondary / Default | `10-9` |
 - **Children:**
   - Label (TEXT, node `10-10`)
   - Icon (optional, INSTANCE, node `10-11`)
@@ -293,7 +306,8 @@ The component mapping artifact is separate from the design doc (which stays ligh
 ## Dependencies
 
 - Figma MCP server must be configured and accessible
-- Figma MCP tools required: `get_metadata`, `get_design_context`, `get_screenshot`
+- Figma MCP tools required: `get_metadata`, `get_design_context`, `get_screenshot`, `get_code_connect_map`, `get_code_connect_suggestions`
+- Design tokens are explicitly NOT extracted by this skill — deferred to implementation time via `get_variable_defs`
 - Existing design doc must have `## Figma Resources` section (populated by design phase)
 
 ## Files Changed
