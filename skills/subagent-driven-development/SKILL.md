@@ -128,21 +128,22 @@ Plan: 5 tasks. Task 1,2 have no deps. Task 3,4 depend on 1,2. Task 5 depends on 
 Completed: []
 Ready: [1, 2] → no file overlap → dispatch both
   → Agent(Task 1), Agent(Task 2) dispatched in parallel
-  → Both return DONE, pass reviews
+  → Both return DONE
 Completed: [1, 2]
 
 --- Cycle 2 ---
 Ready: [3, 4] (deps [1,2] all completed) → no file overlap → dispatch both
   → Agent(Task 3), Agent(Task 4) dispatched in parallel
-  → Task 3 fails spec review, gets fixed, passes on re-review
-  → Task 4 passes
+  → Task 3 returns DONE_WITH_CONCERNS (concern noted)
+  → Task 4 returns DONE
 Completed: [1, 2, 3, 4]
+Concerns collected: [Task 3: "..."]
 
 --- Cycle 3 ---
 Ready: [5] (deps [3,4] all completed) → dispatch
   → Agent(Task 5) dispatched
-  → Passes
-Completed: [1, 2, 3, 4, 5] → Done
+  → Returns DONE
+Completed: [1, 2, 3, 4, 5] → Write implementation-concerns.md → Done
 ```
 
 ### Fallback to Sequential
