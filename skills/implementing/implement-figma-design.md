@@ -231,6 +231,11 @@ Task tool (general-purpose):
     Figma MCP unavailable). Use NEEDS_CONTEXT if you need information that wasn't
     provided. Never silently produce work you're unsure about.
 
+    Be thorough with DONE_WITH_CONCERNS — this is your primary channel for flagging
+    issues to the review phase. If anything feels uncertain, incomplete, or fragile,
+    flag it. The review phase will prioritize your concerns. Err on the side of
+    flagging — a false alarm costs nothing, a missed concern costs a review cycle.
+
     ## Common Issues and Solutions
 
     ### Issue: Figma output is truncated
