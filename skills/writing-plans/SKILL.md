@@ -26,6 +26,44 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 If the spec covers multiple independent subsystems, it should have been broken into sub-project specs during design. If it wasn't, suggest breaking this into separate plans — one per subsystem. Each plan should produce working, testable software on its own.
 
+## Figma Component Discovery (Conditional)
+
+Before defining tasks, check if the design doc (`.afyapowers/features/<feature>/artifacts/design.md`) contains a `## Figma Resources` section.
+
+**If Figma Resources are present:**
+
+1. **Dispatch the figma-discovery skill** as a subagent with:
+   - File Key(s) from the `## Figma Resources` section
+   - Root Node ID(s) from the Node Map in `## Figma Resources`
+   - Breakpoints (if listed in `## Figma Resources`)
+
+   ```
+   Agent tool (general-purpose):
+     description: "Figma component discovery"
+     prompt: |
+       You are running the figma-discovery skill.
+       Read and follow: skills/figma-discovery/SKILL.md
+
+       Input:
+       - File Key: <file_key>
+       - Root Node IDs: <node_ids>
+       - Breakpoints: <breakpoints_if_known>
+       - Feature: <feature_name>
+
+       Write output to: .afyapowers/features/<feature>/artifacts/figma-component-mapping.md
+   ```
+
+2. **Read the resulting component mapping** from `.afyapowers/features/<feature>/artifacts/figma-component-mapping.md`
+
+3. **Use the mapping to generate layered tasks:**
+   - **Layer 1 — Reusable components:** One task per component marked as `reusable-component` or `design-system-component`. These have no page-level dependencies and can be built first.
+   - **Layer 2 — Page sections:** One task per `page-section`, with dependencies on any reusable components it uses as children.
+   - **Layer 3 — Page assembly:** A final task composing all sections into the full page, depending on all section tasks.
+
+   Each Figma task uses the Figma Task Structure format (see below) with node IDs and breakpoints from the component mapping.
+
+**If no Figma Resources:** Skip this section entirely. Proceed with standard task generation.
+
 ## File Structure
 
 Before defining tasks, map out which files will be created or modified and what each one is responsible for. This is where decomposition decisions get locked in.
