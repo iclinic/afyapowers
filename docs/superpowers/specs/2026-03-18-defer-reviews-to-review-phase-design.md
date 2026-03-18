@@ -15,7 +15,7 @@ Remove per-task spec-compliance and code-quality review subagent dispatches from
 1. **SDD orchestrator** (`skills/subagent-driven-development/SKILL.md`) — Stop dispatching spec-reviewer and code-quality-reviewer subagents per task. Collect `DONE_WITH_CONCERNS` notes into an artifact for the review phase.
 2. **Standard implementer prompt** (`skills/implementing/implementer-prompt.md`) — Remove references to post-implementation review loops. Keep the self-review checklist. Encourage proactive use of `DONE_WITH_CONCERNS`.
 3. **Figma implementer prompt** (`skills/implementing/implement-figma-design.md`) — Keep the visual validation loop (Steps 5-6: achieve parity, validate against screenshot). Remove references to spec-compliance and code-quality review subagents.
-4. **Implementing skill** (`skills/implementing/SKILL.md`) — Remove references to review templates as part of the implementation flow.
+4. **Implementing skill** (`skills/implementing/SKILL.md`) — Add concerns artifact notification after SDD completes.
 5. **Review phase** (`skills/reviewing/SKILL.md`) — Read collected concerns from `implementation-concerns.md` and pass them as priority areas to both reviewers.
 
 ### What stays the same
@@ -49,21 +49,25 @@ Remove per-task spec-compliance and code-quality review subagent dispatches from
 
 Collected during implementation phase. Priority areas for the review phase.
 
-## Task N: [task name]
+## Task N: [task name verbatim from plan heading]
 - [concern text from implementer report]
 
-## Task M: [task name]
+## Task M: [task name verbatim from plan heading]
 - [concern text from implementer report]
 ```
 
+If the implementation phase is re-run (e.g., after fixing a blocked task), overwrite `implementation-concerns.md` with fresh data from the current run — do not append to stale concerns from a previous run.
+
 **Update "Handling Implementer Status" section** (currently lines 185-201) to reflect the new flow:
 - `DONE`: Mark task `completed`, update plan checkbox. No review dispatch.
-- `DONE_WITH_CONCERNS`: Read concerns. If about correctness/scope, store in concerns list and mark `completed`. If the concern indicates the task is fundamentally broken (e.g., "I couldn't get tests to pass", "tests fail and I can't figure out why"), treat as `BLOCKED` instead. Examples of store-and-continue concerns: "I'm not sure this edge case is handled correctly", "The API response format might differ in production", "This works but the approach feels fragile."
+- `DONE_WITH_CONCERNS`: Read concerns. If about correctness/scope, store in concerns list and mark `completed`. If the concern indicates the task is fundamentally broken, treat as `BLOCKED` instead.
+  - **Treat as BLOCKED examples:** "I couldn't get tests to pass", "Tests fail and I can't figure out why", "Core dependency is missing and I had to stub the entire integration"
+  - **Store-and-continue examples:** "I'm not sure this edge case is handled correctly", "The API response format might differ in production", "This works but the approach feels fragile"
 - `NEEDS_CONTEXT` and `BLOCKED`: Unchanged.
 
 **Note:** This is a deliberate relaxation of the current correctness gate. Currently, correctness/scope concerns must be *addressed* before marking complete. The new behavior stores them and defers to the review phase. The rationale: the review phase has better cross-task context to evaluate correctness concerns holistically, and per-task correctness loops were a major source of implementation slowdowns.
 
-**Update process graph:** Remove "Final code review" node. The path goes from "All tasks done?" directly to "Complete".
+**Update process graph:** Remove the "Final code review" node. Update edges: the "Any tasks ready?" node's "all done" edge and the "All tasks done?" node's "yes" edge both go directly to "Complete" (instead of routing through "Final code review").
 
 **Update Prompt Templates section** (currently lines 203-209): Remove `spec-reviewer-prompt.md` and `code-quality-reviewer-prompt.md` from the list. These templates still exist — they're used by the review phase — but SDD no longer dispatches them.
 
