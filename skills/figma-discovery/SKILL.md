@@ -70,7 +70,7 @@ Dispatch **one subagent per candidate region/group** for parallel execution. Thi
 
 1. **Recursive structural traversal** using `get_metadata`:
    a. Run `get_metadata` on the assigned region's root node to get first-level children
-   b. For each child that is a FRAME or GROUP with its own children (not leaf nodes like TEXT, RECTANGLE, VECTOR, LINE, ELLIPSE), run `get_metadata` again on that child to explore the next level
+   b. For each child that is a container node (FRAME, GROUP, COMPONENT, COMPONENT_SET, SECTION, INSTANCE) with its own children (not leaf nodes like TEXT, RECTANGLE, VECTOR, LINE, ELLIPSE), run `get_metadata` again on that child to explore the next level
    c. Continue recursing until reaching leaf nodes or depth 4 (max from region root)
    d. Build a complete node tree from the merged results before proceeding to steps 2-5
 

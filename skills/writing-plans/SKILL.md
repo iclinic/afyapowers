@@ -199,7 +199,7 @@ Use this format for tasks that implement UI components with Figma designs. The d
 
 **How to identify Figma tasks:** If the component being implemented has corresponding nodes in the design doc's `## Figma Resources` Node Map, it is a Figma task. Backend tasks, API routes, data models, business logic, and other non-UI tasks use the standard task structure above.
 
-**No TDD, no code snippets.** Figma tasks describe what to achieve — the implementer subagent uses the Figma MCP tools and the implement-figma-design workflow to determine how.
+**No TDD, no code snippets.** Figma tasks describe what to achieve — the implementer subagent uses the Figma MCP tools and the Figma implementer workflow to determine how.
 
 ```markdown
 ### Task N: [UI Component Name] (Figma)
