@@ -19,17 +19,11 @@
 
 **Depends on:** none
 
-- [ ] Step 1: ...
-- [ ] Step 2: ...
-
-### Task 2: [Component Name]
-
-**Files:**
-- Create: `exact/path/to/file`
-
-**Depends on:** Task 1
-
-- [ ] Step 1: ...
+- [ ] Step 1: Write the failing test — describe behaviors to test and expected outcomes
+- [ ] Step 2: Run the test and confirm it fails
+- [ ] Step 3: Implement — describe what to build and key decisions
+- [ ] Step 4: Run the test and confirm it passes
+- [ ] Step 5: Commit
 
 ### Task N: [UI Component Name] (Figma)
 
