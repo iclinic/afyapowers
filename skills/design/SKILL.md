@@ -110,11 +110,19 @@ If the user provides Figma URL(s):
    - URL format: `https://figma.com/design/:fileKey/:fileName?node-id=X-Y`
    - Extract `:fileKey` (segment after `/design/`) and `X-Y` (value of `node-id` parameter)
 
-2. **Fetch structural metadata** using `get_metadata` for each provided node
+2. **Fetch structural metadata recursively** using `get_metadata` to build a deep Node Map
    ```
    get_metadata(fileKey=":fileKey", nodeId="X-Y")
    ```
-   This returns a sparse XML representation with node IDs, names, types, positions, and sizes. Use this to build the hierarchical Node Map for the design doc.
+   Recurse to discover the full component tree:
+   a. Call `get_metadata` on each provided root node to get first-level children
+   b. For each child that is a container type (FRAME, GROUP, SECTION) but **not** a COMPONENT/INSTANCE/COMPONENT_SET, call `get_metadata` again on that child
+   c. Stop recursion when hitting:
+      - **COMPONENT, INSTANCE, or COMPONENT_SET** — record as a component boundary in the Node Map
+      - **Leaf node types** (TEXT, RECTANGLE, VECTOR, LINE, ELLIPSE) — record and stop
+      - **Max depth 5** from root — safety valve to prevent runaway recursion on deeply nested files
+   d. **Repetition detection:** If the same COMPONENT/INSTANCE appears multiple times as siblings (same name or same component ID), collapse to a single Node Map entry with a `×N` count to signal reusability to the planning phase
+   e. The Node Map should capture the full path: Page → Section → Subsection → Component
 
 3. **Fetch top-level frame analysis** using `get_design_context` on top-level frames only
    ```
