@@ -68,7 +68,13 @@ Dispatch **one subagent per candidate region/group** for parallel execution. Thi
 
 **Each subagent performs:**
 
-1. **Deep structural traversal** using `get_metadata` on its assigned region to explore the full subtree
+1. **Recursive structural traversal** using `get_metadata`:
+   a. Run `get_metadata` on the assigned region's root node to get first-level children
+   b. For each child that is a FRAME or GROUP with its own children (not leaf nodes like TEXT, RECTANGLE, VECTOR, LINE, ELLIPSE), run `get_metadata` again on that child to explore the next level
+   c. Continue recursing until reaching leaf nodes or depth 4 (max from region root)
+   d. Build a complete node tree from the merged results before proceeding to steps 2-5
+
+   **Why recurse:** A single `get_metadata` call returns only immediate children. Without recursion, a "Hero Section" frame appears as a single node — its internal components (buttons, cards, badges) remain invisible, and discovery produces screen-level tasks instead of component-level tasks.
 
 2. **Targeted detail fetching** using `get_design_context` on nodes that appear to be component boundaries (not for token extraction — for understanding structure, children, and layout relationships)
 
