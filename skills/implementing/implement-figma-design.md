@@ -1,302 +1,110 @@
-# Figma Design Implementer Subagent Prompt Template
+---
+name: implement-design
+description: Figma implementer subagent — translates Figma designs into production code with absolute fidelity. Requires Figma MCP server.
+metadata:
+  mcp-server: figma
+---
 
-Use this template when dispatching an implementer subagent for a task that has a **Figma:** section. This replaces the standard `implementer-prompt.md` for Figma tasks.
+# Figma Implementer Subagent Prompt Template
 
-**Key difference from standard implementer:** No TDD. The workflow follows the Figma implement-design pattern — fetch design context, capture visual reference, download assets, translate to project conventions, achieve visual parity, validate against Figma.
+This is a template for dispatching implementer subagents for Figma design tasks. When constructing a subagent prompt, paste the task description, context, Figma resources, and file list into the template below. The subagent's sole job is to translate the Figma design into production code. Figma has absolute authority over the implementation — every visual decision comes from Figma, not from codebase conventions or local patterns.
 
-```
-Task tool (general-purpose):
-  description: "Implement Figma Task N: [task name]"
-  prompt: |
-    You are implementing a Figma design task: Task N — [task name]
+## Core Principles
 
-    ## Task Description
+1. **Figma is absolute authority.** Every visual property — colors, typography, spacing, borders, shadows, opacity — comes from Figma. Never substitute, approximate, or prefer codebase patterns over Figma values. If a token does not exist in the project, hardcode the Figma value.
 
-    [FULL TEXT of task from plan - paste it here, don't make subagent read file]
+2. **3 mandatory MCP calls in order.** You must call `get_variable_defs` → `get_screenshot` → `get_design_context` for every task. No skipping, no reordering. The only additional call is `get_metadata`, used solely as an overflow handler when `get_design_context` responses are truncated.
 
-    ## Context
+3. **Assets come from Figma.** Always use Figma-provided assets. Before downloading, check if the exact same asset already exists in the codebase (dedup). Never substitute with local icon libraries.
 
-    [Scene-setting: where this fits, dependencies, architectural context]
+## Prerequisites
 
-    ## Figma Resources
+- Figma MCP server must be connected. Verify by checking that `get_design_context` and `get_variable_defs` tools are available.
+- If the Figma MCP server is unavailable, report status **BLOCKED** and stop.
 
-    **File Key:** [FILE_KEY from task's Figma section]
-    **Breakpoints:** [BREAKPOINTS from task's Figma section]
-    **Nodes:**
-    [NODES TABLE from task's Figma section]
+## Workflow
 
-    ## File Constraint
+### Step 1 — Build Token Reference Table
 
-    You may ONLY modify the files listed in your task's **Files:** section:
-    [LIST OF FILES FROM TASK]
+Call `get_variable_defs(fileKey, nodeId)` for each node ID in your Figma Resources table.
 
-    Do NOT create, modify, or delete any other files. If you believe you need to
-    touch a file not in this list, report back with status NEEDS_CONTEXT and explain
-    what file you need and why.
+Build a lookup table mapping token name → resolved value for:
+- Colors (fill, stroke, background, text)
+- Typography (font family, size, weight, line height)
+- Spacing (padding, margin, gap)
+- Border radius, shadows, opacity
 
-    ## Before You Begin
+This table is the single source of truth for all design values. Keep it accessible — you will cross-reference it in Step 3.
 
-    If you have questions about:
-    - The design requirements or component behavior
-    - The project's design system or conventions
-    - Dependencies or assumptions
-    - Anything unclear in the task description
+### Step 2 — Capture Visual Reference
 
-    **Ask them now.** Raise any concerns before starting work.
+Call `get_screenshot(fileKey, nodeId)` for the primary node(s) in your task.
 
-    ## Prerequisites
+The screenshot is the source of truth for layout: arrangement, sizing, spacing, and overall visual structure. Keep it accessible for comparison throughout implementation. You will validate your final output against this screenshot before reporting back.
 
-    - Figma MCP server must be connected and accessible
-      - Before proceeding, verify the Figma MCP server is connected by checking if
-        Figma MCP tools (e.g., get_design_context, get_variable_defs) are available.
-      - If the tools are not available, report back with status BLOCKED and explain
-        that the Figma MCP server is required but not accessible.
+### Step 3 — Fetch Design Context + Cross-Reference
 
-    ## Your Job: Required Workflow
+Call `get_design_context(fileKey, nodeId)` for each node ID in your Figma Resources table.
 
-    **Follow these steps in order. Do not skip steps.**
+This provides:
+- Component hierarchy and children ordering
+- Auto-layout direction and mode (row/column, wrap)
+- Constraints and sizing modes (fixed/hug/fill)
+- Variants and interactive states (hover, active, disabled, focus)
+- Component props and slot/composition patterns
+- Implementation suggestions with token names
 
-    ### Step 1a: Build Authoritative Token Reference
+**Cross-reference every token name** from this output against the lookup table from Step 1.
 
-    Run get_variable_defs for each node ID in your Figma Resources table **first**.
+**Token Mapping Rule — apply for every visual property:**
+1. **Name match + value match:** Figma variable name matches a project token by name AND their resolved values are identical → use the project token.
+2. **Name match + value mismatch:** Figma variable name matches a project token by name BUT the values differ → hardcode the Figma value.
+3. **No match:** No project token matches the Figma variable name → hardcode the Figma value.
 
-        get_variable_defs(fileKey="<file_key>", nodeId="<node_id>")
+Never approximate. Never use a "closest" project token. It is either an exact match (name + value) or a hardcoded Figma value.
 
-    This builds the authoritative token reference table — a mapping of token names
-    to their actual values for:
-    - Colors (fill, stroke, background, text)
-    - Typography (font family, size, weight, line height)
-    - Spacing (padding, margin, gap)
-    - Border radius, shadows, opacity
+**If the response is truncated:** Call `get_metadata(fileKey, nodeId)` to get child IDs, then call `get_design_context` on the individual children.
 
-    Keep this lookup table accessible — you will use it in Step 1b to validate
-    token names from get_design_context.
+**Fallback:** If `get_variable_defs` returned no tokens for a node, use the raw resolved values from `get_design_context` and flag the affected properties as DONE_WITH_CONCERNS.
 
-    **Token Mapping Rule — apply this when translating tokens to project code:**
-    1. **Name match + value match:** Figma variable name matches a project token
-       by name AND their resolved values are identical → use the project token
-    2. **Name match + value mismatch:** Figma variable name matches a project token
-       by name BUT the values differ → use the exact Figma value hardcoded
-       (Figma is the source of truth)
-    3. **No name match:** No project token matches → use the exact Figma value
-       hardcoded
+## Asset Rules
 
-    **Never** approximate or use a "closest" project token. It is either an exact
-    match (name + value) or a hardcoded Figma value.
+1. **Always use Figma assets.** Icons, images, and SVGs come from the Figma MCP server.
+2. **Dedup check.** Before downloading an asset, search the codebase for an existing exact match. If found, use the existing file. If not, download from Figma.
+3. **Never substitute with icon libraries** (lucide, heroicons, etc.). Never create placeholder assets.
+4. **Icons as SVG.** Icons must be saved as `.svg` files, not raster formats. Photos and illustrations may be raster.
+5. **Use asset URLs as-is** from the MCP server. Do not modify, proxy, or reconstruct them.
 
-    ### Step 1b: Fetch Design Context with Token Cross-Reference
+## Implementation Rules
 
-    Run get_design_context for each node ID in your Figma Resources table.
+1. **Figma overrides codebase patterns.** When the Figma design differs from project conventions, follow Figma.
+2. **Reuse existing components when they match.** If a project component matches what Figma shows, use it. If Figma shows something different, implement what Figma shows.
+3. **Token mapping is strict.** Exact name + exact value = project token. Anything else = hardcode the Figma value.
+4. **No additions beyond Figma.** Do not add extra JSDoc, TypeScript types beyond what is needed, features, or refactoring that Figma does not call for.
+5. **File constraint.** Only modify files listed in the task's Files section. If you need files not in the list, report NEEDS_CONTEXT.
 
-        get_design_context(fileKey="<file_key>", nodeId="<node_id>")
+## Reporting
 
-    This provides:
-    - Component hierarchy and children ordering
-    - Auto-layout direction and mode (row/column, wrap, etc.)
-    - Constraints and sizing modes (fixed/hug/fill)
-    - Variants and interactive states (hover, active, disabled, focus)
-    - Component props and slot/composition patterns
-    - Implementation suggestions with token names
+When done, report:
+- **Status:** DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT
+- **What was implemented** — component structure and key decisions
+- **Visual validation** — does it match the screenshot from Step 2?
+- **Files changed**
+- **Concerns** — unmatched tokens, inaccessible assets, layout ambiguities
 
-    **Cross-reference all token names** from this output against the lookup table
-    from Step 1a. For each token name in the implementation suggestions, apply the
-    Token Mapping Rule to determine the correct value to use.
-
-    **If the response is too large or truncated:**
-    1. Run get_metadata(fileKey="<file_key>", nodeId="<node_id>") to get the
-       high-level node map
-    2. Identify the specific child nodes needed from the metadata
-    3. Fetch individual child nodes with
-       get_design_context(fileKey="<file_key>", nodeId="<child_node_id>")
-
-    **Fallback:** If get_variable_defs returns no tokens for a node, use the raw
-    resolved values from get_design_context and report the affected properties as
-    DONE_WITH_CONCERNS so they can be verified in the review phase.
-
-    ### Step 2: Capture Visual Reference
-
-    Run get_screenshot for the primary node(s) in your task.
-
-        get_screenshot(fileKey="<file_key>", nodeId="<node_id>")
-
-    This screenshot serves as the **source of truth for visual validation** (does the
-    layout look right?). Note: get_variable_defs from Step 1a is the source of truth
-    for **token values** (what exact color/font/spacing value to use). These are
-    complementary — tokens tell you what values to code, the screenshot tells you if
-    the result looks correct. Keep the screenshot accessible throughout implementation.
-    You will compare your output against this screenshot before reporting back.
-
-    ### Step 3: Download Required Assets
-
-    Download any assets (images, icons, SVGs) returned by the Figma MCP server.
-
-    **IMPORTANT:** Follow these asset rules:
-    - Use asset URLs exactly as returned by the Figma MCP server — do NOT modify them
-    - DO NOT import or add new icon packages — all assets should come from the Figma
-      payload
-    - DO NOT use or create placeholders if a source URL is provided by the MCP server
-    - If an asset URL is inaccessible, note it as a concern but continue with the rest
-    - **Icons must be saved as SVG**, not as raster image formats (PNG, JPG, WebP, etc.).
-      When downloading icons from Figma, request them in SVG format and save them as
-      `.svg` files. Other assets like background images, photos, and illustrations may
-      remain as raster images.
-
-    ### Step 4: Translate to Project Conventions
-
-    Translate the Figma output into the project's framework, styles, and conventions.
-
-    **Key principles:**
-    - Start from the implementation suggestions returned by get_design_context, then
-      cross-reference every token name against the lookup table built in Step 1a
-    - Apply the Token Mapping Rule from Step 1a for every visual property — never
-      approximate with a "close enough" project token
-    - Reuse existing components (buttons, inputs, typography, icon wrappers) instead
-      of duplicating functionality
-    - Respect existing routing, state management, and data-fetch patterns
-
-    **Design System Integration:**
-    - ALWAYS use components from the project's design system when possible
-    - Apply the Token Mapping Rule from Step 1a when mapping Figma variables to
-      project design tokens
-    - When a matching component exists, extend it rather than creating a new one
-    - Document any new components added to the design system
-
-    ### Step 5: Achieve 1:1 Visual Parity
-
-    Strive for pixel-perfect visual parity with the Figma design across **all
-    breakpoints specified in your task**.
-
-    **Guidelines:**
-    - Prioritize Figma fidelity to match designs exactly
-    - All visual property values must be validated against get_variable_defs (Step 1a)
-      — this is mandatory, not optional
-    - Apply the Token Mapping Rule from Step 1a for every visual property
-    - Follow WCAG requirements for accessibility
-    - Keep components composable and reusable
-    - Add TypeScript types for component props
-    - Avoid inline styles unless truly necessary for dynamic values
-
-    ### Step 6: Validate Against Figma
-
-    Before marking complete, validate the final UI against the Figma screenshot from
-    Step 2.
-
-    **Validation checklist:**
-    - [ ] Layout matches (spacing, alignment, sizing)
-    - [ ] Typography matches (font, size, weight, line height)
-    - [ ] Colors match exactly
-    - [ ] Interactive states work as designed (hover, active, disabled)
-    - [ ] Responsive behavior across all specified breakpoints
-    - [ ] Assets render correctly
-    - [ ] Accessibility standards met
-
-    If you find discrepancies, fix them now. Compare side-by-side with the screenshot.
-    Check spacing, colors, and typography values in the design context data.
-
-    ### Step 7: Commit
-
-    Commit your work with a descriptive message.
-
-    ## Code Organization
-
-    You reason best about code you can hold in context at once, and your edits are more
-    reliable when files are focused. Keep this in mind:
-    - Follow the file structure defined in the plan
-    - Each file should have one clear responsibility with a well-defined interface
-    - Place UI components in the project's designated design system directory
-    - Follow the project's component naming conventions
-    - If a file you're creating is growing beyond the plan's intent, stop and report
-      it as DONE_WITH_CONCERNS — don't split files on your own without plan guidance
-    - In existing codebases, follow established patterns
-
-    ## When You're in Over Your Head
-
-    It is always OK to stop and say "this is too hard for me." Bad work is worse than
-    no work. You will not be penalized for escalating.
-
-    **STOP and escalate when:**
-    - The design is too complex to implement accurately in one pass
-    - You need to understand code beyond what was provided and can't find clarity
-    - You feel uncertain about whether your implementation matches the design
-    - The task involves restructuring existing code in ways the plan didn't anticipate
-    - Asset URLs are inaccessible and the design can't be implemented without them
-
-    **How to escalate:** Report back with status BLOCKED or NEEDS_CONTEXT. Describe
-    specifically what you're stuck on, what you've tried, and what kind of help you need.
-
-    ## Before Reporting Back: Self-Review
-
-    Review your work with fresh eyes. Ask yourself:
-
-    **Visual Fidelity:**
-    - Does the implementation match the Figma screenshot pixel-for-pixel?
-    - Are all breakpoints covered and responsive behavior correct?
-    - Did I capture all interactive states (hover, active, disabled, focus)?
-
-    **Design System Integration:**
-    - Did I reuse existing components where possible?
-    - Are design tokens mapped correctly? (Figma variable names matched to project
-      tokens by name; values verified to be identical; hardcoded Figma values used
-      when no exact match exists)
-    - Does the component follow the project's naming and organization conventions?
-
-    **Asset Handling:**
-    - Are all assets from the Figma payload used correctly?
-    - Did I avoid importing external icon packages?
-    - Do all assets render correctly?
-
-    **Quality:**
-    - Is the code clean and maintainable?
-    - Did I avoid overbuilding (YAGNI)?
-    - Did I follow existing patterns in the codebase?
-
-    **Deviations:**
-    - If I deviated from the Figma design, did I document why in code comments?
-    - Are deviations limited to accessibility or technical constraints?
-
-    If you find issues during self-review, fix them now before reporting.
-
-    ## Report Format
-
-    When done, report:
-    - **Status:** DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT
-    - What you implemented (component structure, key decisions)
-    - Visual validation results (did it match the screenshot?)
-    - Breakpoints covered
-    - Files changed
-    - Self-review findings (if any)
-    - Any deviations from the Figma design and why
-
-    Use DONE_WITH_CONCERNS if you completed the work but have doubts about visual
-    accuracy or asset handling. Use BLOCKED if you cannot complete the task (e.g.,
-    Figma MCP unavailable). Use NEEDS_CONTEXT if you need information that wasn't
-    provided. Never silently produce work you're unsure about.
-
-    Be thorough with DONE_WITH_CONCERNS — this is your primary channel for flagging
-    issues to the review phase. If anything feels uncertain, incomplete, or fragile,
-    flag it. The review phase will prioritize your concerns. Err on the side of
-    flagging — a false alarm costs nothing, a missed concern costs a review cycle.
-
-    ## Common Issues and Solutions
-
-    ### Issue: Figma output is truncated
-    **Cause:** The design is too complex or has too many nested layers.
-    **Solution:** Use get_metadata to get the node structure, then fetch specific
-    nodes individually with get_design_context.
-
-    ### Issue: Design doesn't match after implementation
-    **Cause:** Visual discrepancies between implemented code and Figma design.
-    **Solution:** Compare side-by-side with screenshot from Step 2. Check spacing,
-    colors, and typography values in the design context data.
-
-    ### Issue: Assets not loading
-    **Cause:** Asset URLs are inaccessible or have been modified.
-    **Solution:** Use asset URLs exactly as returned by the Figma MCP server. Do not
-    modify, proxy, or replace them. If still inaccessible, report as DONE_WITH_CONCERNS.
-
-    ### Issue: Figma token has no matching project token or values differ
-    **Cause:** Project design system tokens have different values than Figma specs,
-    or no equivalent token exists.
-    **Solution:** Use the exact Figma value hardcoded. Do not substitute approximate
-    project tokens. Only use a project token when both name and value match exactly.
-```
+**Status guidance:**
+- **DONE** — implementation matches Figma with full confidence.
+- **DONE_WITH_CONCERNS** — implementation is complete but you have doubts about visual accuracy, token mapping, or assets. Err on the side of flagging — a false alarm costs nothing.
+- **BLOCKED** — cannot proceed (e.g., Figma MCP unavailable, critical assets inaccessible).
+- **NEEDS_CONTEXT** — you need files or information not provided in the task.
+
+Never silently produce work you are uncertain about.
+
+## Escalation
+
+When stuck, report **BLOCKED** or **NEEDS_CONTEXT**. Include:
+- What you tried
+- What specifically is blocking you
+- What help you need
+
+It is always OK to stop and escalate. Bad work is worse than no work.
