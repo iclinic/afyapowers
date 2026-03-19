@@ -119,9 +119,12 @@ Task tool (general-purpose):
 
         get_screenshot(fileKey="<file_key>", nodeId="<node_id>")
 
-    This screenshot serves as the **source of truth** for visual validation. Keep it
-    accessible throughout implementation. You will compare your output against this
-    screenshot before reporting back.
+    This screenshot serves as the **source of truth for visual validation** (does the
+    layout look right?). Note: `get_variable_defs` from Step 1a is the source of truth
+    for **token values** (what exact color/font/spacing value to use). These are
+    complementary — tokens tell you what values to code, the screenshot tells you if
+    the result looks correct. Keep the screenshot accessible throughout implementation.
+    You will compare your output against this screenshot before reporting back.
 
     ### Step 3: Download Required Assets
 
