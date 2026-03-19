@@ -50,6 +50,8 @@ Call `get_variable_defs` for each node ID. This is the **single source of truth*
 - Shadows
 - Opacity
 
+**Fallback when `get_variable_defs` returns no tokens for a node:** Use the raw resolved values from `get_design_context` (the actual computed values, not the Tailwind class suggestions) and report the affected properties as DONE_WITH_CONCERNS so they can be verified in the review phase.
+
 ### Token Mapping Rule
 
 When translating Figma tokens to project code:
@@ -62,21 +64,54 @@ When translating Figma tokens to project code:
 
 ### Updated Step 4: Translate to Project Conventions
 
-Remove Tailwind-specific language. The key principle becomes:
+Replace the entire "Key principles" list and "Design System Integration" subsection. Remove Tailwind-specific language (e.g., "Replace Tailwind utility classes..."). The updated section:
 
-> Map Figma variable names from Step 1b to project design system tokens by name. Verify that matched tokens have identical values. If no matching token exists or values differ, use the exact Figma value hardcoded. Never approximate with a "close enough" project token.
+**Key principles:**
+- Treat the `get_design_context` output as a representation of component structure and behavior, **not** as visual styling guidance
+- Map Figma variable names from Step 1b to project design system tokens by name; verify values match before using the project token
+- If no matching token exists or values differ, use the exact Figma value hardcoded — never approximate with a "close enough" project token
+- Reuse existing components (buttons, inputs, typography, icon wrappers) instead of duplicating functionality
+- Respect existing routing, state management, and data-fetch patterns
+
+**Design System Integration:**
+- ALWAYS use components from the project's design system when possible
+- Map Figma variable names to project design tokens using the Token Mapping Rule (Step 1b)
+- When a matching component exists, extend it rather than creating a new one
+- Document any new components added to the design system
 
 ### Updated Step 5: Achieve Visual Parity
 
-Replace the optional `get_variable_defs` guidance with mandatory usage:
+Replace the **entire** "Guidelines" list in Step 5. The current guidance contains conflicting rules (e.g., "prefer design system tokens" and "adjust minimally") that contradict the token authority model. The full replacement:
 
-> All visual property values must come from `get_variable_defs` (Step 1b). When a Figma variable name matches a project token and their values match, use the project token. When a Figma variable name matches a project token but the values differ, use the exact Figma value hardcoded (Figma is the source of truth). When no matching project token exists by name, use the exact Figma value hardcoded. Do not use approximate tokens. Do not use values from `get_design_context`.
+**Guidelines:**
+- Prioritize Figma fidelity to match designs exactly
+- All visual property values must come from `get_variable_defs` (Step 1b) — this is mandatory, not optional
+- When a Figma variable name matches a project token **and their values are identical**, use the project token
+- When a Figma variable name matches a project token **but the values differ**, use the exact Figma value hardcoded (Figma is the source of truth)
+- When no matching project token exists by name, use the exact Figma value hardcoded
+- Do not use approximate tokens. Do not use visual property values from `get_design_context`
+- Follow WCAG requirements for accessibility
+- Keep components composable and reusable
+- Add TypeScript types for component props
+- Avoid inline styles unless truly necessary for dynamic values
 
 ### Updated Common Issues
 
 Replace the "Design token values differ from project" entry:
 
-> If a Figma variable has no matching project token by name, or the matched token has a different value, use the exact Figma value hardcoded. Do not substitute approximate project tokens.
+> **Issue: Figma token has no matching project token or values differ**
+> **Cause:** Project design system tokens have different values than Figma specs, or no equivalent token exists.
+> **Solution:** Use the exact Figma value hardcoded. Do not substitute approximate project tokens. Only use a project token when both name and value match exactly.
+
+### Updated Self-Review Section
+
+Replace the "Design System Integration" bullet (currently: "Are design tokens mapped correctly (project tokens over hardcoded values)?"):
+
+> Are design tokens mapped correctly? (Figma variable names matched to project tokens by name; values verified to be identical; hardcoded Figma values used when no exact match exists)
+
+### Clarification: Two Sources of Truth
+
+The screenshot from Step 2 remains the source of truth for **visual validation** (does the layout look right?). `get_variable_defs` is the source of truth for **token values** (what exact color/font/spacing value to use). These are complementary, not competing: tokens tell you what values to code, the screenshot tells you if the result looks correct.
 
 ## Design Principles
 
