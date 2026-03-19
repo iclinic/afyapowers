@@ -108,14 +108,7 @@ This structure informs the task decomposition. Each task should produce self-con
 - "Run the tests and make sure they pass" - step
 - "Commit" - step
 
-**For Figma tasks, steps follow the implement-design workflow instead of TDD:**
-- "Fetch design context for all task nodes" - step
-- "Capture screenshot for visual reference" - step
-- "Download required assets" - step
-- "Translate to project conventions" - step
-- "Achieve 1:1 visual parity across all breakpoints" - step
-- "Validate against Figma screenshot" - step
-- "Commit" - step
+**For Figma tasks:** a single step — "Implement using the Figma implementer workflow and commit". The subagent prompt owns the how. No implementation steps in the plan.
 
 ## Dependency Declaration
 
@@ -223,13 +216,7 @@ Use this format for tasks that implement UI components with Figma designs. The d
   | `<id>` | <name> | <type> | <parent> |
   | `<id>` | <name> | <type> | <parent> |
 
-- [ ] Step 1: Fetch design context for all task nodes
-- [ ] Step 2: Capture screenshot for visual reference
-- [ ] Step 3: Download required assets (images, icons, SVGs)
-- [ ] Step 4: Translate to project conventions
-- [ ] Step 5: Achieve 1:1 visual parity across all breakpoints
-- [ ] Step 6: Validate against Figma screenshot
-- [ ] Step 7: Commit
+- [ ] Implement using the Figma implementer workflow and commit
 ```
 
 **Building the Figma block:**
@@ -241,10 +228,10 @@ Use this format for tasks that implement UI components with Figma designs. The d
 
 ## Remember
 - Exact file paths always
-- Complete code in plan (not "add validation") — except for Figma tasks which use design-workflow steps instead of code
+- Complete code in plan (not "add validation") — except for Figma tasks which have a single workflow step
 - Exact commands with expected output
 - DRY, YAGNI, TDD (standard tasks), frequent commits
-- Figma tasks: no TDD, no code snippets — steps describe what to achieve, not how to code it
+- Figma tasks: no TDD, no code snippets, single workflow step — the subagent prompt owns the how
 
 ## Required Sub-Skills
 
