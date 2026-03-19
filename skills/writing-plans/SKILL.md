@@ -80,9 +80,11 @@ After **all** subagents complete:
 
 **Read the resulting component mapping** from `.afyapowers/features/<feature>/artifacts/figma-component-mapping.md` and use it to generate layered tasks:
 
-- **Layer 1 — Reusable components:** One task per component marked as `reusable-component` or `design-system-component`. These have no page-level dependencies and can be built first.
-- **Layer 2 — Page sections:** One task per `page-section`, with dependencies on any reusable components it uses as children.
-- **Layer 3 — Page assembly:** A final task composing all sections into the full page, depending on all section tasks.
+- **Layer 1 — Reusable components:** One task per component marked as `reusable-component` or `design-system-component`. These are individual tasks — never group multiple reusable components into a single screen-level task. These have no page-level dependencies and can be built first.
+- **Layer 2 — Page sections:** One task per `page-section`, with dependencies on any Layer 1 reusable components it uses as children.
+- **Layer 3 — Page assembly:** A final task composing all sections into the full page, depending on all Layer 2 section tasks.
+
+**Granularity rule:** If discovery identified a component (e.g., "Stats Card", "CTA Button") as reusable or as a distinct design-system-component, it MUST be its own task in Layer 1. Do not merge it into a parent section's task. The deeper the discovery goes, the more granular the tasks should be.
 
 Each Figma task uses the Figma Task Structure format (see below) with node IDs and breakpoints from the component mapping.
 
