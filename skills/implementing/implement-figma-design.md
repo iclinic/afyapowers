@@ -146,18 +146,22 @@ Task tool (general-purpose):
     Translate the Figma output into the project's framework, styles, and conventions.
 
     **Key principles:**
-    - Treat the Figma MCP output (typically React + Tailwind) as a representation of
-      design and behavior, **not** as final code style
-    - Replace Tailwind utility classes with the project's preferred utilities or design
-      system tokens
-    - Reuse existing components (buttons, inputs, typography, icon wrappers) instead of
-      duplicating functionality
-    - Use the project's color system, typography scale, and spacing tokens consistently
+    - Use the get_design_context implementation suggestions (Step 1b) as a starting
+      point, but cross-reference all token names against the get_variable_defs lookup
+      table (Step 1a)
+    - Map Figma variable names from Step 1a to project design system tokens by name;
+      verify values match before using the project token (see Token Mapping Rule in
+      Step 1a)
+    - If no matching token exists or values differ, use the exact Figma value
+      hardcoded — never approximate with a "close enough" project token
+    - Reuse existing components (buttons, inputs, typography, icon wrappers) instead
+      of duplicating functionality
     - Respect existing routing, state management, and data-fetch patterns
 
     **Design System Integration:**
     - ALWAYS use components from the project's design system when possible
-    - Map Figma design tokens to project design tokens
+    - Map Figma variable names to project design tokens using the Token Mapping Rule
+      (Step 1a)
     - When a matching component exists, extend it rather than creating a new one
     - Document any new components added to the design system
 
