@@ -7,7 +7,7 @@ description: Use when the current afyapowers phase is plan — creates implement
 
 ## Overview
 
-Write comprehensive implementation plans assuming the engineer has zero context for our codebase and questionable taste. Document everything they need to know: which files to touch for each task, code, testing, docs they might need to check, how to test it. Give them the whole plan as bite-sized tasks. DRY. YAGNI. TDD. Frequent commits.
+Write comprehensive implementation plans assuming the engineer has zero context for our codebase and questionable taste. Document everything they need to know: which files to touch for each task, step-by-step instructions, testing, docs they might need to check, how to test it. Give them the whole plan as bite-sized tasks. DRY. YAGNI. TDD. Frequent commits.
 
 Assume they are a skilled developer, but know almost nothing about our toolset or problem domain. Assume they don't know good test design very well.
 
@@ -55,14 +55,20 @@ Before defining tasks, map out which files will be created or modified and what 
 
 This structure informs the task decomposition. Each task should produce self-contained changes that make sense independently.
 
+## No Code Snippets
+
+Tasks must never contain code blocks with implementation code, test code, or inline code examples. Steps describe what to build, what to test, edge cases, and expected behavior — in plain language. The only acceptable code blocks are shell commands for running tests or committing.
+
+**Styling = Figma task:** When Figma Resources are present in the design doc, any task involving styling (CSS, Tailwind, component layout/disposition, visual properties) MUST be treated as a Figma task. Always split design and logic into separate tasks. Design (Figma) tasks come first; logic tasks depend on them. Goal: 100% visual fidelity before adding behavior.
+
+- **What counts as styling:** CSS properties, Tailwind classes, component layout, spacing, typography, colors, responsive breakpoints, content disposition
+- **What stays as standard tasks:** API integration, state management, form validation, event handlers, data fetching, business logic
+
 ## Bite-Sized Task Granularity
 
-**For standard (non-Figma) tasks, each step is one action (2-5 minutes):**
-- "Write the failing test" - step
-- "Run it to make sure it fails" - step
-- "Implement the minimal code to make the test pass" - step
-- "Run the tests and make sure they pass" - step
-- "Commit" - step
+**For standard (non-Figma) tasks,** each step is TDD-inspired with descriptive instructions (no code snippets). Each step describes what to do, why, which edge cases to cover, and expected outcomes:
+
+- Write the failing test (describe behaviors and expected outcomes) → run test and confirm failure (specify command and expected error) → implement minimal code (describe approach, patterns, decisions) → run test and confirm pass (specify command) → commit
 
 **For Figma tasks:** a single step — "Implement using the Figma implementer workflow and commit". The subagent prompt owns the how. No implementation steps in the plan.
 
@@ -116,35 +122,25 @@ File overlap validation is a safety net, not a substitute for thinking about tas
 
 - [ ] **Step 1: Write the failing test**
 
-```python
-def test_specific_behavior():
-    result = function(input)
-    assert result == expected
-```
+  Describe what behaviors to test: valid inputs, invalid inputs, edge cases.
+  Explain expected outcomes for each scenario. Specify which file to write
+  the test in and what module/function is being tested.
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pytest tests/path/test.py::test_name -v`
-Expected: FAIL with "function not defined"
+  Specify the exact command to run and the expected failure reason.
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 3: Implement the minimal code to pass the test**
 
-```python
-def function(input):
-    return expected
-```
+  Describe what the implementation should do, key decisions (which pattern
+  to follow, which existing utility to reuse), and edge cases to handle.
+  Specify which file to modify.
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `pytest tests/path/test.py::test_name -v`
-Expected: PASS
+  Specify the exact command to run.
 
 - [ ] **Step 5: Commit**
-
-```bash
-git add tests/path/test.py src/path/file.py
-git commit -m "feat: add specific feature"
-```
 ````
 
 ## Figma Task Structure
@@ -152,6 +148,8 @@ git commit -m "feat: add specific feature"
 Use this format for tasks that implement UI components with Figma designs. The design doc's `## Figma Resources` section provides the source data for the Figma block.
 
 **How to identify Figma tasks:** If the component being implemented has corresponding nodes in the design doc's `## Figma Resources` Node Map, it is a Figma task. Backend tasks, API routes, data models, business logic, and other non-UI tasks use the standard task structure above.
+
+**Design/logic split:** When Figma resources exist, tasks that involve any styling (CSS, Tailwind, layout, disposition) must be Figma tasks, even if they also have logic. Always create separate tasks: a Figma task for the visual design, then a standard task for the behavior/logic that depends on the Figma task. Example: "Contact Form Layout (Figma)" → "Contact Form Logic" (depends on layout task).
 
 **No TDD, no code snippets.** Figma tasks describe what to achieve — the implementer subagent uses the Figma MCP tools and the Figma implementer workflow to determine how.
 
@@ -184,10 +182,12 @@ Use this format for tasks that implement UI components with Figma designs. The d
 
 ## Remember
 - Exact file paths always
-- Complete code in plan (not "add validation") — except for Figma tasks which have a single workflow step
+- Describe behavior and edge cases completely (not just "add validation") — but never include code snippets
 - Exact commands with expected output
-- DRY, YAGNI, TDD (standard tasks), frequent commits
+- DRY, YAGNI, TDD-inspired (standard tasks), frequent commits
 - Figma tasks: no TDD, no code snippets, single workflow step — the subagent prompt owns the how
+- When Figma resources exist: always split design (Figma task) and logic (standard task) into separate tasks. Design first, logic depends on it
+- Any task touching styling (CSS, Tailwind, layout, disposition) MUST be a Figma task when Figma resources are available
 
 ## Required Sub-Skills
 
