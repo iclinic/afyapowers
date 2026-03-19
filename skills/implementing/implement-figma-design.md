@@ -246,7 +246,9 @@ Task tool (general-purpose):
 
     **Design System Integration:**
     - Did I reuse existing components where possible?
-    - Are design tokens mapped correctly (project tokens over hardcoded values)?
+    - Are design tokens mapped correctly? (Figma variable names matched to project
+      tokens by name; values verified to be identical; hardcoded Figma values used
+      when no exact match exists)
     - Does the component follow the project's naming and organization conventions?
 
     **Asset Handling:**
@@ -303,8 +305,9 @@ Task tool (general-purpose):
     **Solution:** Use asset URLs exactly as returned by the Figma MCP server. Do not
     modify, proxy, or replace them. If still inaccessible, report as DONE_WITH_CONCERNS.
 
-    ### Issue: Design token values differ from project
-    **Cause:** Project design system tokens have different values than Figma specs.
-    **Solution:** Prefer project tokens for consistency but adjust spacing/sizing
-    minimally to maintain visual fidelity. Document the deviation.
+    ### Issue: Figma token has no matching project token or values differ
+    **Cause:** Project design system tokens have different values than Figma specs,
+    or no equivalent token exists.
+    **Solution:** Use the exact Figma value hardcoded. Do not substitute approximate
+    project tokens. Only use a project token when both name and value match exactly.
 ```
