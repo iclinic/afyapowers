@@ -22,14 +22,18 @@ Three changes:
 
 **References to clean up:**
 - `skills/writing-plans/SKILL.md` — remove all figma-discovery dispatch logic (conditional `## Figma Resources` detection that triggers discovery, parallel subagent spawning per frame, merge step, and Step 4 layered generation from the mapping artifact)
-- `skills/subagent-driven-development/SKILL.md` — remove any references to figma-discovery
 - Any mention of `figma-component-mapping.md` as an artifact
+
+**Not in scope:**
+- `skills/subagent-driven-development/SKILL.md` — verified to have no references to figma-discovery
+- Historical spec and plan documents under `docs/` that reference figma-discovery are left unchanged — they document past design decisions
+- Stale `artifacts/figma/` directories in existing `.afyapowers/features/` are left as-is — they are historical artifacts from previous runs
 
 ### 2. Deepen the design skill's Node Map generation
 
 **File modified:** `skills/design/SKILL.md`
 
-**Current behavior:** Calls `get_metadata` on root nodes and builds a ~2-level Node Map.
+**Current behavior:** Calls `get_metadata` once per root node without recursion. The resulting Node Map depth depends on what the single call returns (typically 1-2 levels of children).
 
 **New behavior:** Recurse deeper:
 
@@ -114,11 +118,10 @@ Update `## Figma Resources` section to reflect deeper Node Map expectations and 
 | `skills/design/SKILL.md` | Add recursive `get_metadata` to component boundaries in Node Map generation |
 | `skills/writing-plans/SKILL.md` | Remove discovery dispatch, add direct Node Map layer inference |
 | `templates/design.md` | Update Figma Resources section with deeper hierarchy example and `×N` convention |
-| `skills/subagent-driven-development/SKILL.md` | Remove any figma-discovery references (if present) |
 
 ## Design Principles
 
 1. **Single source of truth** — the design doc's Node Map is the only Figma structure artifact. No intermediate mappings.
 2. **One phase produces, one phase consumes** — design builds the Node Map, planning reads it. No Figma calls at planning time.
 3. **Component boundaries as natural stopping points** — recurse until hitting COMPONENT/INSTANCE/COMPONENT_SET, which is semantically meaningful rather than an arbitrary depth limit.
-4. **Token efficiency** — eliminates the expensive two-phase discovery process (scan + parallel subagent analysis) that was the primary token consumer.
+4. **Token efficiency** — eliminates the expensive two-phase discovery process (scan + parallel subagent analysis) that was the primary token consumer. Design phase will make more `get_metadata` calls (bounded by max depth 5), but this is significantly cheaper than the full discovery process it replaces.
