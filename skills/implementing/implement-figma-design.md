@@ -172,10 +172,16 @@ Task tool (general-purpose):
 
     **Guidelines:**
     - Prioritize Figma fidelity to match designs exactly
-    - Avoid hardcoded values — use design tokens from Figma where available
-      (fetch with get_variable_defs if needed)
-    - When conflicts arise between design system tokens and Figma specs, prefer design
-      system tokens but adjust spacing or sizes minimally to match visuals
+    - All visual property values must be validated against get_variable_defs (Step 1a)
+      — this is mandatory, not optional
+    - When a Figma variable name matches a project token **and their values are
+      identical**, use the project token
+    - When a Figma variable name matches a project token **but the values differ**,
+      use the exact Figma value hardcoded (Figma is the source of truth)
+    - When no matching project token exists by name, use the exact Figma value
+      hardcoded
+    - Do not use approximate tokens. Always cross-reference token names from
+      get_design_context against get_variable_defs
     - Follow WCAG requirements for accessibility
     - Keep components composable and reusable
     - Add TypeScript types for component props
