@@ -56,18 +56,51 @@ Task tool (general-purpose):
 
     **Follow these steps in order. Do not skip steps.**
 
-    ### Step 1: Fetch Design Context
+    ### Step 1a: Fetch Authoritative Design Tokens
+
+    Run get_variable_defs for each node ID in your Figma Resources table **first**.
+
+        get_variable_defs(fileKey="<file_key>", nodeId="<node_id>")
+
+    This builds the authoritative token reference table — a mapping of token names
+    to their actual values for:
+    - Colors (fill, stroke, background, text)
+    - Typography (font family, size, weight, line height)
+    - Spacing (padding, margin, gap)
+    - Border radius, shadows, opacity
+
+    Keep this lookup table accessible — you will use it in Step 1b to validate
+    token names from get_design_context.
+
+    **Token Mapping Rule — apply this when translating tokens to project code:**
+    1. **Name match + value match:** Figma variable name matches a project token
+       by name AND their resolved values are identical → use the project token
+    2. **Name match + value mismatch:** Figma variable name matches a project token
+       by name BUT the values differ → use the exact Figma value hardcoded
+       (Figma is the source of truth)
+    3. **No name match:** No project token matches → use the exact Figma value
+       hardcoded
+
+    **Never** approximate or use a "closest" project token. It is either an exact
+    match (name + value) or a hardcoded Figma value.
+
+    ### Step 1b: Fetch Design Context with Token Cross-Reference
 
     Run get_design_context for each node ID in your Figma Resources table.
 
         get_design_context(fileKey="<file_key>", nodeId="<node_id>")
 
-    This provides the structured data including:
-    - Layout properties (Auto Layout, constraints, sizing)
-    - Typography specifications
-    - Color values and design tokens
-    - Component structure and variants
-    - Spacing and padding values
+    This provides:
+    - Component hierarchy and children ordering
+    - Auto-layout direction and mode (row/column, wrap, etc.)
+    - Constraints and sizing modes (fixed/hug/fill)
+    - Variants and interactive states (hover, active, disabled, focus)
+    - Component props and slot/composition patterns
+    - Implementation suggestions with token names
+
+    **Cross-reference all token names** from this output against the lookup table
+    from Step 1a. For each token name in the implementation suggestions, apply the
+    Token Mapping Rule to determine the correct value to use.
 
     **If the response is too large or truncated:**
     1. Run get_metadata(fileKey="<file_key>", nodeId="<node_id>") to get the
@@ -75,6 +108,10 @@ Task tool (general-purpose):
     2. Identify the specific child nodes needed from the metadata
     3. Fetch individual child nodes with
        get_design_context(fileKey="<file_key>", nodeId="<child_node_id>")
+
+    **Fallback:** If get_variable_defs returns no tokens for a node, use the raw
+    resolved values from get_design_context and report the affected properties as
+    DONE_WITH_CONCERNS so they can be verified in the review phase.
 
     ### Step 2: Capture Visual Reference
 
