@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make `get_variable_defs` the authoritative source for visual tokens in the Figma implementer subagent prompt, replacing Tailwind-biased suggestions from `get_design_context`.
+**Goal:** Make `get_variable_defs` the authoritative source for visual tokens in the Figma implementer subagent prompt. Call it first to build a token lookup table, then use `get_design_context` with cross-referencing.
 
-**Architecture:** Single-file edit to `skills/implementing/implement-figma-design.md`. Split Step 1 into two sub-steps (structure vs tokens), update Steps 4 and 5, update Common Issues, update Self-Review.
+**Architecture:** Single-file edit to `skills/implementing/implement-figma-design.md`. Split Step 1 into two sub-steps (1a: token lookup via `get_variable_defs`, 1b: design context with cross-reference), update Steps 4 and 5, update Common Issues, update Self-Review.
 
 **Tech Stack:** Markdown (prompt template)
 
@@ -26,42 +26,21 @@ All changes target `skills/implementing/implement-figma-design.md` (inside the `
 Replace lines 59-77 (the entire "### Step 1: Fetch Design Context" section) with:
 
 ```markdown
-    ### Step 1a: Fetch Component Structure & Behavior
+    ### Step 1a: Fetch Authoritative Design Tokens
 
-    Run get_design_context for each node ID in your Figma Resources table.
-
-        get_design_context(fileKey="<file_key>", nodeId="<node_id>")
-
-    Extract **only** structural and behavioral data from this output:
-    - Component hierarchy and children ordering
-    - Auto-layout direction and mode (row/column, wrap, etc.)
-    - Constraints and sizing modes (fixed/hug/fill)
-    - Variants and interactive states (hover, active, disabled, focus)
-    - Component props and slot/composition patterns
-
-    **Explicitly ignore** all visual property values from this output — colors,
-    font specifications, spacing values, border radii, shadows, opacity, etc.
-    These are framework-biased suggestions and must not be used for implementation.
-    Visual tokens come exclusively from Step 1b.
-
-    **If the response is too large or truncated:**
-    1. Run get_metadata(fileKey="<file_key>", nodeId="<node_id>") to get the
-       high-level node map
-    2. Identify the specific child nodes needed from the metadata
-    3. Fetch individual child nodes with
-       get_design_context(fileKey="<file_key>", nodeId="<child_node_id>")
-
-    ### Step 1b: Fetch Authoritative Design Tokens
-
-    Run get_variable_defs for each node ID in your Figma Resources table.
+    Run get_variable_defs for each node ID in your Figma Resources table **first**.
 
         get_variable_defs(fileKey="<file_key>", nodeId="<node_id>")
 
-    This is the **single source of truth** for all visual properties:
+    This builds the authoritative token reference table — a mapping of token names
+    to their actual values for:
     - Colors (fill, stroke, background, text)
     - Typography (font family, size, weight, line height)
     - Spacing (padding, margin, gap)
     - Border radius, shadows, opacity
+
+    Keep this lookup table accessible — you will use it in Step 1b to validate
+    token names from get_design_context.
 
     **Token Mapping Rule — apply this when translating tokens to project code:**
     1. **Name match + value match:** Figma variable name matches a project token
@@ -75,9 +54,33 @@ Replace lines 59-77 (the entire "### Step 1: Fetch Design Context" section) with
     **Never** approximate or use a "closest" project token. It is either an exact
     match (name + value) or a hardcoded Figma value.
 
+    ### Step 1b: Fetch Design Context with Token Cross-Reference
+
+    Run get_design_context for each node ID in your Figma Resources table.
+
+        get_design_context(fileKey="<file_key>", nodeId="<node_id>")
+
+    This provides:
+    - Component hierarchy and children ordering
+    - Auto-layout direction and mode (row/column, wrap, etc.)
+    - Constraints and sizing modes (fixed/hug/fill)
+    - Variants and interactive states (hover, active, disabled, focus)
+    - Component props and slot/composition patterns
+    - Implementation suggestions with token names
+
+    **Cross-reference all token names** from this output against the lookup table
+    from Step 1a. For each token name in the implementation suggestions, apply the
+    Token Mapping Rule to determine the correct value to use.
+
+    **If the response is too large or truncated:**
+    1. Run get_metadata(fileKey="<file_key>", nodeId="<node_id>") to get the
+       high-level node map
+    2. Identify the specific child nodes needed from the metadata
+    3. Fetch individual child nodes with
+       get_design_context(fileKey="<file_key>", nodeId="<child_node_id>")
+
     **Fallback:** If get_variable_defs returns no tokens for a node, use the raw
-    resolved values from get_design_context (the actual computed values, not the
-    framework-specific class suggestions) and report the affected properties as
+    resolved values from get_design_context and report the affected properties as
     DONE_WITH_CONCERNS so they can be verified in the review phase.
 ```
 
@@ -89,7 +92,7 @@ Read lines 59-110 of the file to confirm the new Step 1a and Step 1b are correct
 
 ```bash
 git add skills/implementing/implement-figma-design.md
-git commit -m "feat(figma): split Step 1 into structure (1a) and tokens (1b)"
+git commit -m "feat(figma): split Step 1 into tokens (1a) and design context (1b)"
 ```
 
 ### Task 2: Update Step 2 visual reference clarification
@@ -107,7 +110,7 @@ Find the line:
 Replace with:
 ```
     This screenshot serves as the **source of truth for visual validation** (does the
-    layout look right?). Note: `get_variable_defs` from Step 1b is the source of truth
+    layout look right?). Note: `get_variable_defs` from Step 1a is the source of truth
     for **token values** (what exact color/font/spacing value to use). These are
     complementary — tokens tell you what values to code, the screenshot tells you if
     the result looks correct. Keep the screenshot
@@ -133,11 +136,12 @@ Find and replace lines 104-122 (the entire Step 4 section body after the header)
     Translate the Figma output into the project's framework, styles, and conventions.
 
     **Key principles:**
-    - Treat the get_design_context output (Step 1a) as a representation of component
-      structure and behavior, **not** as visual styling guidance
-    - Map Figma variable names from Step 1b to project design system tokens by name;
+    - Use the get_design_context implementation suggestions (Step 1b) as a starting
+      point, but cross-reference all token names against the get_variable_defs lookup
+      table (Step 1a)
+    - Map Figma variable names from Step 1a to project design system tokens by name;
       verify values match before using the project token (see Token Mapping Rule in
-      Step 1b)
+      Step 1a)
     - If no matching token exists or values differ, use the exact Figma value
       hardcoded — never approximate with a "close enough" project token
     - Reuse existing components (buttons, inputs, typography, icon wrappers) instead
@@ -147,7 +151,7 @@ Find and replace lines 104-122 (the entire Step 4 section body after the header)
     **Design System Integration:**
     - ALWAYS use components from the project's design system when possible
     - Map Figma variable names to project design tokens using the Token Mapping Rule
-      (Step 1b)
+      (Step 1a)
     - When a matching component exists, extend it rather than creating a new one
     - Document any new components added to the design system
 ```
@@ -171,16 +175,16 @@ Find and replace the entire "Guidelines:" list (from "- Prioritize Figma fidelit
 ```markdown
     **Guidelines:**
     - Prioritize Figma fidelity to match designs exactly
-    - All visual property values must come from get_variable_defs (Step 1b) — this
-      is mandatory, not optional
+    - All visual property values must be validated against get_variable_defs (Step 1a)
+      — this is mandatory, not optional
     - When a Figma variable name matches a project token **and their values are
       identical**, use the project token
     - When a Figma variable name matches a project token **but the values differ**,
       use the exact Figma value hardcoded (Figma is the source of truth)
     - When no matching project token exists by name, use the exact Figma value
       hardcoded
-    - Do not use approximate tokens. Do not use visual property values from
-      get_design_context
+    - Do not use approximate tokens. Always cross-reference token names from
+      get_design_context against get_variable_defs
     - Follow WCAG requirements for accessibility
     - Keep components composable and reusable
     - Add TypeScript types for component props
