@@ -51,9 +51,11 @@
 - <breakpoint_name>: <width>px (Frame "<frame_name>", node `<node_id>`)
 
 ### Node Map
-<!-- Hierarchical structure from get_metadata -->
+<!-- Recursive get_metadata down to component boundaries (COMPONENT/INSTANCE/COMPONENT_SET) or leaf nodes. -->
+<!-- Mark repeated components with ×N count to signal reusability. -->
 
 #### Page: <page_name>
 - **<section_name>** (node `<node_id>`, <type>, <width>x<height>)
-  - <component_name> (node `<node_id>`, <type>)
-    - <child_name> (node `<node_id>`, <type>)
+  - <subsection_name> (node `<node_id>`, <type>)
+    - <component_name> (node `<node_id>`, COMPONENT) ×N
+  - <leaf_name> (node `<node_id>`, TEXT)
