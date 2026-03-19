@@ -56,7 +56,7 @@ Task tool (general-purpose):
 
     **Follow these steps in order. Do not skip steps.**
 
-    ### Step 1a: Fetch Authoritative Design Tokens
+    ### Step 1a: Build Authoritative Token Reference
 
     Run get_variable_defs for each node ID in your Figma Resources table **first**.
 
@@ -120,7 +120,7 @@ Task tool (general-purpose):
         get_screenshot(fileKey="<file_key>", nodeId="<node_id>")
 
     This screenshot serves as the **source of truth for visual validation** (does the
-    layout look right?). Note: `get_variable_defs` from Step 1a is the source of truth
+    layout look right?). Note: get_variable_defs from Step 1a is the source of truth
     for **token values** (what exact color/font/spacing value to use). These are
     complementary — tokens tell you what values to code, the screenshot tells you if
     the result looks correct. Keep the screenshot accessible throughout implementation.
@@ -146,22 +146,18 @@ Task tool (general-purpose):
     Translate the Figma output into the project's framework, styles, and conventions.
 
     **Key principles:**
-    - Use the get_design_context implementation suggestions (Step 1b) as a starting
-      point, but cross-reference all token names against the get_variable_defs lookup
-      table (Step 1a)
-    - Map Figma variable names from Step 1a to project design system tokens by name;
-      verify values match before using the project token (see Token Mapping Rule in
-      Step 1a)
-    - If no matching token exists or values differ, use the exact Figma value
-      hardcoded — never approximate with a "close enough" project token
+    - Start from the implementation suggestions returned by get_design_context, then
+      cross-reference every token name against the lookup table built in Step 1a
+    - Apply the Token Mapping Rule from Step 1a for every visual property — never
+      approximate with a "close enough" project token
     - Reuse existing components (buttons, inputs, typography, icon wrappers) instead
       of duplicating functionality
     - Respect existing routing, state management, and data-fetch patterns
 
     **Design System Integration:**
     - ALWAYS use components from the project's design system when possible
-    - Map Figma variable names to project design tokens using the Token Mapping Rule
-      (Step 1a)
+    - Apply the Token Mapping Rule from Step 1a when mapping Figma variables to
+      project design tokens
     - When a matching component exists, extend it rather than creating a new one
     - Document any new components added to the design system
 
@@ -174,14 +170,7 @@ Task tool (general-purpose):
     - Prioritize Figma fidelity to match designs exactly
     - All visual property values must be validated against get_variable_defs (Step 1a)
       — this is mandatory, not optional
-    - When a Figma variable name matches a project token **and their values are
-      identical**, use the project token
-    - When a Figma variable name matches a project token **but the values differ**,
-      use the exact Figma value hardcoded (Figma is the source of truth)
-    - When no matching project token exists by name, use the exact Figma value
-      hardcoded
-    - Do not use approximate tokens. Always cross-reference token names from
-      get_design_context against get_variable_defs
+    - Apply the Token Mapping Rule from Step 1a for every visual property
     - Follow WCAG requirements for accessibility
     - Keep components composable and reusable
     - Add TypeScript types for component props
