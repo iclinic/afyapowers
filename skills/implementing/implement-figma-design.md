@@ -13,7 +13,7 @@ This is a template for dispatching implementer subagents for Figma design tasks.
 
 1. **Figma is absolute authority.** Every visual property — colors, typography, spacing, borders, shadows, opacity — comes from Figma. Never substitute, approximate, or prefer codebase patterns over Figma values. If a token does not exist in the project, hardcode the Figma value.
 
-2. **3 mandatory MCP calls in order.** You must call `get_variable_defs` → `get_screenshot` → `get_design_context` for every task. No skipping, no reordering. The only additional call is `get_metadata`, used solely as an overflow handler when `get_design_context` responses are truncated.
+2. **3 mandatory MCP calls in order.** You must call `get_variable_defs` → `get_screenshot` → `get_design_context` for every task. No skipping, no reordering.
 
 3. **Assets come from Figma.** Always use Figma-provided assets. Before downloading, check if the exact same asset already exists in the codebase (dedup). Never substitute with local icon libraries.
 
@@ -63,8 +63,6 @@ This provides:
 
 Never approximate. Never use a "closest" project token. It is either an exact match (name + value) or a hardcoded Figma value.
 
-**If the response is truncated:** Call `get_metadata(fileKey, nodeId)` to get child IDs, then call `get_design_context` on the individual children.
-
 **Fallback:** If `get_variable_defs` returned no tokens for a node, use the raw resolved values from `get_design_context` and flag the affected properties as DONE_WITH_CONCERNS.
 
 ## Asset Rules
@@ -80,8 +78,38 @@ Never approximate. Never use a "closest" project token. It is either an exact ma
 1. **Figma overrides codebase patterns.** When the Figma design differs from project conventions, follow Figma.
 2. **Reuse existing components when they match.** If a project component matches what Figma shows, use it. If Figma shows something different, implement what Figma shows.
 3. **Token mapping is strict.** Exact name + exact value = project token. Anything else = hardcode the Figma value.
-4. **No additions beyond Figma.** Do not add extra JSDoc, TypeScript types beyond what is needed, features, or refactoring that Figma does not call for.
-5. **File constraint.** Only modify files listed in the task's Files section. If you need files not in the list, report NEEDS_CONTEXT.
+4. **Accessibility is the one exception.** Semantic HTML, `aria-label` on icon-only actions, focus states, and keyboard navigation must be added even when Figma does not specify them. Report any accessibility additions in your concerns.
+5. **No other additions beyond Figma.** Do not add features, refactoring, or architectural changes that Figma does not call for.
+6. **File constraint.** Only modify files listed in the task's Files section. If you need files not in the list, report NEEDS_CONTEXT.
+
+## Code Quality
+
+1. **TypeScript types for component props.** Define explicit prop types for every component. Derive variant types from Figma states (e.g., `type ButtonVariant = 'primary' | 'secondary'`).
+2. **Composable components.** Keep components small and composable — one Figma component = one React component. Use children/slots for content areas Figma marks as variable.
+3. **No inline styles unless dynamic.** Use CSS modules, styled-components, or the project's styling approach. Inline styles are acceptable only for values computed at runtime.
+4. **Accessible by default.** Use semantic HTML elements (`button`, `nav`, `main`, not generic `div`). Add `aria-label` when Figma shows icon-only actions. Ensure focus states and keyboard navigation for interactive elements.
+5. **Responsive behavior from Figma constraints.** Translate Figma auto-layout modes (fill, hug, fixed) into the equivalent CSS (flex-grow, fit-content, fixed width). If Figma shows responsive variants, implement them with appropriate breakpoints.
+
+## Best Practices
+
+### Validate Incrementally
+Compare against the Figma screenshot at each major structural milestone (layout skeleton, then sections, then details) — not only at the end. This catches drift early.
+
+### Document Deviations
+If you must deviate from Figma for technical or accessibility reasons, add a brief code comment explaining why. Report these deviations as DONE_WITH_CONCERNS.
+
+### Asset Dedup Before Download
+Always search the codebase for an existing exact match before downloading a new asset. Duplicate assets bloat the project and cause maintenance issues.
+
+## Common Issues
+
+### Design token values differ from Figma
+**Cause:** Project tokens have drifted from Figma values, or Figma uses updated values not yet reflected in the codebase.
+**Solution:** Follow the Token Mapping Rule — if the resolved values differ, hardcode the Figma value and flag as DONE_WITH_CONCERNS so the orchestrator can track token drift.
+
+### Assets not loading
+**Cause:** Figma MCP server's asset endpoint is unreachable or URLs were modified.
+**Solution:** Use asset URLs exactly as returned by the MCP server. Do not modify, proxy, or reconstruct them. If still failing, report BLOCKED.
 
 ## Reporting
 

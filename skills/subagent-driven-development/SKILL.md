@@ -21,7 +21,7 @@ digraph process {
     "Compute ready set" [shape=box];
     "Any tasks ready?" [shape=diamond];
     "Validate file overlap in ready set" [shape=box];
-    "Dispatch parallel Agent calls" [shape=box];
+    "Apply Figma concurrency cap\nDispatch parallel Agent calls" [shape=box];
     "Wait for all agents to return" [shape=box];
     "Process results" [shape=box];
     "All tasks done?" [shape=diamond];
@@ -34,8 +34,8 @@ digraph process {
     "Compute ready set" -> "Any tasks ready?";
     "Any tasks ready?" -> "Write implementation-concerns.md" [label="all done"];
     "Any tasks ready?" -> "Validate file overlap in ready set" [label="yes"];
-    "Validate file overlap in ready set" -> "Dispatch parallel Agent calls";
-    "Dispatch parallel Agent calls" -> "Wait for all agents to return";
+    "Validate file overlap in ready set" -> "Apply Figma concurrency cap\nDispatch parallel Agent calls";
+    "Apply Figma concurrency cap\nDispatch parallel Agent calls" -> "Wait for all agents to return";
     "Wait for all agents to return" -> "Process results";
     "Process results" -> "All tasks done?";
     "All tasks done?" -> "Compute ready set" [label="more tasks"];
@@ -89,7 +89,17 @@ Check every pair of tasks in the ready set. If two tasks share any file path in 
 
 ### Step 5: Dispatch
 
-Dispatch all ready tasks as parallel Agent tool calls in a single message.
+**Figma-aware concurrency:** After file overlap validation, classify each task in the ready set:
+- **Figma task**: task text contains a `**Figma:**` section
+- **Non-Figma task**: no `**Figma:**` section
+
+Apply concurrency caps:
+- **Non-Figma tasks**: dispatch all (no cap)
+- **Figma tasks**: dispatch up to **3** per cycle. If more than 3 Figma tasks are ready, pick the first 3 by task number; the rest stay in the ready pool for the next cycle
+
+> **Why 3?** The Figma MCP rate-limits at 20 requests/minute. Each Figma task makes 3-4 MCP calls, so 3 concurrent tasks ≈ 9-12 calls — safely under the limit.
+
+Dispatch the combined set (all non-Figma + up to 3 Figma) as parallel Subagent calls in a single message.
 
 **Prompt routing:** Select the correct implementer prompt based on the task type:
 - If the task text contains a `**Figma:**` section → use `skills/implementing/implement-figma-design.md` prompt template. Include the Figma metadata (file key, nodes table, breakpoints) in the agent context.
@@ -144,6 +154,16 @@ Ready: [5] (deps [3,4] all completed) → dispatch
   → Agent(Task 5) dispatched
   → Returns DONE
 Completed: [1, 2, 3, 4, 5] → Write implementation-concerns.md → Done
+```
+
+#### Mixed Figma / Non-Figma Example
+
+```
+Ready: [1(std), 2(std), 3(figma), 4(figma), 5(std), 6(figma), 7(figma)]
+→ Classify: non-Figma = [1, 2, 5], Figma = [3, 4, 6, 7]
+→ Apply caps: all non-Figma + first 3 Figma
+→ Dispatch: [1, 2, 5] + [3, 4, 6] = 6 parallel agents
+→ Task 7 (Figma) waits for next cycle
 ```
 
 ### Fallback to Sequential
