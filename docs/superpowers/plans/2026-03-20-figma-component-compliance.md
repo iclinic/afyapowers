@@ -1,6 +1,6 @@
 # Figma Component Compliance Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Fix component node ID preservation in design docs and per-component task generation in implementation plans.
 
@@ -16,7 +16,7 @@
 - Modify: `templates/design.md:53-61`
 **Depends on:** none
 
-- [ ] **Step 1: Replace the Node Map section**
+- [x] **Step 1: Replace the Node Map section**
 
   Replace lines 53-61 in `templates/design.md`. The current flat format (single `#### Page:` with all nodes nested under frames) becomes a two-subsection format with **Reusable Components** and **Screens** separated.
 
@@ -53,11 +53,11 @@
     - <leaf_name> (node `<node_id>`, TEXT)
   ```
 
-- [ ] **Step 2: Verify the template renders correctly**
+- [x] **Step 2: Verify the template renders correctly**
 
   Read the full file and confirm the Figma Resources section flows logically: File → File Key → Breakpoints → Node Map (with Reusable Components and Screens subsections).
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
   ```bash
   git add templates/design.md
@@ -72,7 +72,7 @@
 - Modify: `skills/design/SKILL.md:117-134`
 **Depends on:** Task 1
 
-- [ ] **Step 1: Rename Layer to Depth in lines 117-127**
+- [x] **Step 1: Rename Layer to Depth in lines 117-127**
 
   In the `get_metadata` instructions, replace all "Layer 0/1/2" references with "Depth 0/1/2" and rewrite sub-instructions a/b/c to reference the separated format.
 
@@ -91,7 +91,7 @@
      b. **Screens:** List each depth-1 FRAME with its node ID, type, and dimensions. Under each frame, list its depth-2 children (excluding COMPONENT/COMPONENT_SET nodes already listed above). Collapse repeated INSTANCE nodes sharing the same `componentId` with a `×N` count.
   ```
 
-- [ ] **Step 2: Insert worked example + validation after line 134**
+- [x] **Step 2: Insert worked example + validation after line 134**
 
   After the line `Use the template from \`templates/design.md\` for the section structure.`, insert the following block:
 
@@ -138,11 +138,11 @@
      5. If no COMPONENT/COMPONENT_SET nodes exist, **Reusable Components** says `(none — all components are external or pre-existing)`
   ````
 
-- [ ] **Step 3: Verify no "Layer" references remain in the get_metadata section**
+- [x] **Step 3: Verify no "Layer" references remain in the get_metadata section**
 
   Search `skills/design/SKILL.md` for the word "layer" (case-insensitive) in the Figma discovery section (lines 107-140 area). Only "depth" should appear. "Layer" references may still exist elsewhere in the file if they refer to other contexts — that's fine, only the `get_metadata` instructions should use "depth".
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
   ```bash
   git add skills/design/SKILL.md
@@ -157,7 +157,7 @@
 - Modify: `skills/writing-plans/SKILL.md:35-41`
 **Depends on:** none
 
-- [ ] **Step 1: Update Layer 1/Layer 2 descriptions in lines 35-37**
+- [x] **Step 1: Update Layer 1/Layer 2 descriptions in lines 35-37**
 
   Replace lines 35-37 (from `1. **Layer 1 — Reusable components:**` through `2. **Layer 2 — Sections:**`) with:
 
@@ -169,7 +169,7 @@
 
   Note: "Sections" is renamed to "Screens" for consistency with the Node Map format.
 
-- [ ] **Step 2: Insert worked example + validation after line 41**
+- [x] **Step 2: Insert worked example + validation after line 41**
 
   After the line `Each Figma task uses the Figma Task Structure format (see below) with a single node ID and breakpoints from the design doc's \`## Figma Resources\` section.`, insert:
 
@@ -219,7 +219,7 @@
      4. Layer 2 tasks depend on Layer 1 tasks whose components were originally children of that frame (extracted COMPONENT/COMPONENT_SET or INSTANCE references)
   ````
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
   ```bash
   git add skills/writing-plans/SKILL.md
