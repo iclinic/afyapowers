@@ -95,14 +95,14 @@ Check every pair of tasks in the ready set. If two tasks share any file path in 
 
 Apply concurrency caps:
 - **Non-Figma tasks**: dispatch all (no cap)
-- **Figma tasks**: dispatch up to **3** per cycle. If more than 3 Figma tasks are ready, pick the first 3 by task number; the rest stay in the ready pool for the next cycle
+- **Figma tasks**: dispatch up to **2** per cycle. If more than 2 Figma tasks are ready, pick the first 2 by task number; the rest stay in the ready pool for the next cycle
 
-> **Why 3?** The Figma MCP rate-limits at 20 requests/minute. Each Figma task makes 3-4 MCP calls, so 3 concurrent tasks ≈ 9-12 calls — safely under the limit.
+> **Why 2?** The Figma MCP rate-limits at 15 requests/minute. Each Figma task makes 3 mandatory MCP calls, so 2 concurrent tasks = 6 calls — safely under the limit.
 
-Dispatch the combined set (all non-Figma + up to 3 Figma) as parallel Subagent calls in a single message.
+Dispatch the combined set (all non-Figma + up to 2 Figma) as parallel Subagent calls in a single message.
 
 **Prompt routing:** Select the correct implementer prompt based on the task type:
-- If the task text contains a `**Figma:**` section → use `skills/implementing/implement-figma-design.md` prompt template. Include the Figma metadata (file key, nodes table, breakpoints) in the agent context.
+- If the task text contains a `**Figma:**` section → use `skills/implementing/implement-figma-design.md` prompt template. Include the Figma metadata (file key, node ID, breakpoints) in the agent context.
 - If the task does NOT contain a `**Figma:**` section → use `skills/implementing/implementer-prompt.md` prompt template (standard TDD implementer).
 
 Each agent gets:
@@ -159,11 +159,11 @@ Completed: [1, 2, 3, 4, 5] → Write implementation-concerns.md → Done
 #### Mixed Figma / Non-Figma Example
 
 ```
-Ready: [1(std), 2(std), 3(figma), 4(figma), 5(std), 6(figma), 7(figma)]
-→ Classify: non-Figma = [1, 2, 5], Figma = [3, 4, 6, 7]
-→ Apply caps: all non-Figma + first 3 Figma
-→ Dispatch: [1, 2, 5] + [3, 4, 6] = 6 parallel agents
-→ Task 7 (Figma) waits for next cycle
+Ready: [1(std), 2(std), 3(figma), 4(figma), 5(std), 6(figma)]
+→ Classify: non-Figma = [1, 2, 5], Figma = [3, 4, 6]
+→ Apply caps: all non-Figma + first 2 Figma
+→ Dispatch: [1, 2, 5] + [3, 4] = 5 parallel agents
+→ Task 6 (Figma) waits for next cycle
 ```
 
 ### Fallback to Sequential
