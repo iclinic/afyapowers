@@ -1,6 +1,6 @@
 # Figma Shallow Node Map & Rate Limit Optimization — Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Reduce Figma MCP calls during design phase to 1, simplify task mapping to 1 node ID per task, and lower SDD concurrency cap to stay within 15 req/min.
 
@@ -16,7 +16,7 @@
 - Modify: `templates/design.md:50,53-62`
 **Depends on:** none
 
-- [ ] **Step 1: Replace the Node Map section**
+- [x] **Step 1: Replace the Node Map section**
 
   Replace the current deep Node Map template (lines 53-62) with the shallow format. Lines 42-49 and 51-52 are preserved as-is. The new Node Map has max 2 levels: top-level frames at level 1, components/elements at level 2. Include `componentId` for INSTANCE nodes and `×N` notation for repeated instances.
 
@@ -29,11 +29,11 @@
     - <leaf_name> (node `<node_id>`, TEXT)
   ```
 
-- [ ] **Step 2: Update the Breakpoints section comment**
+- [x] **Step 2: Update the Breakpoints section comment**
 
   Change the comment on line 50 from referencing `get_design_context` to noting that breakpoints are inferred from top-level frame names and dimensions in the `get_metadata` response.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
   ```bash
   git add templates/design.md
@@ -48,7 +48,7 @@
 - Modify: `templates/plan.md:28-44`
 **Depends on:** none
 
-- [ ] **Step 1: Replace the Figma task template**
+- [x] **Step 1: Replace the Figma task template**
 
   Replace the current Figma task template (lines 28-44) which has a multi-row Nodes table with the simplified single Node ID structure:
 
@@ -65,10 +65,10 @@
   - **Node ID:** `<id>`
   - **Breakpoints:** <breakpoint_name> (<width>px), ...
 
-  - [ ] Implement using the Figma implementer workflow and commit
+  - [x] Implement using the Figma implementer workflow and commit
   ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
   ```bash
   git add templates/plan.md
@@ -83,7 +83,7 @@
 - Modify: `skills/design/SKILL.md:107-138`
 **Depends on:** none
 
-- [ ] **Step 1: Replace the entire Figma discovery process (lines 107-138) in a single pass**
+- [x] **Step 1: Replace the entire Figma discovery process (lines 107-138) in a single pass**
 
   Replace everything from "If the user provides Figma URL(s):" (line 107) through "Use the template from `templates/design.md` for the section structure." (line 138). Lines 139-144 (MCP unavailable warning, no-Figma fallback, design tokens note) are preserved as-is. The new process has 3 steps:
 
@@ -104,7 +104,7 @@
 
   This single replacement removes the old recursive `get_metadata` logic, the `get_design_context` on top-level frames step, and the old "Build the Figma Resources section" step — all in one pass. No `get_screenshot` or `get_design_context` calls during the design phase — these are deferred to implementation. This keeps the design phase at exactly 1 MCP call regardless of file complexity.
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
   ```bash
   git add skills/design/SKILL.md
@@ -119,7 +119,7 @@
 - Modify: `skills/writing-plans/SKILL.md:29-181`
 **Depends on:** none
 
-- [ ] **Step 1: Replace the Figma Task Layer Inference section**
+- [x] **Step 1: Replace the Figma Task Layer Inference section**
 
   Replace lines 29-45 with the new 2-layer inference. The old Layer 1 rule on line 35 ("or entries with a `×N` count") must be removed and replaced with the new INSTANCE rule below:
 
@@ -133,7 +133,7 @@
 
   Update the Figma task reference to say "node ID" (singular) instead of "node IDs".
 
-- [ ] **Step 2: Replace the Figma Task Structure section**
+- [x] **Step 2: Replace the Figma Task Structure section**
 
   Replace lines 146-181. The new Figma Task Structure uses a single Node ID instead of a Nodes table:
 
@@ -150,7 +150,7 @@
   - **Node ID:** `<id>`
   - **Breakpoints:** <breakpoint_name> (<width>px), ...
 
-  - [ ] Implement using the Figma implementer workflow and commit
+  - [x] Implement using the Figma implementer workflow and commit
   ```
 
   Update "Building the Figma block" instructions:
@@ -160,7 +160,7 @@
 
   Remove the **Nodes:** instruction about selecting nodes and their children — no longer applicable.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
   ```bash
   git add skills/writing-plans/SKILL.md
@@ -175,25 +175,25 @@
 - Modify: `skills/subagent-driven-development/SKILL.md:90-167`
 **Depends on:** none
 
-- [ ] **Step 1: Update the concurrency cap**
+- [x] **Step 1: Update the concurrency cap**
 
   On line 98, change "dispatch up to **3** per cycle" to "dispatch up to **2** per cycle". Update "pick the first 3" to "pick the first 2".
 
-- [ ] **Step 2: Update the "Why" comment**
+- [x] **Step 2: Update the "Why" comment**
 
   Replace line 100:
   - Old: `> **Why 3?** The Figma MCP rate-limits at 20 requests/minute. Each Figma task makes 3-4 MCP calls, so 3 concurrent tasks ≈ 9-12 calls — safely under the limit.`
   - New: `> **Why 2?** The Figma MCP rate-limits at 15 requests/minute. Each Figma task makes 3 mandatory MCP calls, so 2 concurrent tasks = 6 calls — safely under the limit.`
 
-- [ ] **Step 3: Update line 102**
+- [x] **Step 3: Update line 102**
 
   Change "up to 3 Figma" to "up to 2 Figma".
 
-- [ ] **Step 4: Update the prompt routing note**
+- [x] **Step 4: Update the prompt routing note**
 
   On line 105, change "nodes table" to "node ID" in the Figma metadata reference: "Include the Figma metadata (file key, node ID, breakpoints) in the agent context."
 
-- [ ] **Step 5: Update the Mixed Figma / Non-Figma worked example**
+- [x] **Step 5: Update the Mixed Figma / Non-Figma worked example**
 
   Replace lines 161-167 to reflect the cap of 2:
   ```
@@ -204,7 +204,7 @@
   → Task 6 (Figma) waits for next cycle
   ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
   ```bash
   git add skills/subagent-driven-development/SKILL.md
@@ -219,19 +219,19 @@
 - Modify: `skills/implementing/implement-figma-design.md:27-50`
 **Depends on:** none
 
-- [ ] **Step 1: Update Step 1 (Build Token Reference Table)**
+- [x] **Step 1: Update Step 1 (Build Token Reference Table)**
 
   On line 29, change "Call `get_variable_defs(fileKey, nodeId)` for each node ID in your Figma Resources table" to "Call `get_variable_defs(fileKey, nodeId)` using the single node ID from your task's Figma block."
 
-- [ ] **Step 2: Update Step 2 (Capture Visual Reference)**
+- [x] **Step 2: Update Step 2 (Capture Visual Reference)**
 
   On line 41, change "Call `get_screenshot(fileKey, nodeId)` for the primary node(s) in your task" to "Call `get_screenshot(fileKey, nodeId)` using the single node ID from your task's Figma block."
 
-- [ ] **Step 3: Update Step 3 (Fetch Design Context)**
+- [x] **Step 3: Update Step 3 (Fetch Design Context)**
 
   On line 47, change "Call `get_design_context(fileKey, nodeId)` for each node ID in your Figma Resources table" to "Call `get_design_context(fileKey, nodeId)` using the single node ID from your task's Figma block."
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
   ```bash
   git add skills/implementing/implement-figma-design.md
