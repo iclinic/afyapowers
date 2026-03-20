@@ -34,10 +34,7 @@
 
 **Figma:**
 - **File Key:** `<file_key>`
+- **Node ID:** `<id>`
 - **Breakpoints:** <breakpoint_name> (<width>px), ...
-- **Nodes:**
-  | Node ID | Name | Type | Parent |
-  |---------|------|------|--------|
-  | `<id>` | <name> | <type> | <parent> |
 
 - [ ] Implement using the Figma implementer workflow and commit
