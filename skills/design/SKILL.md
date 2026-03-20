@@ -114,17 +114,16 @@ If the user provides Figma URL(s):
    ```
    get_metadata(fileKey=":fileKey", nodeId="X-Y")
    ```
-   From the response, build the Node Map using only the first 2 levels of the returned tree:
-   - **Layer 0:** Page
-   - **Layer 1:** Screen/Section (top-level frames — names and dimensions are included in metadata)
-   - **Layer 2:** Component or element (the task unit)
+   From the response, build the Node Map using only the first 2 depth levels of the returned tree:
+   - **Depth 0:** Page
+   - **Depth 1:** Screen/Section (top-level frames — names and dimensions are included in metadata)
+   - **Depth 2:** Component or element (the task unit)
 
-   Ignore any nodes deeper than layer 2. Breakpoints are inferred from top-level frame names and dimensions (e.g., "Desktop" at 1440px, "Mobile" at 375px).
+   Ignore any nodes deeper than depth 2. Breakpoints are inferred from top-level frame names and dimensions (e.g., "Desktop" at 1440px, "Mobile" at 375px).
 
-   From the response:
-   a. Record each layer-2 node with its id, name, type, and parent
-   b. Mark **COMPONENT/COMPONENT_SET** nodes as reusable
-   c. Collapse repeated **INSTANCE** nodes sharing the same `componentId` with a `×N` count to signal reusability to the planning phase
+   From the response, build the Node Map with two subsections:
+   a. **Reusable Components:** Extract all depth-2 nodes typed COMPONENT or COMPONENT_SET. List each with its node ID and type. If none exist, write `(none — all components are external or pre-existing)`.
+   b. **Screens:** List each depth-1 FRAME with its node ID, type, and dimensions. Under each frame, list its depth-2 children (excluding COMPONENT/COMPONENT_SET nodes already listed above). Collapse repeated INSTANCE nodes sharing the same `componentId` with a `×N` count.
 
 3. **Build the `## Figma Resources` section** for the design doc:
    - File info (URL, file key)
@@ -132,6 +131,47 @@ If the user provides Figma URL(s):
    - Node Map (shallow structure from `get_metadata`: page → section → component/element)
 
    Use the template from `templates/design.md` for the section structure.
+
+   #### Example
+
+   `get_metadata` returns:
+   ```
+   Page "Landing Page"
+     Frame "Hero Section" (id: 1:2, type: FRAME, 1440x800)
+       ├── "Hero Title" (id: 1:3, type: TEXT)
+       ├── "CTA Button" (id: 1:4, type: COMPONENT)
+       ├── "Card" (id: 1:5, type: INSTANCE, componentId: 2:10)
+       ├── "Card" (id: 1:6, type: INSTANCE, componentId: 2:10)
+       └── "Card" (id: 1:7, type: INSTANCE, componentId: 2:10)
+     Frame "Pricing Section" (id: 2:1, type: FRAME, 1440x600)
+       ├── "Pricing Tier" (id: 2:10, type: COMPONENT_SET)
+       ├── "Section Title" (id: 2:11, type: TEXT)
+       └── "Pricing Tier" (id: 2:12, type: INSTANCE, componentId: 2:10)
+   ```
+
+   Correct Node Map output:
+   ```
+   #### Page: Landing Page
+
+   **Reusable Components:**
+   - CTA Button (node `1:4`, COMPONENT)
+   - Pricing Tier (node `2:10`, COMPONENT_SET)
+
+   **Screens:**
+   - **Hero Section** (node `1:2`, FRAME, 1440x800)
+     - Card (node `1:5`, INSTANCE, componentId: `2:10`) ×3
+     - Hero Title (node `1:3`, TEXT)
+   - **Pricing Section** (node `2:1`, FRAME, 1440x600)
+     - Pricing Tier (node `2:12`, INSTANCE, componentId: `2:10`) ×1
+     - Section Title (node `2:11`, TEXT)
+   ```
+
+   **Node Map validation (run before finalizing the Figma Resources section):**
+   1. Every COMPONENT/COMPONENT_SET node from the metadata has an entry with `node \`<id>\`` and its type in **Reusable Components**
+   2. No COMPONENT/COMPONENT_SET node was omitted or merged into a screen's children
+   3. INSTANCE nodes with the same componentId are collapsed with ×N count under their parent screen in **Screens**
+   4. Every depth-1 FRAME has its node ID and dimensions in **Screens**
+   5. If no COMPONENT/COMPONENT_SET nodes exist, **Reusable Components** says `(none — all components are external or pre-existing)`
 
 No `get_screenshot` or `get_design_context` calls during the design phase — these are deferred to implementation, where the subagent already calls them per-task. This keeps the design phase at exactly **1 MCP call** regardless of file complexity.
 
