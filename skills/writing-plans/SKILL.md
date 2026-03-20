@@ -32,13 +32,57 @@ Before defining Figma tasks, check if the design doc contains a `## Figma Resour
 
 **If Figma Resources are present**, read the Node Map and infer task layers directly — no Figma MCP calls at planning time:
 
-1. **Layer 1 — Reusable components:** COMPONENT/COMPONENT_SET nodes at layer 2. Each becomes a task with its single node ID. No dependencies. INSTANCE nodes with `×N` count only become Layer 1 tasks when their COMPONENT definition is NOT present in the same file (external component) — otherwise the COMPONENT node itself is the Layer 1 task and the INSTANCEs are usages handled by their parent section's Layer 2 task.
+1. **Layer 1 — Reusable components:** Each entry in the Node Map's **Reusable Components** subsection becomes a Layer 1 task with its single node ID. No dependencies. INSTANCE nodes with `×N` count only become Layer 1 tasks when their COMPONENT definition is NOT present in the same file (external component) — otherwise the COMPONENT node itself is the Layer 1 task and the INSTANCEs are usages handled by their parent section's Layer 2 task. If **Reusable Components** is empty or says "(none)", there are no Layer 1 tasks.
 
-2. **Layer 2 — Sections:** Each top-level FRAME becomes a task with its single node ID. Depends on any Layer 1 tasks whose components appear as children within that frame.
+2. **Layer 2 — Screens:** Each entry in the Node Map's **Screens** subsection becomes a Layer 2 task with its single node ID. Depends on any Layer 1 tasks whose components were originally children of that frame (either as COMPONENT/COMPONENT_SET nodes extracted to Reusable Components, or as INSTANCE nodes referencing a Reusable Component).
 
 **Granularity rule:** If a node is typed COMPONENT/COMPONENT_SET, it MUST be its own Layer 1 task. Do not merge it into a parent section's task.
 
 Each Figma task uses the Figma Task Structure format (see below) with a single node ID and breakpoints from the design doc's `## Figma Resources` section.
+
+#### Example
+
+Given this Node Map from the design doc:
+```
+**Reusable Components:**
+- CTA Button (node `1:4`, COMPONENT)
+- Pricing Tier (node `2:10`, COMPONENT_SET)
+
+**Screens:**
+- **Hero Section** (node `1:2`, FRAME, 1440x800)
+  - Card (node `1:5`, INSTANCE, componentId: `2:10`) ×3
+  - Hero Title (node `1:3`, TEXT)
+- **Pricing Section** (node `2:1`, FRAME, 1440x600)
+  - Pricing Tier (node `2:12`, INSTANCE, componentId: `2:10`) ×1
+  - Section Title (node `2:11`, TEXT)
+```
+
+Correct task output:
+```
+Task 1: CTA Button (Figma)         — Layer 1, node `1:4`, depends on: none
+Task 2: Pricing Tier (Figma)       — Layer 1, node `2:10`, depends on: none
+Task 3: Hero Section (Figma)       — Layer 2, node `1:2`, depends on: Task 1, Task 2
+Task 4: Pricing Section (Figma)    — Layer 2, node `2:1`, depends on: Task 2
+```
+
+Wrong output — DO NOT do this:
+```
+Task 1: Hero Section (Figma)       — merges CTA Button into screen task
+Task 2: Pricing Section (Figma)    — merges Pricing Tier into screen task
+```
+↑ Components must be their own Layer 1 tasks. Never merge them into screen tasks.
+
+When **Reusable Components** is empty:
+```
+Task 1: Hero Section (Figma)       — Layer 2, node `1:2`, depends on: none
+Task 2: Pricing Section (Figma)    — Layer 2, node `2:1`, depends on: none
+```
+
+**Figma task validation (run before finalizing the plan):**
+1. Every entry in **Reusable Components** has a corresponding Layer 1 task with its node ID (trivially passes if Reusable Components is empty)
+2. Every entry in **Screens** has a corresponding Layer 2 task with its node ID
+3. No Layer 2 task includes implementation work for a component that has its own Layer 1 task
+4. Layer 2 tasks depend on Layer 1 tasks whose components were originally children of that frame (extracted COMPONENT/COMPONENT_SET or INSTANCE references)
 
 **If no Figma Resources:** Skip this section entirely. Proceed with standard task generation.
 
