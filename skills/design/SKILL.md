@@ -110,15 +110,16 @@ If the user provides Figma URL(s):
    - URL format: `https://figma.com/design/:fileKey/:fileName?node-id=X-Y`
    - Extract `:fileKey` (segment after `/design/`) and `X-Y` (value of `node-id` parameter)
 
-2. **Single `get_metadata` call at depth 2** from the root node
+2. **Single `get_metadata` call** on the root node
    ```
    get_metadata(fileKey=":fileKey", nodeId="X-Y")
    ```
-   The single call returns the full tree to depth 2:
+   From the response, build the Node Map using only the first 2 levels of the returned tree:
    - **Layer 0:** Page
    - **Layer 1:** Screen/Section (top-level frames — names and dimensions are included in metadata)
    - **Layer 2:** Component or element (the task unit)
-   No recursion — one call per provided URL. Breakpoints are inferred from top-level frame names and dimensions (e.g., "Desktop" at 1440px, "Mobile" at 375px).
+
+   Ignore any nodes deeper than layer 2. Breakpoints are inferred from top-level frame names and dimensions (e.g., "Desktop" at 1440px, "Mobile" at 375px).
 
    From the response:
    a. Record each layer-2 node with its id, name, type, and parent

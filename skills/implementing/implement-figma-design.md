@@ -65,6 +65,8 @@ Never approximate. Never use a "closest" project token. It is either an exact ma
 
 **Fallback:** If `get_variable_defs` returned no tokens for a node, use the raw resolved values from `get_design_context` and flag the affected properties as DONE_WITH_CONCERNS.
 
+**Truncation fallback:** If `get_design_context` returns a truncated response (indicated by missing expected child nodes or incomplete data), call `get_metadata` on the child nodes that need more detail. This is the only case where additional MCP calls are made beyond the 3 mandatory ones.
+
 ## Asset Rules
 
 1. **Always use Figma assets.** Icons, images, and SVGs come from the Figma MCP server.
