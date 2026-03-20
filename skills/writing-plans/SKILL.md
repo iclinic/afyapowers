@@ -32,15 +32,13 @@ Before defining Figma tasks, check if the design doc contains a `## Figma Resour
 
 **If Figma Resources are present**, read the Node Map and infer task layers directly — no Figma MCP calls at planning time:
 
-1. **Layer 1 — Reusable components:** Nodes of type COMPONENT or COMPONENT_SET, or entries with a `×N` count (indicating repetition). Each becomes an individual task with no dependencies. Never group multiple reusable components into a single task.
+1. **Layer 1 — Reusable components:** COMPONENT/COMPONENT_SET nodes at layer 2. Each becomes a task with its single node ID. No dependencies. INSTANCE nodes with `×N` count only become Layer 1 tasks when their COMPONENT definition is NOT present in the same file (external component) — otherwise the COMPONENT node itself is the Layer 1 task and the INSTANCEs are usages handled by their parent section's Layer 2 task.
 
-2. **Layer 2 — Sections:** Top-level FRAME nodes in the Node Map that contain Layer 1 components as children. Each becomes a task that depends on the Layer 1 components it uses.
+2. **Layer 2 — Sections:** Each top-level FRAME becomes a task with its single node ID. Depends on any Layer 1 tasks whose components appear as children within that frame.
 
-3. **Layer 3 — Page assembly:** If multiple sections exist, create a final task composing all sections into the full page layout. Depends on all Layer 2 tasks.
+**Granularity rule:** If a node is typed COMPONENT/COMPONENT_SET, it MUST be its own Layer 1 task. Do not merge it into a parent section's task.
 
-**Granularity rule:** If a node is typed COMPONENT/COMPONENT_SET or has a `×N` count, it MUST be its own Layer 1 task. Do not merge it into a parent section's task.
-
-Each Figma task uses the Figma Task Structure format (see below) with node IDs and breakpoints from the design doc's `## Figma Resources` section.
+Each Figma task uses the Figma Task Structure format (see below) with a single node ID and breakpoints from the design doc's `## Figma Resources` section.
 
 **If no Figma Resources:** Skip this section entirely. Proceed with standard task generation.
 
@@ -163,20 +161,16 @@ Use this format for tasks that implement UI components with Figma designs. The d
 
 **Figma:**
 - **File Key:** `<file_key>`
-- **Breakpoints:** <breakpoint_name> (<width>px), <breakpoint_name> (<width>px)
-- **Nodes:**
-  | Node ID | Name | Type | Parent |
-  |---------|------|------|--------|
-  | `<id>` | <name> | <type> | <parent> |
-  | `<id>` | <name> | <type> | <parent> |
+- **Node ID:** `<id>`
+- **Breakpoints:** <breakpoint_name> (<width>px), ...
 
 - [ ] Implement using the Figma implementer workflow and commit
 ```
 
 **Building the Figma block:**
 - **File Key:** Copy from the design doc's `## Figma Resources` section
+- **Node ID:** The single node ID for this task's component from the Node Map
 - **Breakpoints:** Include only the breakpoints relevant to this task's component (not all breakpoints in the design)
-- **Nodes:** Select the nodes from the design doc's Node Map that correspond to this task's component and its children. Include the node ID, name, type, and parent for each.
 
 **Mixed plans:** Figma and non-Figma tasks coexist in the same plan with standard dependency handling. A feature might have Tasks 1-2 as data models (standard TDD), Tasks 3-5 as UI components (Figma), and Task 6 as integration (standard TDD).
 
