@@ -47,15 +47,15 @@
 **File Key:** `<file_key>`
 
 ### Breakpoints
-<!-- Discovered from top-level frame analysis via get_design_context -->
+<!-- Inferred from top-level frame names and dimensions in the get_metadata response -->
 - <breakpoint_name>: <width>px (Frame "<frame_name>", node `<node_id>`)
 
 ### Node Map
-<!-- Recursive get_metadata down to component boundaries (COMPONENT/INSTANCE/COMPONENT_SET) or leaf nodes. -->
-<!-- Mark repeated components with ×N count to signal reusability. -->
+<!-- Single get_metadata call at depth 2. Max 2 levels: top-level frames at level 1, components/elements at level 2. -->
+<!-- Mark COMPONENT/COMPONENT_SET nodes as reusable. Collapse repeated INSTANCE nodes with ×N count. -->
 
 #### Page: <page_name>
 - **<section_name>** (node `<node_id>`, <type>, <width>x<height>)
-  - <subsection_name> (node `<node_id>`, <type>)
-    - <component_name> (node `<node_id>`, COMPONENT) ×N
+  - <component_name> (node `<node_id>`, COMPONENT)
+  - <element_name> (node `<node_id>`, INSTANCE, componentId: `<component_id>`) ×N
   - <leaf_name> (node `<node_id>`, TEXT)
