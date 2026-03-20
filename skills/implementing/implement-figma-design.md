@@ -26,7 +26,7 @@ This is a template for dispatching implementer subagents for Figma design tasks.
 
 ### Step 1 — Build Token Reference Table
 
-Call `get_variable_defs(fileKey, nodeId)` for each node ID in your Figma Resources table.
+Call `get_variable_defs(fileKey, nodeId)` using the single node ID from your task's Figma block.
 
 Build a lookup table mapping token name → resolved value for:
 - Colors (fill, stroke, background, text)
@@ -38,13 +38,13 @@ This table is the single source of truth for all design values. Keep it accessib
 
 ### Step 2 — Capture Visual Reference
 
-Call `get_screenshot(fileKey, nodeId)` for the primary node(s) in your task.
+Call `get_screenshot(fileKey, nodeId)` using the single node ID from your task's Figma block.
 
 The screenshot is the source of truth for layout: arrangement, sizing, spacing, and overall visual structure. Keep it accessible for comparison throughout implementation. You will validate your final output against this screenshot before reporting back.
 
 ### Step 3 — Fetch Design Context + Cross-Reference
 
-Call `get_design_context(fileKey, nodeId)` for each node ID in your Figma Resources table.
+Call `get_design_context(fileKey, nodeId)` using the single node ID from your task's Figma block.
 
 This provides:
 - Component hierarchy and children ordering
