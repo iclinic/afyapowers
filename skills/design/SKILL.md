@@ -110,32 +110,29 @@ If the user provides Figma URL(s):
    - URL format: `https://figma.com/design/:fileKey/:fileName?node-id=X-Y`
    - Extract `:fileKey` (segment after `/design/`) and `X-Y` (value of `node-id` parameter)
 
-2. **Fetch structural metadata recursively** using `get_metadata` to build a deep Node Map
+2. **Single `get_metadata` call at depth 2** from the root node
    ```
    get_metadata(fileKey=":fileKey", nodeId="X-Y")
    ```
-   Recurse to discover the full component tree:
-   a. Call `get_metadata` on each provided root node to get first-level children
-   b. For each child that is a container type (FRAME, GROUP, SECTION) but **not** a COMPONENT/INSTANCE/COMPONENT_SET, call `get_metadata` again on that child
-   c. Stop recursion when hitting:
-      - **COMPONENT, INSTANCE, or COMPONENT_SET** — record as a component boundary in the Node Map
-      - **Leaf node types** (TEXT, RECTANGLE, VECTOR, LINE, ELLIPSE) — record and stop
-      - **Max depth 5** from root — safety valve to prevent runaway recursion on deeply nested files
-   d. **Repetition detection:** If the same COMPONENT/INSTANCE appears multiple times as siblings (same name or same component ID), collapse to a single Node Map entry with a `×N` count to signal reusability to the planning phase
-   e. The Node Map should capture the full path: Page → Section → Subsection → Component
+   The single call returns the full tree to depth 2:
+   - **Layer 0:** Page
+   - **Layer 1:** Screen/Section (top-level frames — names and dimensions are included in metadata)
+   - **Layer 2:** Component or element (the task unit)
+   No recursion — one call per provided URL. Breakpoints are inferred from top-level frame names and dimensions (e.g., "Desktop" at 1440px, "Mobile" at 375px).
 
-3. **Fetch top-level frame analysis** using `get_design_context` on top-level frames only
-   ```
-   get_design_context(fileKey=":fileKey", nodeId="<top_level_frame_id>")
-   ```
-   Use this to discover breakpoints and overall layout patterns. Do NOT fetch `get_design_context` for every node — only top-level frames. This keeps discovery lightweight.
+   From the response:
+   a. Record each layer-2 node with its id, name, type, and parent
+   b. Mark **COMPONENT/COMPONENT_SET** nodes as reusable
+   c. Collapse repeated **INSTANCE** nodes sharing the same `componentId` with a `×N` count to signal reusability to the planning phase
 
-4. **Build the `## Figma Resources` section** for the design doc using the data gathered:
+3. **Build the `## Figma Resources` section** for the design doc:
    - File info (URL, file key)
-   - Breakpoints (discovered from top-level frame analysis)
-   - Node Map (hierarchical structure from `get_metadata`: page → section → component)
+   - Breakpoints (inferred from top-level frame names and dimensions in the metadata response)
+   - Node Map (shallow structure from `get_metadata`: page → section → component/element)
 
    Use the template from `templates/design.md` for the section structure.
+
+No `get_screenshot` or `get_design_context` calls during the design phase — these are deferred to implementation, where the subagent already calls them per-task. This keeps the design phase at exactly **1 MCP call** regardless of file complexity.
 
 **If the Figma MCP server is unavailable:** Warn the user and suggest checking the MCP server connection. You cannot proceed with Figma discovery without it, but you can still continue the design process without the Figma Resources section.
 
