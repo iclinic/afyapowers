@@ -44,23 +44,20 @@ Map tasks to layer-1 nodes (entire screens). Subagent implements everything in o
 
 ### Design Phase Changes
 
-The Figma discovery process in `skills/design/SKILL.md` changes from recursive multi-call traversal to a 3-step process:
+The Figma discovery process in `skills/design/SKILL.md` changes from recursive multi-call traversal to a single-call process:
 
 1. **Parse each URL** to extract fileKey and nodeId (unchanged)
 
 2. **Single `get_metadata` call at depth 2** from the root node:
    - Layer 0: Page
-   - Layer 1: Screen/Section (top-level frames)
+   - Layer 1: Screen/Section (top-level frames — names and dimensions are included in metadata)
    - Layer 2: Component or element (the task unit)
    - No recursion — the single call returns the full tree to depth 2
+   - Breakpoints are inferred from top-level frame names and dimensions (e.g., "Desktop" at 1440px, "Mobile" at 375px)
 
-3. **Per top-level frame (layer 1):**
-   - Call `get_screenshot(fileKey, frameNodeId)` — visual reference for understanding the feature during design conversation
-   - Call `get_design_context(fileKey, frameNodeId)` — structured breakpoint data
+3. **Build the Node Map** from the response, collapsing repeated INSTANCE nodes with `×N` notation
 
-4. **Build the Node Map** from the response, collapsing repeated INSTANCE nodes with `×N` notation
-
-**Rate limit note for design phase:** With N top-level frames, the design phase makes 1 + 2N MCP calls (1 `get_metadata` + N `get_screenshot` + N `get_design_context`). If a Figma file has many top-level frames (e.g., 8+ frames = 17+ calls), pace the per-frame calls to stay within the 15 req/min limit — process frames sequentially rather than in parallel, and insert waits between batches if needed.
+No `get_screenshot` or `get_design_context` calls during the design phase — these are deferred to implementation, where the subagent already calls them per-task. This keeps the design phase at exactly **1 MCP call** regardless of file complexity.
 
 ### Node Map Format
 
@@ -125,11 +122,11 @@ No changes to token mapping rules, asset rules, implementation rules, code quali
 
 | File | Change |
 |------|--------|
-| `skills/design/SKILL.md` | Replace recursive `get_metadata` (lines 113-125) with single depth-2 call; add `get_screenshot` on top-level frames |
+| `skills/design/SKILL.md` | Replace recursive `get_metadata` (lines 113-125) with single depth-2 call; remove `get_design_context` on top-level frames |
 | `skills/writing-plans/SKILL.md` | 2-layer inference (remove Layer 3); single node ID per task; update Figma Task Structure |
 | `skills/subagent-driven-development/SKILL.md` | Concurrency cap 3 → 2; update "Why" comment and worked example |
 | `skills/implementing/implement-figma-design.md` | Update Step 1/2/3 to reference single node ID; remove "for each node ID" language |
-| `templates/design.md` | Shallower Node Map format (max 2 levels) |
+| `templates/design.md` | Shallower Node Map format (max 2 levels); update Breakpoints section to note they are inferred from frame names/dimensions in metadata |
 | `templates/plan.md` | Simplified Figma task structure (single Node ID instead of Nodes table) |
 
 ## Testing Strategy
