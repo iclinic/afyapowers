@@ -14,8 +14,8 @@ The Figma workflow generates too many nodes by recursing `get_metadata` to depth
 
 ## Constraints
 
-- Figma MCP rate limit: 15 requests/minute
-- Each Figma task makes 3 mandatory MCP calls (`get_variable_defs`, `get_screenshot`, `get_design_context`)
+- Figma MCP rate limit: 15 requests/minute (revised down from the previously documented 20 req/min)
+- Each Figma task makes 3 mandatory MCP calls (`get_variable_defs`, `get_screenshot`, `get_design_context`). A 4th call (`get_metadata` fallback) may occur if `get_design_context` is truncated, but this is rare and not counted in baseline rate limit math
 - The implementer subagent cannot be given multiple node IDs — one task = one node ID
 - Node Map must still provide enough structure for the planning phase to infer task layers
 
@@ -60,6 +60,8 @@ The Figma discovery process in `skills/design/SKILL.md` changes from recursive m
 
 4. **Build the Node Map** from the response, collapsing repeated INSTANCE nodes with `×N` notation
 
+**Rate limit note for design phase:** With N top-level frames, the design phase makes 1 + 2N MCP calls (1 `get_metadata` + N `get_screenshot` + N `get_design_context`). If a Figma file has many top-level frames (e.g., 8+ frames = 17+ calls), pace the per-frame calls to stay within the 15 req/min limit — process frames sequentially rather than in parallel, and insert waits between batches if needed.
+
 ### Node Map Format
 
 The Node Map becomes shallower (max 2 levels instead of 5):
@@ -84,7 +86,7 @@ From the single `get_metadata` response at depth 2:
 
 Task layer inference simplifies from 3 layers to 2:
 
-1. **Layer 1 — Reusable components:** COMPONENT/COMPONENT_SET nodes, or INSTANCE nodes with `×N` count. Each becomes a task with its single node ID. No dependencies.
+1. **Layer 1 — Reusable components:** COMPONENT/COMPONENT_SET nodes at layer 2. Each becomes a task with its single node ID. No dependencies. INSTANCE nodes with `×N` count only become Layer 1 tasks when their COMPONENT definition is NOT present in the same file (external component) — otherwise the COMPONENT node itself is the Layer 1 task and the INSTANCEs are usages handled by their parent section's Layer 2 task.
 
 2. **Layer 2 — Sections:** Each top-level FRAME becomes a task with its single node ID. Depends on any Layer 1 tasks whose components appear as children within that frame.
 
