@@ -41,6 +41,10 @@ Task tool (general-purpose):
     - Figma MCP server must be connected. Verify by checking that `get_design_context` and `get_variable_defs` tools are available.
     - If the Figma MCP server is unavailable, report status **BLOCKED** and stop.
 
+    ## Rate Limit
+
+    Figma MCP has a 15 requests/minute rate limit. The 3 mandatory MCP calls are within budget. If `get_design_context` returns truncated data and you need `get_metadata` fallback calls, pace them to avoid hitting the limit.
+
     ## Workflow
 
     ### Step 1 — Build Token Reference Table
