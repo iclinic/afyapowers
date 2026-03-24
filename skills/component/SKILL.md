@@ -114,7 +114,7 @@ get_metadata(fileKey, nodeId)
   ```
   get_metadata(fileKey, parentNodeId)
   ```
-  Enumerate the parent's children (siblings of the selected component). Check if any sibling components share the same base name with different property suffixes (e.g., `Button/Default`, `Button/Hover`) that are NOT already grouped in a `COMPONENT_SET`.
+  Enumerate the parent's children (siblings of the selected component). Check if any sibling components share the same base name before the first `/` or `Property=Value` delimiter (e.g., `Button/Default` and `Button/Hover` share base name `Button`; `State=Default, Size=Large` uses Figma's `Property=Value` variant syntax). Components that merely share a string prefix but have different base names (e.g., `Button` and `ButtonIcon`) are NOT variants. Only flag siblings that share an identical base name with different property suffixes and are NOT already grouped in a `COMPONENT_SET`.
 
 **Pass condition:** No ungrouped variants detected, or the node is already a `COMPONENT_SET`.
 
@@ -156,7 +156,7 @@ Look for an existing entry matching this component by its **Figma component key*
 **What it does:** Identify child components that this component depends on and verify they exist in the codebase.
 
 **How:**
-- From the Gate 3 metadata response, scan all child nodes for `INSTANCE` types that reference other components (via `componentId`).
+- From the Gate 3 metadata response, recursively scan all descendant nodes in the component's subtree for `INSTANCE` types that reference other components (via `componentId`). Dependencies may be nested at any depth (e.g., an INSTANCE inside a nested FRAME).
 - For each referenced `componentId`, check the Code Connect map (already fetched in Gate 5) for a matching entry.
 - Collect any dependencies that have no Code Connect entry.
 
