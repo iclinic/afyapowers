@@ -117,12 +117,12 @@ Dispatch: Component Implementer Subagent
 
 **Gate 4 — Variant Structure Validation:**
 - If the node is a COMPONENT_SET — pass (variants are properly grouped)
-- If the node is a COMPONENT — inspect metadata for sibling components with the same base name but different property values that are NOT grouped in a COMPONENT_SET
+- If the node is a COMPONENT — call `get_metadata(fileKey, parentNodeId)` on the component's parent node (parent ID is available in the Gate 3 metadata response) to enumerate siblings. Check if any sibling components share the same base name with different property suffixes (e.g., "Button/Default", "Button/Hover") that are NOT grouped in a COMPONENT_SET
 - Hard stop if ungrouped variants detected — tell the user to group them into a Component Set in Figma first
 
 **Gate 5 — Code Connect Dedup Check:**
-- Call `get_code_connect_map()` and look for an existing entry matching this component
-- Hard stop if the component already has a Code Connect mapping — notify the user with the existing file path
+- Call `get_code_connect_map()` and look for an existing entry matching this component by Figma component key (the unique identifier Figma assigns to each component, available in the Gate 3 metadata response). Component key is the authoritative match criterion — name matching is not used since components can be renamed
+- Hard stop if the component already has a Code Connect mapping — notify the user with the existing file path from the mapping
 
 **Gate 6 — Dependency Detection:**
 - From the metadata, scan child nodes for INSTANCE types that reference other components
@@ -132,6 +132,7 @@ Dispatch: Component Implementer Subagent
 **Gate 7 — Output Location Resolution:**
 - Scan project for existing component directories (e.g., `src/components/`, `src/ui/`, design system paths)
 - Propose the detected location to the user, ask them to confirm or override
+- If no component directory is detected (e.g., brand new project), ask the user to specify the output directory explicitly — do not guess or create a default structure
 
 **Gate 8 — Storybook/Docs Detection:**
 - Check if the project has Storybook configured (look for `.storybook/`, `*.stories.*` files) or similar doc tooling
@@ -153,8 +154,10 @@ The subagent receives a fully validated context from the orchestrator and focuse
 - No file constraint from a plan — the orchestrator provides the output directory
 - Must handle all variants in a COMPONENT_SET in one pass
 - Must generate Storybook file if requested (receives flag from orchestrator)
-- Status reporting simplified: only DONE or BLOCKED (no DONE_WITH_CONCERNS)
+- Status reporting: DONE or BLOCKED only. Token mapping fallbacks (hardcoding Figma values when no project token matches) and accessibility additions are expected behavior — they produce DONE, not concerns. BLOCKED is reserved for issues that prevent completion (missing assets, MCP failures, ambiguous design structure)
 - Component file naming derived from Figma component name, converted to project conventions (e.g., PascalCase for React)
+
+**Reuse mechanism:** The subagent prompt is a **fork** of `implement-figma-design.md`, not a wrapper. The standalone component context (no plan, no file constraints, all-variants-in-one-pass) diverges enough from plan-driven task context that a shared base would add coupling without benefit. If core Figma implementation rules change (token mapping, MCP call order), both files must be updated.
 
 **Context received from orchestrator:**
 - `fileKey`, `nodeId`
@@ -162,7 +165,9 @@ The subagent receives a fully validated context from the orchestrator and focuse
 - Variant list (names and property combinations) if COMPONENT_SET
 - Output directory path
 - Whether to generate Storybook/docs
-- Project framework context (React, Vue, etc. — detected by orchestrator from project files)
+- Project framework context (React, Vue, etc.)
+
+**Framework detection:** The orchestrator detects the project framework before dispatch by checking for framework markers: `package.json` dependencies (react, vue, angular, svelte), config files (`next.config.*`, `nuxt.config.*`, `vite.config.*`), or file extensions in the component directories (`.tsx`, `.vue`, `.svelte`). This is a lightweight check performed as part of Gate 7 (output location resolution) since both steps inspect the same project structure.
 
 **Status reporting:** DONE or BLOCKED with reason. No partial results.
 
