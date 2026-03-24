@@ -139,12 +139,6 @@ git commit -m "feat(component): add orchestration skill with 8-gate validation p
 
 Fork from `skills/implementing/implement-figma-design.md` and adapt for standalone component context. The file is a subagent prompt template with these sections:
 
-**Header comment:** Add a cross-reference comment at the top:
-```
-<!-- Forked from skills/implementing/implement-figma-design.md -->
-<!-- If core Figma implementation rules change (token mapping, MCP call order), update both files -->
-```
-
 **Template structure:** Use the same Agent tool dispatch template format as `skills/implementing/implementer-prompt.md` — a markdown code block with `Task tool (general-purpose):` header containing `description:` and `prompt: |` fields.
 
 **Context injection:** The prompt template must include placeholder markers for the orchestrator to fill in:
@@ -211,31 +205,3 @@ git add skills/component/component-implementer-prompt.md
 git commit -m "feat(component): add component implementer subagent prompt forked from implement-figma-design"
 ```
 
----
-
-### Task 3: Add cross-reference comment to implement-figma-design.md
-
-**Files:**
-- Modify: `skills/implementing/implement-figma-design.md:1-6`
-
-**Depends on:** Task 2
-
-- [ ] **Step 1: Add cross-reference comment after frontmatter**
-
-Insert a comment after the closing `---` of the frontmatter (line 6) and before the `# Figma Implementer Subagent Prompt Template` heading (line 8):
-
-```markdown
-<!-- Sibling fork: skills/component/component-implementer-prompt.md -->
-<!-- If core Figma implementation rules change (token mapping, MCP call order), update both files -->
-```
-
-- [ ] **Step 2: Verify the file is unchanged otherwise**
-
-Read the full file and confirm only the cross-reference comment was added. No other content was modified.
-
-- [ ] **Step 3: Commit**
-
-```bash
-git add skills/implementing/implement-figma-design.md
-git commit -m "docs(implementer): add cross-reference to component implementer fork"
-```
