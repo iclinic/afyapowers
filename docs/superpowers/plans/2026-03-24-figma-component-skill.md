@@ -21,7 +21,7 @@
 
 **Depends on:** none
 
-- [ ] **Step 1: Write the SKILL.md file**
+- [x] **Step 1: Write the SKILL.md file**
 
 Create `skills/component/SKILL.md` with the following content. The file has three sections: frontmatter, trigger conditions, and the 8-gate orchestration pipeline.
 
@@ -108,7 +108,7 @@ After the subagent returns:
 - If DONE — commit all files, report success to user
 - If BLOCKED — relay the block reason to user with the standard STOPPED format
 
-- [ ] **Step 2: Review the file for internal consistency**
+- [x] **Step 2: Review the file for internal consistency**
 
 Read back the full `skills/component/SKILL.md` and verify:
 - All 8 gates are present and in order
@@ -117,7 +117,7 @@ Read back the full `skills/component/SKILL.md` and verify:
 - Gate cross-references are correct (Gate 4 references Gate 3 metadata, Gate 6 references Gate 5 Code Connect map)
 - The dispatch section references the correct subagent prompt file name
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add skills/component/SKILL.md
@@ -135,7 +135,7 @@ git commit -m "feat(component): add orchestration skill with 8-gate validation p
 
 **Depends on:** none
 
-- [ ] **Step 1: Write the component-implementer-prompt.md file**
+- [x] **Step 1: Write the component-implementer-prompt.md file**
 
 Fork from `skills/implementing/implement-figma-design.md` and adapt for standalone component context. The file is a subagent prompt template with these sections:
 
@@ -190,7 +190,7 @@ Fork from `skills/implementing/implement-figma-design.md` and adapt for standalo
 
 **Escalation section:** Same as `implement-figma-design.md` — report BLOCKED with what was tried, what's blocking, what help is needed.
 
-- [ ] **Step 2: Cross-check against implement-figma-design.md**
+- [x] **Step 2: Cross-check against implement-figma-design.md**
 
 Read both `skills/component/component-implementer-prompt.md` and `skills/implementing/implement-figma-design.md` side by side. Verify:
 - Core principles are identical (Figma authority, 3 MCP calls, asset rules)
@@ -198,7 +198,7 @@ Read both `skills/component/component-implementer-prompt.md` and `skills/impleme
 - No accidental omissions from the fork
 - The adaptations (no file constraint, all-variants-in-one-pass, Storybook, simplified status) are correctly applied
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add skills/component/component-implementer-prompt.md
