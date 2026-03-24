@@ -7,269 +7,146 @@ metadata:
 
 # Component Skill
 
-Develop a single Figma component into production code through an 8-gate validation pipeline. This skill is **standalone** — it does not participate in the 5-phase workflow (design → plan → implement → review → complete). Use it when you need to implement an individual component from a Figma file.
+<FORBIDDEN>
+NEVER call get_design_context, get_screenshot, or get_variable_defs. Only the subagent calls these.
+NEVER launch Explore agents or scan the codebase for conventions, tokens, or patterns.
+NEVER run phases in parallel. Execute Phase 1, then Phase 2, then Phase 3, in order.
+NEVER implement the component yourself. You are the orchestrator. The subagent implements.
+</FORBIDDEN>
 
-<HARD-RULES>
-
-## YOU MUST NOT:
-- **NEVER implement the component yourself.** You are the ORCHESTRATOR. Your ONLY job is to run the 8 gates and dispatch the subagent. The subagent does the implementation.
-- **NEVER call `get_design_context` or `get_screenshot` or `get_variable_defs` during the gate phase.** Gates only use `get_metadata` and `get_code_connect_map`. The subagent makes the other MCP calls.
-- **NEVER run gates in parallel.** Gates are SEQUENTIAL. Gate N must complete before Gate N+1 starts.
-- **NEVER skip the user confirmation in Gate 7.** You must ask and wait for the user to confirm output directory and framework.
-- **NEVER skip the dispatch summary.** You must show the summary and then dispatch the subagent.
-- **NEVER explore the codebase to understand how to build the component.** That is the subagent's job. You only scan the codebase in Gate 7 (to find component directories) and Gate 8 (to find Storybook config).
-
-If you catch yourself about to implement, style, or write component code — STOP. You are the orchestrator, not the implementer.
-
-</HARD-RULES>
+Develop a single Figma component into production code. This skill is **standalone** — not part of the 5-phase workflow.
 
 ## Trigger Conditions
 
-### Explicit Trigger
+**Explicit:** User runs `/afyapowers:component`.
 
-The user runs `/afyapowers:component`.
-
-### Implicit Trigger
-
-The user asks to implement, build, create, or develop a Figma component. Detected via:
-
-- **Keywords** (case-insensitive): "implement", "build", "create", "develop"
-- **Combined with**: "component"
-- **Combined with**: a Figma URL (`figma.com/design/...`) or a Figma component reference
-
-All three conditions must be present for an implicit trigger. If keywords and "component" are present but no Figma URL or reference, ask the user for the Figma URL before proceeding.
+**Implicit:** User asks to implement/build/create/develop a Figma component. Requires all three: action keyword + "component" + Figma URL. If no URL, ask for it.
 
 ---
 
-## Gate Pipeline
+## Phase 1 — Parse & Validate
 
-All 8 gates run **sequentially, one at a time, in order**. Every gate must pass before the next one begins. If any gate issues a hard stop, the pipeline halts immediately.
+No codebase access in this phase. Only MCP calls allowed: `get_metadata` and `get_code_connect_map`.
 
-**MCP calls allowed during gates:**
-- `get_metadata` — Gates 3 and 4 only
-- `get_code_connect_map` — Gate 5 only
-- NO other MCP calls during the gate phase. `get_design_context`, `get_screenshot`, and `get_variable_defs` are called by the subagent AFTER dispatch, not by you.
+**Step 1 — Parse URL.** Extract `fileKey` and `nodeId` from `https://www.figma.com/design/<fileKey>/...?node-id=<nodeId>`. Normalize `nodeId` from `-` to `:` format. If no URL provided, ask the user.
 
----
-
-### Gate 1 — Input & URL Parsing
-
-**What it does:** Parse `fileKey` and `nodeId` from the user-provided Figma URL.
-
-**How:**
-- Extract from URL format: `https://www.figma.com/design/<fileKey>/...?node-id=<nodeId>`
-- The `nodeId` in the URL may use `-` instead of `:` (e.g., `1-2` instead of `1:2`). Normalize to `:` format for all subsequent MCP calls.
-- If no URL was provided, ask the user for it.
-
-**Pass condition:** A valid `fileKey` and `nodeId` have been extracted.
-
-**Hard stop:** The URL is malformed or missing the `node-id` parameter.
-
+Hard stop if URL is malformed or missing `node-id`:
 ```
-**STOPPED** — Input & URL Parsing: Malformed Figma URL or missing node ID.
+**STOPPED** — Parse & Validate: Malformed Figma URL or missing node ID.
 
-**What to do:** Provide a valid Figma component URL in the format:
-https://www.figma.com/design/<fileKey>/<fileName>?node-id=<nodeId>
-
-Make sure the URL includes the `node-id` query parameter. You can get this by right-clicking a component in Figma and selecting "Copy link".
+**What to do:** Provide a valid Figma component URL with the `node-id` parameter. Right-click a component in Figma → "Copy link".
 ```
 
----
+**Step 2 — Check MCP availability.** Verify these 5 tools are callable: `get_metadata`, `get_design_context`, `get_variable_defs`, `get_screenshot`, `get_code_connect_map`.
 
-### Gate 2 — Figma MCP Availability
-
-**What it does:** Verify that the required Figma MCP tools are available in the current environment.
-
-**How:** Check that all of the following MCP tools are callable:
-- `get_metadata`
-- `get_design_context`
-- `get_variable_defs`
-- `get_screenshot`
-- `get_code_connect_map`
-
-**Pass condition:** All 5 tools are available.
-
-**Hard stop:** One or more tools are unavailable.
-
+Hard stop if any are missing:
 ```
-**STOPPED** — Figma MCP Availability: BLOCKED — required Figma MCP tools are not available.
+**STOPPED** — Parse & Validate: Required Figma MCP tools are not available.
 
-**What to do:** Ensure the Figma MCP server is connected and running. The following tools must be available: get_metadata, get_design_context, get_variable_defs, get_screenshot, get_code_connect_map. Check your MCP server configuration and restart if necessary.
+**What to do:** Ensure the Figma MCP server is connected and running.
+```
+
+**Step 3 — Validate node type.** Call `get_metadata(fileKey, nodeId)`. Confirm the node type is `COMPONENT` or `COMPONENT_SET`.
+
+**Store the full metadata response. It is reused in Phase 2. Do NOT make additional MCP calls.**
+
+Hard stop if node type is wrong:
+```
+**STOPPED** — Parse & Validate: The selected node is a <actual_type>, not a COMPONENT or COMPONENT_SET.
+
+**What to do:** Select an actual component in Figma (purple diamond icon), not a frame or instance.
+```
+
+**Step 4 — Check Code Connect.** Call `get_code_connect_map(fileKey, nodeId)`. Look for an existing entry matching this component by its Figma component key (from the metadata response). Component key is the authoritative match — not name.
+
+**Store the full Code Connect map response. It is reused in Phase 2. Do NOT call this again.**
+
+Hard stop if component already exists:
+```
+**STOPPED** — Parse & Validate: This component already exists in the codebase at `<existing_file_path>`.
+
+**What to do:** Modify the existing file directly rather than creating a duplicate.
 ```
 
 ---
 
-### Gate 3 — Node Type Validation
+## Phase 2 — Dependencies & Location
 
-**What it does:** Confirm that the selected Figma node is an actual component (not a frame, instance, or other node type).
+Limited codebase access: only Glob and reading `package.json` / config files. No Explore agents. No scanning for conventions or patterns.
 
-**MCP call:** Call `get_metadata(fileKey, nodeId)`. Do NOT call `get_design_context` — that is for the subagent only.
+**Step 1 — Check dependencies.** From the **stored metadata response** (Phase 1, Step 3), recursively scan all descendant nodes for `INSTANCE` types with `componentId` references. No additional MCP calls needed.
 
-**Pass condition:** The node's `type` is `COMPONENT` or `COMPONENT_SET`.
+**Step 2 — Cross-reference dependencies.** For each `componentId` found, check the **stored Code Connect map** (Phase 1, Step 4) for a matching entry. No additional MCP calls needed.
 
-**Hard stop:** The node type is anything other than `COMPONENT` or `COMPONENT_SET`.
-
+Hard stop if any dependencies are missing:
 ```
-**STOPPED** — Node Type Validation: The selected node is a <actual_type>, not a COMPONENT or COMPONENT_SET.
-
-**What to do:** Select an actual component node in Figma (purple diamond icon), not a frame or instance. Right-click the component in the layers panel and select "Copy link" to get the correct URL.
-```
-
-> **Important:** Store the full metadata response from this call — it is reused by Gates 4 and 6. Do NOT make additional MCP calls to get more information about the component.
-
----
-
-### Gate 4 — Variant Structure Validation
-
-**What it does:** Detect ungrouped variants that should be organized into a Component Set before implementation.
-
-**How:**
-- If the node from Gate 3 is a `COMPONENT_SET` — pass immediately. Variants are properly grouped.
-- If the node is a `COMPONENT` — use the parent ID from the Gate 3 metadata response. Call `get_metadata(fileKey, parentNodeId)` to enumerate siblings. Check if any sibling components share the same base name before the first `/` or `Property=Value` delimiter (e.g., `Button/Default` and `Button/Hover` share base name `Button`; `State=Default, Size=Large` uses Figma's `Property=Value` variant syntax). Components that merely share a string prefix but have different base names (e.g., `Button` and `ButtonIcon`) are NOT variants. Only flag siblings that share an identical base name with different property suffixes and are NOT already grouped in a `COMPONENT_SET`.
-
-**Pass condition:** No ungrouped variants detected, or the node is already a `COMPONENT_SET`.
-
-**Hard stop:** Ungrouped variants detected — sibling components share a base name with different suffixes but are not grouped in a Component Set.
-
-```
-**STOPPED** — Variant Structure Validation: Found ungrouped variants sharing the base name "<base_name>": <list of variant names>.
-
-**What to do:** In Figma, select all variant components (e.g., <list of variant names>) and use "Combine as Variants" to group them into a Component Set. Then share the updated component URL.
-```
-
----
-
-### Gate 5 — Code Connect Dedup Check
-
-**What it does:** Check whether this component has already been implemented by looking it up in the Code Connect mapping.
-
-**MCP call:** Call `get_code_connect_map()`.
-
-Look for an existing entry matching this component by its **Figma component key** (the unique ID from the Gate 3 metadata response). The component key is the authoritative match — name matching is not used since components can be renamed.
-
-**Pass condition:** No existing Code Connect entry matches this component's key.
-
-**Hard stop:** A Code Connect entry already exists for this component.
-
-```
-**STOPPED** — Code Connect Dedup Check: This component already exists in the codebase.
-
-**What to do:** An implementation already exists at `<existing_file_path>`. If you need to update it, modify the existing file directly rather than creating a duplicate.
-```
-
-> **Important:** Store the Code Connect map response — it is reused by Gate 6.
-
----
-
-### Gate 6 — Dependency Detection
-
-**What it does:** Identify child components that this component depends on and verify they exist in the codebase.
-
-**How:**
-- From the Gate 3 metadata response, recursively scan all descendant nodes in the component's subtree for `INSTANCE` types that reference other components (via `componentId`). Dependencies may be nested at any depth (e.g., an INSTANCE inside a nested FRAME).
-- For each referenced `componentId`, check the Code Connect map (already fetched in Gate 5) for a matching entry.
-- Collect any dependencies that have no Code Connect entry.
-
-**Pass condition:** All child component dependencies exist in the codebase (have Code Connect entries), or the component has no child component dependencies.
-
-**Hard stop:** One or more child component dependencies are missing from the codebase.
-
-```
-**STOPPED** — Dependency Detection: Missing child component dependencies.
+**STOPPED** — Dependencies: Missing child component dependencies.
 
 The following components are used inside this component but have not been implemented yet:
 <list of missing component names and their componentIds>
 
-**What to do:** Implement the missing child components first using `/afyapowers:component`, then retry this component. Components must be built bottom-up — leaf components before their parents.
+**What to do:** Implement the missing child components first using `/afyapowers:component`, then retry. Build bottom-up — leaf components before parents.
 ```
+
+**Step 3 — Detect output location.** Glob for existing component directories:
+- `src/components/**`
+- `src/ui/**`
+- `components/**`
+- `lib/components/**`
+- `packages/*/src/components/**`
+
+**Step 4 — Detect framework.** Check:
+- `package.json` dependencies: `react`, `vue`, `angular`, `svelte`
+- Config files: `next.config.*`, `nuxt.config.*`, `vite.config.*`
+- File extensions in component directories: `.tsx`, `.vue`, `.svelte`
+
+**Step 5 — Detect Storybook.** Glob for `.storybook/` and `*.stories.*`. If not found, skip silently.
 
 ---
 
-### Gate 7 — Output Location Resolution + Framework Detection
+## Phase 3 — Present & Confirm
 
-**What it does:** Determine where the component files should be created and what framework to target.
-
-**How:**
-
-1. **Scan for existing component directories** using Glob patterns:
-   - `src/components/**`
-   - `src/ui/**`
-   - `components/**`
-   - `lib/components/**`
-   - `packages/*/src/components/**`
-
-2. **Detect project framework** by checking:
-   - `package.json` dependencies: `react`, `vue`, `angular`, `svelte`
-   - Config files: `next.config.*`, `nuxt.config.*`, `vite.config.*`
-   - File extensions in component directories: `.tsx`, `.vue`, `.svelte`
-
-3. **Ask the user to confirm.** Present the detected output location and framework. Wait for the user to confirm or provide an override. Do NOT proceed until the user responds.
-
-**Pass condition:** User confirms the output directory and framework.
-
-**Hard stop:** No component directory detected and user does not specify one.
+Show the pre-flight results to the user:
 
 ```
-**STOPPED** — Output Location Resolution: No component directory detected in the project.
+## Pre-flight Results
 
-**What to do:** Specify the output directory where the component should be created (e.g., `src/components/`). No default directory will be assumed.
+- **Component:** <name> (<COMPONENT | COMPONENT_SET>)
+- **Variants:** <count> — <list> (if COMPONENT_SET)
+- **Dependencies:** All found | Missing: <list>
+- **Suggested directory:** <path> (you can override this)
+- **Framework:** <detected> (you can override this)
+- **Storybook:** detected — generate story file? (yes/no) | not detected
+- **Code Connect:** No existing mapping
+
+Ready to implement this component?
 ```
 
----
-
-### Gate 8 — Storybook/Docs Detection
-
-**What it does:** Check whether the project uses Storybook and offer to generate a story file.
-
-**How:**
-- Glob for `.storybook/` directory.
-- Glob for `*.stories.*` files.
-
-**If Storybook is detected:** Ask the user if they want a story file generated alongside the component. Wait for the user to respond.
-
-**If Storybook is not detected:** Skip silently — do not mention Storybook.
-
-**Pass condition:** Always passes. This gate is informational only.
+Wait for the user to respond. The user can:
+- Confirm and proceed to dispatch
+- Override the suggested directory or framework
+- Accept or decline Storybook story generation
+- Decline to stop entirely
 
 ---
 
 ## Dispatch
 
-<HARD-GATE>
-You MUST dispatch a subagent to implement the component. Do NOT implement it yourself. Do NOT read the codebase to understand styling, tokens, or patterns — that is the subagent's job. Your only remaining action after the gates is to show the summary, then dispatch.
-</HARD-GATE>
+After the user confirms, dispatch the implementer subagent using the **Agent tool**. Build the prompt from `component-implementer-prompt.md`, filling in:
 
-After all 8 gates pass, present the summary to the user:
-
-```
-## Component Implementation Summary
-
-- **Component name:** <name from Figma metadata>
-- **Type:** COMPONENT | COMPONENT_SET
-- **Variants:** <count> — <list of variant names> (if COMPONENT_SET)
-- **Output directory:** <confirmed path>
-- **Framework:** <detected framework>
-- **Storybook:** yes | no
-
-Dispatching component implementer subagent...
-```
-
-Then dispatch the component implementer subagent using the Agent tool. Build the subagent prompt from `component-implementer-prompt.md`, filling in the placeholders:
-
-- `[FILE_KEY]` — the fileKey from Gate 1
-- `[NODE_ID]` — the nodeId from Gate 1
-- `[NODE_TYPE]` — COMPONENT or COMPONENT_SET from Gate 3
-- `[VARIANT_LIST]` — variant names from Gate 3 metadata (or "N/A — single component")
-- `[OUTPUT_DIRECTORY]` — confirmed path from Gate 7
-- `[FRAMEWORK]` — detected framework from Gate 7
-- `[GENERATE_STORYBOOK]` — yes or no from Gate 8
-- `[COMPONENT_NAME]` — component name from Gate 3 metadata
+- `[FILE_KEY]` — from Phase 1, Step 1
+- `[NODE_ID]` — from Phase 1, Step 1
+- `[NODE_TYPE]` — COMPONENT or COMPONENT_SET from Phase 1, Step 3
+- `[VARIANT_LIST]` — variant names from metadata (or "N/A — single component")
+- `[OUTPUT_DIRECTORY]` — confirmed path from Phase 3
+- `[FRAMEWORK]` — confirmed framework from Phase 3
+- `[GENERATE_STORYBOOK]` — yes or no from Phase 3
+- `[COMPONENT_NAME]` — component name from metadata
 
 ### After the Subagent Returns
 
-- **If DONE:** Commit all created files and report success to the user.
-- **If BLOCKED:** Relay the block reason to the user using the standard stopped format:
-
+- **If DONE:** Commit all created files and report success.
+- **If BLOCKED:** Relay the block reason:
 ```
 **STOPPED** — Component Implementation: <reason from subagent>
 
