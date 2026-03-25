@@ -3,14 +3,16 @@ manifest:
   version: 1.0
 
 automations:
-  linearb_ai_codereview:
-    # Ai Code Review - Triggers only when PR is ready for review, see docs https://docs.gitstream.cm/execution-model/#action-level-execution-control
-    on: [pr_created, pr_ready_for_review, merge]
+  linearb_ai_review:
+    # Triggers only when PR is created or has new commits, see docs
+    #   https://docs.gitstream.cm/execution-model/#action-level-execution-control
     if:
-      - {{ not is.bot }}
+      - {{ not pr.draft }}
+      - {{ not (is.bot or is.bot_branch) }}
     run:
       - action: code-review@v1
         args:
+          issues_limit: 10 # optional arg; set to a positive integer or "unlimited"
           guidelines: |
             - Keep suggestions short and actionable.
 
@@ -92,6 +94,8 @@ who:
 
 is:
   bot: {{ pr.author | match(list=['github-actions','_bot_','[bot]','dependabot','gitstream-cm','prvalidation','aida-bot', 'claude']) | some }}
+  bot_author: {{ pr.author | match(list=['github-actions', '_bot_', '[bot]', 'dependabot']) | some }}
+  bot_branch: {{ branch.name | match(list=['renovate/']) | some }}
 
 colors:
   red:    'b60205'
