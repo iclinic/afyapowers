@@ -1,5 +1,5 @@
 ---
-name: component
+name: figma-component
 description: Develop Figma components with strict validation, Code Connect dedup, and autonomous implementation. Standalone — not part of the 5-phase workflow.
 metadata:
   mcp-server: figma
@@ -31,7 +31,7 @@ Develop a single Figma component into production code. This skill is **standalon
 
 ## Trigger Conditions
 
-**Explicit:** User runs `/afyapowers:component`.
+**Explicit:** User runs `/afyapowers:figma-component`.
 
 **Implicit:** User asks to implement/build/create/develop a Figma component. Requires all three: action keyword + "component" + Figma URL. If no URL, ask for it.
 
@@ -53,7 +53,7 @@ Create the following tasks in order:
 | T6 | Phase 2.2: Cross-reference dependencies with Code Connect map | Check each componentId against the stored Code Connect map. |
 | T7 | Phase 2.3: Detect output location, framework, Storybook | Glob for component directories, check package.json, detect Storybook. |
 | T8 | Phase 3: Present pre-flight results & confirm | Show pre-flight summary and wait for user confirmation. |
-| T9 | Dispatch implementer subagent | Build the subagent prompt and dispatch. Handle the result. |
+| T9 | Dispatch implementer subagent | Build the subagent prompt and dispatch. Subagent includes self-review against Figma data. Handle the result. |
 
 After creating all 9 tasks, set up dependencies using TaskUpdate `addBlockedBy`:
 - T2 blocked by T1
@@ -164,7 +164,7 @@ Hard stop if any dependencies are missing:
 The following components are used inside this component but have not been implemented yet:
 <list of missing component names and their componentIds>
 
-**What to do:** Implement the missing child components first using `/afyapowers:component`, then retry. Build bottom-up — leaf components before parents.
+**What to do:** Implement the missing child components first using `/afyapowers:figma-component`, then retry. Build bottom-up — leaf components before parents.
 ```
 
 ### Task T7 — Detect output location, framework, Storybook
@@ -241,7 +241,7 @@ Before proceeding: verify task T8 is `completed` and the user has confirmed. If 
 
 <MCP_ALLOWLIST>
 Permitted MCP tools in this phase: NONE for the orchestrator.
-The implementer subagent will make its own MCP calls (get_variable_defs, get_screenshot, get_design_context).
+The implementer subagent will make its own MCP calls (get_variable_defs, get_screenshot, get_design_context) plus 2 review calls.
 You as the orchestrator must NOT call any Figma MCP tools here.
 </MCP_ALLOWLIST>
 
@@ -260,7 +260,8 @@ Mark T9 `in_progress`. After the user confirms, dispatch the implementer subagen
 
 ### After the Subagent Returns
 
-- **If DONE:** Commit all created files and report success. Mark T9 `completed`.
+- **If DONE (all self-review checks passed):** Commit all created files and report success. Mark T9 `completed`.
+- **If DONE (with unresolved self-review issues):** Commit all created files, report success, and relay the unresolved issues to the user so they can review manually. Mark T9 `completed`.
 - **If BLOCKED:** Relay the block reason. Mark T9 `completed` (the task was executed, even though the subagent was blocked):
 ```
 **STOPPED** — Component Implementation: <reason from subagent>

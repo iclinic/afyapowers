@@ -32,7 +32,7 @@ Task tool (general-purpose):
 
     1. **Figma is absolute authority.** Every visual property — colors, typography, spacing, borders, shadows, opacity — comes from Figma. Never substitute, approximate, or prefer codebase patterns over Figma values. If a token does not exist in the project, hardcode the Figma value.
 
-    2. **3 mandatory MCP calls in order.** You must call `get_variable_defs` → `get_screenshot` → `get_design_context` for every task. No skipping, no reordering.
+    2. **5 MCP calls total.** 3 mandatory in order: `get_variable_defs` → `get_screenshot` → `get_design_context`. No skipping, no reordering. Then 2 review calls after implementation: `get_screenshot` → `get_variable_defs` for self-review comparison.
 
     3. **Assets come from Figma.** Always use Figma-provided assets. Before downloading, check if the exact same asset already exists in the codebase (dedup). Never substitute with local icon libraries.
 
@@ -43,11 +43,49 @@ Task tool (general-purpose):
 
     ## Rate Limit
 
-    Figma MCP has a 15 requests/minute rate limit. The 3 mandatory MCP calls are within budget. If `get_design_context` returns truncated data and you need `get_metadata` fallback calls, pace them to avoid hitting the limit.
+    Figma MCP has a 15 requests/minute rate limit. Track your MCP call count throughout the workflow:
+
+    - **Steps 1-3:** 3 mandatory calls (+ possible `get_metadata` fallbacks in Step 3 for truncated data)
+    - **Step 6:** 2 review calls (`get_screenshot` + `get_variable_defs`)
+    - **Typical total:** 5 calls — well within budget
+
+    If `get_metadata` fallback calls in Step 3 pushed your total above 10, pause before starting Step 6 to avoid hitting the 15 req/min limit.
 
     ## Workflow
 
+    ### Step 0 — Create Tasks
+
+    **Before doing ANY work, create all 7 tasks using TaskCreate, then set up dependencies with TaskUpdate.**
+
+    Create the following tasks in order:
+
+    | # | Subject | Description |
+    |---|---------|-------------|
+    | S1 | Build Token Reference Table | Call get_variable_defs and build token lookup table. |
+    | S2 | Capture Visual Reference | Call get_screenshot for layout reference. |
+    | S3 | Fetch Design Context + Cross-Reference | Call get_design_context and cross-reference tokens. |
+    | S4 | Implement All Variants | Build the component code from Figma data. |
+    | S5 | Generate Storybook Story | Create story file if requested, otherwise skip. |
+    | S6 | Self-Review: Compare Against Figma | Re-fetch screenshot + variable_defs and compare against implementation. |
+    | S7 | Fix Detected Discrepancies | Fix any issues found in S6 using in-memory Figma data. |
+
+    After creating all 7 tasks, set up dependencies using TaskUpdate `addBlockedBy`:
+    - S2 blocked by S1
+    - S3 blocked by S2
+    - S4 blocked by S3
+    - S5 blocked by S4
+    - S6 blocked by S5
+    - S7 blocked by S6
+
+    **Task execution protocol:** For every task:
+    1. Mark it `in_progress` with TaskUpdate before starting
+    2. Do the work described in the task
+    3. Mark it `completed` with TaskUpdate when done
+    4. Do NOT proceed to the next task until the current one is completed
+
     ### Step 1 — Build Token Reference Table
+
+    Mark S1 `in_progress`.
 
     Call `get_variable_defs(fileKey, nodeId)` using file key `[FILE_KEY]` and node ID `[NODE_ID]`.
 
@@ -59,13 +97,21 @@ Task tool (general-purpose):
 
     This table is the single source of truth for all design values. Keep it accessible — you will cross-reference it in Step 3.
 
+    Mark S1 `completed`.
+
     ### Step 2 — Capture Visual Reference
+
+    Mark S2 `in_progress`.
 
     Call `get_screenshot(fileKey, nodeId)` using file key `[FILE_KEY]` and node ID `[NODE_ID]`.
 
     The screenshot is the source of truth for layout: arrangement, sizing, spacing, and overall visual structure. Keep it accessible for comparison throughout implementation. You will validate your final output against this screenshot before reporting back.
 
+    Mark S2 `completed`.
+
     ### Step 3 — Fetch Design Context + Cross-Reference
+
+    Mark S3 `in_progress`.
 
     Call `get_design_context(fileKey, nodeId)` using file key `[FILE_KEY]` and node ID `[NODE_ID]`.
 
@@ -88,9 +134,28 @@ Task tool (general-purpose):
 
     **Fallback:** If `get_variable_defs` returned no tokens for a node, use the raw resolved values from `get_design_context` and proceed — token mapping fallbacks are expected behavior.
 
-    **Truncation fallback:** If `get_design_context` returns a truncated response (indicated by missing expected child nodes or incomplete data), call `get_metadata` on the child nodes that need more detail. This is the only case where additional MCP calls are made beyond the 3 mandatory ones.
+    **Truncation fallback:** If `get_design_context` returns a truncated response (indicated by missing expected child nodes or incomplete data), call `get_metadata` on the child nodes that need more detail. This is the only case where additional MCP calls are made beyond the mandatory ones.
+
+    Mark S3 `completed`.
 
     ### Step 4 — Implement All Variants
+
+    Mark S4 `in_progress`.
+
+    #### Figma Variants vs. CSS States
+
+    Figma represents interaction states (hover, pressed, focused, disabled) as discrete variants alongside semantic variants (kind, size, type). Distinguish between the two:
+
+    - **Interaction states** → CSS pseudo-classes (`:hover`, `:active`, `:focus-visible`, `:disabled`). Never expose as props.
+    - **Semantic variants** → Component props (kind, variant, size). These represent meaningful visual differences the consumer controls.
+
+    Rule of thumb: if the state is triggered by user interaction with the element itself, it's CSS. If it's set by the parent/consumer to convey meaning, it's a prop.
+
+    #### Prop Orthogonality
+
+    Each Figma variant axis maps to an independent prop. Never derive one prop's behavior from another unless Figma explicitly constrains that combination (e.g., a variant that only exists under a specific parent state).
+
+    Verify: can every valid combination of prop values render a meaningful result? If your implementation forces prop A when prop B is set, you've reduced the component's composability beyond what the design requires.
 
     **Component file naming:** Convert the Figma component name `[COMPONENT_NAME]` to project conventions based on `[FRAMEWORK]`:
     - React / Next.js → PascalCase (e.g., `ButtonPrimary.tsx`)
@@ -125,9 +190,15 @@ Task tool (general-purpose):
 
     Implement the component directly. No variant abstraction needed.
 
+    Mark S4 `completed`.
+
     ### Step 5 — Generate Storybook Story (if requested)
 
-    **Only execute this step if `[GENERATE_STORYBOOK]` is "yes".**
+    Mark S5 `in_progress`.
+
+    **If `[GENERATE_STORYBOOK]` is "no":** Mark S5 `completed` with note "Skipped — not requested." and proceed to Step 6.
+
+    **If `[GENERATE_STORYBOOK]` is "yes":**
 
     1. Create a `*.stories.*` file alongside the component in `[OUTPUT_DIRECTORY]`.
     2. Check the project for existing story patterns:
@@ -139,6 +210,62 @@ Task tool (general-purpose):
        - If single COMPONENT: a default story plus stories for any interactive states (hover, disabled, etc.) visible in Figma
     4. Follow existing story patterns found in the project. If no existing stories are found, use CSF3 format with controls.
 
+    Mark S5 `completed`.
+
+    ### Step 6 — Self-Review: Compare Against Figma
+
+    Mark S6 `in_progress`.
+
+    Re-fetch design data to compare against your implementation:
+
+    1. Call `get_screenshot(fileKey, nodeId)` using file key `[FILE_KEY]` and node ID `[NODE_ID]` — fresh visual reference.
+    2. Call `get_variable_defs(fileKey, nodeId)` using file key `[FILE_KEY]` and node ID `[NODE_ID]` — fresh token data.
+
+    Walk through each category below. For each, record **PASS** or **ISSUE** with a specific description:
+
+    **A. Layout Structure**
+    Compare the screenshot against the component you built. Check:
+    - Top-level layout direction (row/column) matches
+    - Child elements are in the correct order
+    - Sizing modes are correct (fixed/hug/fill mapped to appropriate CSS: fixed width, fit-content, flex-grow)
+    - Spacing between elements matches Figma values
+
+    **B. Token Coverage**
+    Walk through every token from the fresh `get_variable_defs` output:
+    - Is each token either used via a project token (exact name + value match) or hardcoded per the Token Mapping Rule?
+    - Are there any CSS properties in the code using values that don't match any Figma token or resolved value (phantom values)?
+
+    **C. Variant Completeness** (COMPONENT_SET only)
+    - Is every variant in `[VARIANT_LIST]` implemented?
+    - Are interaction states (hover, active, disabled, focus) CSS pseudo-classes, not component props?
+    - Are semantic variants exposed as component props?
+
+    **D. Asset Integrity**
+    - Were all Figma icons/images downloaded or correctly deduped against existing codebase assets?
+    - Do SVG viewBoxes use the container size, not the path's tight bounding box?
+
+    **E. Accessibility**
+    - Semantic HTML elements used where appropriate (`button`, `nav`, `main` — not generic `div`)?
+    - `aria-label` on icon-only actions?
+    - Focus states present for interactive elements?
+
+    **If all checks PASS:** Mark S6 `completed` with note "All checks passed." Skip S7 — mark it `completed` with note "Skipped — no issues found."
+
+    **If any ISSUE is found:** Mark S6 `completed` with the full issue list. Proceed to Step 7.
+
+    ### Step 7 — Fix Detected Discrepancies
+
+    Mark S7 `in_progress`. **Only execute this step if Step 6 found issues.**
+
+    For each issue from Step 6:
+    1. Locate the relevant code in the files you created.
+    2. Apply the fix using the Figma data already in memory from Step 6. **Do NOT make additional MCP calls.**
+    3. Note what was fixed and how.
+
+    If an issue cannot be fixed (ambiguous design data, missing assets, fundamental structural mismatch), note it as **unresolved** — do not attempt workarounds.
+
+    Mark S7 `completed` with a summary of fixes applied and any unresolved issues.
+
     ## Asset Rules
 
     1. **Always use Figma assets.** Icons, images, and SVGs come from the Figma MCP server.
@@ -146,6 +273,10 @@ Task tool (general-purpose):
     3. **Never substitute with icon libraries** (lucide, heroicons, etc.). Never create placeholder assets.
     4. **Icons as SVG.** Icons must be saved as `.svg` files, not raster formats. Photos and illustrations may be raster.
     5. **Use asset URLs as-is** from the MCP server. Do not modify, proxy, or reconstruct them.
+    6. **SVG icon extraction.** Figma icon components have a bounding container (e.g., 20×20) and an inner shape with insets. When converting to SVG:
+       - Set the `viewBox` to the **container size** (e.g., `"0 0 20 20"`), not the path's tight bounding box.
+       - Translate path data to match Figma's inset positioning within that container.
+       - Verify by rendering: the icon should have the same visual weight and whitespace as the Figma screenshot. If it fills the entire container edge-to-edge, the viewBox is wrong.
 
     ## Implementation Rules
 
@@ -175,6 +306,9 @@ Task tool (general-purpose):
     ### Asset Dedup Before Download
     Always search the codebase for an existing exact match before downloading a new asset. Duplicate assets bloat the project and cause maintenance issues.
 
+    ### Edge-Aligned Overlays
+    When an absolutely-positioned child sits at the edge of a bordered parent (badges, tags, indicators), offset it by the negative border width of the parent (e.g., `top: -1px; left: -1px` for a 1px border). This ensures the overlay aligns flush with the parent's outer edge rather than sitting inside the border, which creates a visible gap. Always cross-reference the Figma screenshot for flush alignment at corners and edges.
+
     ## Reporting
 
     When done, report:
@@ -183,10 +317,13 @@ Task tool (general-purpose):
     - **Visual validation** — does it match the screenshot from Step 2?
     - **Files created**
     - **Variant coverage** — which variants were implemented (for COMPONENT_SET)
+    - **Self-review result** — all checks passed / N issues found, M fixed, K unresolved
+    - **MCP calls made** — total count (typically 5; higher if get_metadata fallbacks were needed)
 
     **Status guidance:**
-    - **DONE** — implementation is complete. Token mapping fallbacks and accessibility additions are expected behavior and do not downgrade the status.
-    - **BLOCKED** — cannot proceed (e.g., Figma MCP unavailable, missing assets, MCP failures, ambiguous design structure).
+    - **DONE** — implementation is complete. Token mapping fallbacks, accessibility additions, and self-review fixes are expected behavior and do not downgrade the status. If self-review found issues that were all fixed in Step 7, status is still DONE.
+    - **DONE with unresolved issues** — implementation is complete but self-review found issues that could not be fixed. List the unresolved issues. The orchestrator will relay them to the user.
+    - **BLOCKED** — cannot proceed (e.g., Figma MCP unavailable, missing assets, MCP failures, ambiguous design structure, or self-review reveals fundamental structural mismatches that require redesign).
 
     Never silently produce work you are uncertain about.
 
