@@ -6,9 +6,9 @@ automations:
   linearb_ai_review:
     # Triggers only when PR is created or has new commits, see docs
     #   https://docs.gitstream.cm/execution-model/#action-level-execution-control
-    if:
+    if: 
       - {{ not pr.draft }}
-      - {{ not (is.bot or is.bot_branch) }}
+      - {{ not (is.bot_author or is.bot_branch) }}
     run:
       - action: code-review@v1
         args:
