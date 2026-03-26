@@ -74,6 +74,11 @@ Never approximate. Never use a "closest" project token. It is either an exact ma
 3. **Never substitute with icon libraries** (lucide, heroicons, etc.). Never create placeholder assets.
 4. **Icons as SVG.** Icons must be saved as `.svg` files, not raster formats. Photos and illustrations may be raster.
 5. **Use asset URLs as-is** from the MCP server. Do not modify, proxy, or reconstruct them.
+6. **Fix SVG aspect ratio after download.** Figma MCP exports SVGs with `preserveAspectRatio="none" width="100%" height="100%" overflow="visible"` on the root `<svg>` element, which causes distortion when rendered with explicit dimensions (e.g., Next.js `<Image>`). For every downloaded SVG, apply these fixes to the root `<svg>` element:
+   - Remove `preserveAspectRatio="none"` (defaults to `xMidYMid meet` — correct behavior)
+   - Replace `width="100%"` with the `viewBox` width value
+   - Replace `height="100%"` with the `viewBox` height value
+   - Remove `overflow="visible"`
 
 ## Implementation Rules
 
@@ -108,6 +113,10 @@ Always search the codebase for an existing exact match before downloading a new 
 ### Design token values differ from Figma
 **Cause:** Project tokens have drifted from Figma values, or Figma uses updated values not yet reflected in the codebase.
 **Solution:** Follow the Token Mapping Rule — if the resolved values differ, hardcode the Figma value and flag as DONE_WITH_CONCERNS so the orchestrator can track token drift.
+
+### SVG icons appear stretched or squashed
+**Cause:** Figma MCP exports SVGs with `preserveAspectRatio="none"` and `width="100%" height="100%"`, which removes the intrinsic aspect ratio. When rendered with explicit dimensions that don't match the viewBox ratio, the content distorts.
+**Solution:** Apply Asset Rule 6 — remove `preserveAspectRatio="none"` and `overflow="visible"`, replace percentage width/height with the viewBox dimensions.
 
 ### Assets not loading
 **Cause:** Figma MCP server's asset endpoint is unreachable or URLs were modified.
