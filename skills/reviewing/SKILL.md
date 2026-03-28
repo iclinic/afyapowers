@@ -20,6 +20,7 @@ Perform a comprehensive 2-step code review of the completed feature implementati
 1. Read `.afyapowers/features/<feature>/artifacts/design.md` — the requirements
 2. Read `.afyapowers/features/<feature>/artifacts/plan.md` — the implementation plan
 3. Get the git diff for the feature's changes (use `git log` and `git diff` to identify the relevant commits)
+4. Read `.afyapowers/features/<feature>/artifacts/implementation-concerns.md` if it exists — these are concerns flagged by implementers during the implementation phase
 
 ### Step 2: Spec Compliance Review
 
@@ -27,6 +28,7 @@ Dispatch a spec-reviewer subagent using `skills/implementing/spec-reviewer-promp
 - Provide the design spec content as "what was requested"
 - Provide a summary of implemented changes as "what was built"
 - Provide the relevant code diff
+- Include a "Priority Areas" section with the contents of `implementation-concerns.md` (or "No concerns were flagged." if the file doesn't exist)
 
 If the reviewer finds spec gaps:
 1. Report the findings to the user
@@ -38,6 +40,7 @@ If the reviewer finds spec gaps:
 
 Dispatch a code-quality-reviewer subagent using `skills/reviewing/code-reviewer.md`:
 - Provide: what was implemented, plan reference, base/head SHAs, description
+- Include a "Priority Areas" section with the contents of `implementation-concerns.md` (or "No concerns were flagged." if the file doesn't exist)
 
 If the reviewer finds issues:
 1. Categorize by severity (Critical, Important, Minor)

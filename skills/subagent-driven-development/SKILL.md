@@ -5,9 +5,9 @@ description: Use when executing implementation plans with independent tasks in t
 
 # Subagent-Driven Development
 
-Execute plan by dispatching subagents per task with two-stage review (spec compliance then code quality). Tasks with no mutual dependencies run in parallel waves for faster execution.
+Execute plan by dispatching subagents per task. Tasks with no mutual dependencies run in parallel waves for faster execution.
 
-**Core principle:** Fresh subagent per task + two-stage review (spec then quality) = high quality, fast iteration
+**Core principle:** Fresh subagent per task + self-review + concerns collection = fast iteration with deferred quality review
 
 ## The Process
 
@@ -21,30 +21,30 @@ digraph process {
     "Compute ready set" [shape=box];
     "Any tasks ready?" [shape=diamond];
     "Validate file overlap in ready set" [shape=box];
-    "Dispatch parallel Agent calls" [shape=box];
+    "Apply Figma concurrency cap\nDispatch parallel Agent calls" [shape=box];
     "Wait for all agents to return" [shape=box];
     "Process results" [shape=box];
     "All tasks done?" [shape=diamond];
-    "Final code review" [shape=box];
+    "Write implementation-concerns.md" [shape=box];
     "Complete" [shape=doublecircle];
 
     "Read plan, parse tasks and dependencies" -> "Check for circular dependencies";
     "Check for circular dependencies" -> "Report cycle, stop" [label="cycle found"];
     "Check for circular dependencies" -> "Compute ready set" [label="no cycles"];
     "Compute ready set" -> "Any tasks ready?";
-    "Any tasks ready?" -> "Final code review" [label="all done"];
+    "Any tasks ready?" -> "Write implementation-concerns.md" [label="all done"];
     "Any tasks ready?" -> "Validate file overlap in ready set" [label="yes"];
-    "Validate file overlap in ready set" -> "Dispatch parallel Agent calls";
-    "Dispatch parallel Agent calls" -> "Wait for all agents to return";
+    "Validate file overlap in ready set" -> "Apply Figma concurrency cap\nDispatch parallel Agent calls";
+    "Apply Figma concurrency cap\nDispatch parallel Agent calls" -> "Wait for all agents to return";
     "Wait for all agents to return" -> "Process results";
     "Process results" -> "All tasks done?";
     "All tasks done?" -> "Compute ready set" [label="more tasks"];
-    "All tasks done?" -> "Final code review" [label="yes"];
-    "Final code review" -> "Complete";
+    "All tasks done?" -> "Write implementation-concerns.md" [label="yes"];
+    "Write implementation-concerns.md" -> "Complete";
 }
 ```
 
-Each dispatched Agent runs the full task pipeline: implement → spec review → quality review. Multiple pipelines run concurrently.
+Each dispatched Agent implements the task, performs a self-review, and returns a status with any concerns. Multiple agents run concurrently.
 
 ## Wave Execution Algorithm
 
@@ -89,8 +89,24 @@ Check every pair of tasks in the ready set. If two tasks share any file path in 
 
 ### Step 5: Dispatch
 
-Dispatch all ready tasks as parallel Agent tool calls in a single message. Each agent gets:
-- Full task text (steps, file list, code) — paste directly, don't make agent read files
+**Figma-aware concurrency:** After file overlap validation, classify each task in the ready set:
+- **Figma task**: task text contains a `**Figma:**` section
+- **Non-Figma task**: no `**Figma:**` section
+
+Apply concurrency caps:
+- **Non-Figma tasks**: dispatch all (no cap)
+- **Figma tasks**: dispatch up to **4** per cycle. If more than 4 Figma tasks are ready, pick the first 4 by task number; the rest stay in the ready pool for the next cycle
+
+> **Why 4?** The Figma MCP rate-limits at 15 requests/minute. Each Figma task makes 3 mandatory MCP calls, so 4 concurrent tasks = 12 calls — safely under the limit.
+
+Dispatch the combined set (all non-Figma + up to 4 Figma) as parallel Subagent calls in a single message.
+
+**Prompt routing:** Select the correct implementer prompt based on the task type:
+- If the task text contains a `**Figma:**` section → use `skills/implementing/implement-figma-design.md` prompt template. Include the Figma metadata (file key, node ID, breakpoints) in the agent context.
+- If the task does NOT contain a `**Figma:**` section → use `skills/implementing/implementer-prompt.md` prompt template (standard TDD implementer).
+
+Each agent gets:
+- Full task text (steps, file list, code/Figma metadata) — paste directly, don't make agent read files
 - Design spec content for context
 - File constraint: "You may ONLY modify these files: [list from task's Files: section]"
 - Return format: status (DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED) + summary
@@ -98,8 +114,10 @@ Dispatch all ready tasks as parallel Agent tool calls in a single message. Each 
 ### Step 6: Wait and Process Results
 
 All Agent calls return together. For each result:
-- **DONE** (passed both reviews): mark task `completed`, update plan checkbox to `- [x]`
-- **DONE_WITH_CONCERNS**: read concerns. If about correctness/scope, address before marking complete. If observations only, note and mark `completed`
+- **DONE**: mark task `completed`, update plan checkbox to `- [x]`
+- **DONE_WITH_CONCERNS**: read concerns. Store in concerns list and mark `completed`. If the concern indicates the task is fundamentally broken, treat as `BLOCKED` instead.
+  - **Treat as BLOCKED examples:** "I couldn't get tests to pass", "Tests fail and I can't figure out why", "Core dependency is missing and I had to stub the entire integration"
+  - **Store-and-continue examples:** "I'm not sure this edge case is handled correctly", "The API response format might differ in production", "This works but the approach feels fragile"
 - **NEEDS_CONTEXT**: surface question to user. Mark task `needs-retry`. Continue with other tasks — do NOT pause the entire execution
 - **BLOCKED**: assess blocker per standard SDD rules (more context, more capable model, break into pieces, or escalate). Mark task `needs-retry`
 
@@ -120,21 +138,31 @@ Plan: 5 tasks. Task 1,2 have no deps. Task 3,4 depend on 1,2. Task 5 depends on 
 Completed: []
 Ready: [1, 2] → no file overlap → dispatch both
   → Agent(Task 1), Agent(Task 2) dispatched in parallel
-  → Both return DONE, pass reviews
+  → Both return DONE
 Completed: [1, 2]
 
 --- Cycle 2 ---
 Ready: [3, 4] (deps [1,2] all completed) → no file overlap → dispatch both
   → Agent(Task 3), Agent(Task 4) dispatched in parallel
-  → Task 3 fails spec review, gets fixed, passes on re-review
-  → Task 4 passes
+  → Task 3 returns DONE_WITH_CONCERNS (concern noted)
+  → Task 4 returns DONE
 Completed: [1, 2, 3, 4]
+Concerns collected: [Task 3: "..."]
 
 --- Cycle 3 ---
 Ready: [5] (deps [3,4] all completed) → dispatch
   → Agent(Task 5) dispatched
-  → Passes
-Completed: [1, 2, 3, 4, 5] → Done
+  → Returns DONE
+Completed: [1, 2, 3, 4, 5] → Write implementation-concerns.md → Done
+```
+
+#### Mixed Figma / Non-Figma Example
+
+```
+Ready: [1(std), 2(std), 3(figma), 4(figma), 5(std), 6(figma)]
+→ Classify: non-Figma = [1, 2, 5], Figma = [3, 4, 6]
+→ Apply caps: all non-Figma + first 4 Figma
+→ Dispatch: [1, 2, 5] + [3, 4, 6] = 6 parallel agents (all 3 Figma tasks fit under the cap of 4)
 ```
 
 ### Fallback to Sequential
@@ -180,9 +208,9 @@ Use the least powerful model that can handle each role to conserve cost and incr
 
 Implementer subagents report one of four statuses:
 
-**DONE:** Proceed to spec compliance review.
+**DONE:** Mark task `completed`, update plan checkbox. No review dispatch.
 
-**DONE_WITH_CONCERNS:** Read concerns before proceeding. If about correctness/scope, address first. If observations, note and proceed.
+**DONE_WITH_CONCERNS:** Read concerns. Store in concerns list and mark `completed`. If the concern indicates the task is fundamentally broken (e.g., "I couldn't get tests to pass", "Core dependency is missing and I had to stub the entire integration"), treat as `BLOCKED` instead. Examples of store-and-continue concerns: "I'm not sure this edge case is handled correctly", "The API response format might differ in production", "This works but the approach feels fragile."
 
 **NEEDS_CONTEXT:** Provide missing context and re-dispatch.
 
@@ -196,36 +224,23 @@ Implementer subagents report one of four statuses:
 
 ## Prompt Templates
 
-- `skills/implementing/implementer-prompt.md` - Dispatch implementer subagent
-- `skills/implementing/spec-reviewer-prompt.md` - Dispatch spec compliance reviewer subagent
-- `skills/implementing/code-quality-reviewer-prompt.md` - Dispatch code quality reviewer subagent
+- `skills/implementing/implementer-prompt.md` - Dispatch standard implementer subagent (TDD workflow)
+- `skills/implementing/implement-figma-design.md` - Dispatch Figma design implementer subagent (visual fidelity workflow)
 
 ## Red Flags
 
 **Never:**
 - Start implementation on main/master branch without explicit user consent
-- Skip reviews (spec compliance OR code quality)
-- Proceed with unfixed issues
 - Dispatch implementation subagents that modify the same files in parallel (file overlap = sequential)
 - Make subagent read plan file (provide full text instead)
 - Skip scene-setting context
 - Ignore subagent questions
-- Accept "close enough" on spec compliance
-- Skip review loops
-- Let implementer self-review replace actual review
-- **Start code quality review before spec compliance passes** (wrong order)
-- Move to next task while either review has open issues
+- Silently discard DONE_WITH_CONCERNS notes — always collect and persist them
 
 **If subagent asks questions:**
 - Answer clearly and completely
 - Provide additional context if needed
 - Don't rush them into implementation
-
-**If reviewer finds issues:**
-- Implementer (same subagent) fixes them
-- Reviewer reviews again
-- Repeat until approved
-- Don't skip the re-review
 
 **If subagent fails task:**
 - Dispatch fix subagent with specific instructions
@@ -237,8 +252,25 @@ Implementer subagents report one of four statuses:
 - **implementing** (REQUIRED SUB-SKILL) — implementing loads the plan and design, then invokes SDD to execute all tasks
 
 **Subagent prompts:**
-- `skills/implementing/implementer-prompt.md` — TDD rules are embedded directly in this prompt
-- `skills/implementing/spec-reviewer-prompt.md` — spec compliance review
-- `skills/implementing/code-quality-reviewer-prompt.md` — code quality review
+- `skills/implementing/implementer-prompt.md` — TDD rules are embedded directly in this prompt (used for standard tasks)
+- `skills/implementing/implement-figma-design.md` — Figma implement-design workflow (used for tasks with `**Figma:**` section)
 
 **Context:** When invoked by implementing, the plan and design are already in the conversation context. Use them directly. If the plan is not in context (e.g., invoked standalone), read it from `.afyapowers/features/<feature>/artifacts/plan.md`.
+
+## Concerns Collection
+
+After all tasks complete, if any `DONE_WITH_CONCERNS` notes were collected during execution, write them to `.afyapowers/features/<feature>/artifacts/implementation-concerns.md`:
+
+```markdown
+# Implementation Concerns
+
+Collected during implementation phase. Priority areas for the review phase.
+
+## Task N: [task name verbatim from plan heading]
+- [concern text from implementer report]
+
+## Task M: [task name verbatim from plan heading]
+- [concern text from implementer report]
+```
+
+If the implementation phase is re-run (e.g., after fixing a blocked task), overwrite `implementation-concerns.md` with fresh data from the current run — do not append to stale concerns from a previous run. If no concerns were collected, do not create the file.

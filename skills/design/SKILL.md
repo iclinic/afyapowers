@@ -28,19 +28,24 @@ Every project goes through this process. A todo list, a single-function utility,
 You MUST complete these items in order:
 
 1. **Explore project context** — check files, docs, recent commits
-2. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
-3. **Propose 2-3 approaches** — with trade-offs and your recommendation
-4. **Present design** — in sections scaled to their complexity, get user approval after each section
-5. **Write design doc** — save to `.afyapowers/features/<feature>/artifacts/design.md`
-6. **Spec review loop** — dispatch spec-document-reviewer subagent; fix issues and re-dispatch until approved (max 5 iterations, then surface to human)
-7. **User reviews written spec** — ask user to review the spec file before proceeding
+2. **Figma discovery (trigger-based)** — check user request against trigger keywords (see below); if match, ask about Figma and run discovery before clarifying questions
+3. **Ask clarifying questions** — if Figma data is available, use confirmation-style questions (see below); otherwise, standard one-at-a-time clarifying questions
+4. **Propose 2-3 approaches** — with trade-offs and your recommendation
+5. **Present design** — in sections scaled to their complexity, get user approval after each section
+6. **Write design doc** — save to `.afyapowers/features/<feature>/artifacts/design.md`
+7. **Spec review loop** — dispatch spec-document-reviewer subagent; fix issues and re-dispatch until approved (max 5 iterations, then surface to human)
+8. **User reviews written spec** — ask user to review the spec file before proceeding
 
 ## Process Flow
 
 ```dot
 digraph design {
     "Explore project context" [shape=box];
-    "Ask clarifying questions" [shape=box];
+    "Trigger keywords match?" [shape=diamond];
+    "Ask Figma question" [shape=box];
+    "Figma discovery" [shape=box];
+    "Confirmation-style questions" [shape=box];
+    "Standard clarifying questions" [shape=box];
     "Propose 2-3 approaches" [shape=box];
     "Present design sections" [shape=box];
     "User approves design?" [shape=diamond];
@@ -50,8 +55,14 @@ digraph design {
     "User reviews spec?" [shape=diamond];
     "Suggest /afyapowers:next" [shape=doublecircle];
 
-    "Explore project context" -> "Ask clarifying questions";
-    "Ask clarifying questions" -> "Propose 2-3 approaches";
+    "Explore project context" -> "Trigger keywords match?";
+    "Trigger keywords match?" -> "Ask Figma question" [label="yes"];
+    "Trigger keywords match?" -> "Standard clarifying questions" [label="no"];
+    "Ask Figma question" -> "Figma discovery" [label="user provides URLs"];
+    "Ask Figma question" -> "Standard clarifying questions" [label="no Figma designs"];
+    "Figma discovery" -> "Confirmation-style questions";
+    "Confirmation-style questions" -> "Propose 2-3 approaches";
+    "Standard clarifying questions" -> "Propose 2-3 approaches";
     "Propose 2-3 approaches" -> "Present design sections";
     "Present design sections" -> "User approves design?";
     "User approves design?" -> "Present design sections" [label="no, revise"];
@@ -79,6 +90,110 @@ digraph design {
 - Only one question per message - if a topic needs more exploration, break it into multiple questions
 - Focus on understanding: purpose, constraints, success criteria
 
+**Figma discovery (trigger-based):**
+
+After exploring project context, check the user's request for these trigger keywords (case-insensitive, word-level matching):
+
+> page, landing page, screen, view, layout, header, footer, navbar, sidebar, UI component, form, modal, dialog, card, hero, section, banner, responsive, breakpoint, mobile, desktop, dashboard, panel, widget
+
+If any keyword matches, ask the user:
+
+> "Does this feature have Figma designs? If so, please share the Figma URL(s)."
+
+If a keyword matches but the request is clearly not UI work (e.g., "write unit tests for the landing page API endpoint"), use judgment — when in doubt, ask.
+
+If no keywords match, skip Figma discovery and proceed to clarifying questions.
+
+If the user provides Figma URL(s):
+
+1. **Parse each URL** to extract the file key and node ID
+   - URL format: `https://figma.com/design/:fileKey/:fileName?node-id=X-Y`
+   - Extract `:fileKey` (segment after `/design/`) and `X-Y` (value of `node-id` parameter)
+
+2. **Single `get_metadata` call** on the root node
+   ```
+   get_metadata(fileKey=":fileKey", nodeId="X-Y")
+   ```
+   From the response, build the Node Map using only the first 2 depth levels of the returned tree:
+   - **Depth 0:** Page
+   - **Depth 1:** Screen/Section (top-level frames — names and dimensions are included in metadata)
+   - **Depth 2:** Component or element (the task unit)
+
+   Ignore any nodes deeper than depth 2. Breakpoints are inferred from top-level frame names and dimensions (e.g., "Desktop" at 1440px, "Mobile" at 375px).
+
+   From the response, build the Node Map with two subsections:
+   a. **Reusable Components:** Extract all depth-2 nodes typed COMPONENT or COMPONENT_SET. List each with its node ID and type. If none exist, write `(none — all components are external or pre-existing)`.
+   b. **Screens:** List each depth-1 FRAME with its node ID, type, and dimensions. Under each frame, list its depth-2 children (excluding COMPONENT/COMPONENT_SET nodes already listed above). Collapse repeated INSTANCE nodes sharing the same `componentId` with a `×N` count.
+
+3. **Build the `## Figma Resources` section** for the design doc:
+   - File info (URL, file key)
+   - Breakpoints (inferred from top-level frame names and dimensions in the metadata response)
+   - Node Map (shallow structure from `get_metadata`: page → section → component/element)
+
+   Use the template from `templates/design.md` for the section structure.
+
+   #### Example
+
+   `get_metadata` returns:
+   ```
+   Page "Landing Page"
+     Frame "Hero Section" (id: 1:2, type: FRAME, 1440x800)
+       ├── "Hero Title" (id: 1:3, type: TEXT)
+       ├── "CTA Button" (id: 1:4, type: COMPONENT)
+       ├── "Card" (id: 1:5, type: INSTANCE, componentId: 2:10)
+       ├── "Card" (id: 1:6, type: INSTANCE, componentId: 2:10)
+       └── "Card" (id: 1:7, type: INSTANCE, componentId: 2:10)
+     Frame "Pricing Section" (id: 2:1, type: FRAME, 1440x600)
+       ├── "Pricing Tier" (id: 2:10, type: COMPONENT_SET)
+       ├── "Section Title" (id: 2:11, type: TEXT)
+       └── "Pricing Tier" (id: 2:12, type: INSTANCE, componentId: 2:10)
+   ```
+
+   Correct Node Map output:
+   ```
+   #### Page: Landing Page
+
+   **Reusable Components:**
+   - CTA Button (node `1:4`, COMPONENT)
+   - Pricing Tier (node `2:10`, COMPONENT_SET)
+
+   **Screens:**
+   - **Hero Section** (node `1:2`, FRAME, 1440x800)
+     - Card (node `1:5`, INSTANCE, componentId: `2:10`) ×3
+     - Hero Title (node `1:3`, TEXT)
+   - **Pricing Section** (node `2:1`, FRAME, 1440x600)
+     - Pricing Tier (node `2:12`, INSTANCE, componentId: `2:10`) ×1
+     - Section Title (node `2:11`, TEXT)
+   ```
+
+   **Node Map validation (run before finalizing the Figma Resources section):**
+   1. Every COMPONENT/COMPONENT_SET node from the metadata has an entry with `node \`<id>\`` and its type in **Reusable Components**
+   2. No COMPONENT/COMPONENT_SET node was omitted or merged into a screen's children
+   3. INSTANCE nodes with the same componentId are collapsed with ×N count under their parent screen in **Screens**
+   4. Every depth-1 FRAME has its node ID and dimensions in **Screens**
+   5. If no COMPONENT/COMPONENT_SET nodes exist, **Reusable Components** says `(none — all components are external or pre-existing)`
+
+No `get_screenshot` or `get_design_context` calls during the design phase — these are deferred to implementation, where the subagent already calls them per-task. This keeps the design phase at exactly **1 MCP call** regardless of file complexity.
+
+**If the Figma MCP server is unavailable:** Warn the user and suggest checking the MCP server connection. You cannot proceed with Figma discovery without it, but you can still continue the design process without the Figma Resources section.
+
+**If no Figma designs:** Proceed normally. Do not include the Figma Resources section in the design doc.
+
+**Design tokens are NOT extracted during design phase.** They are deferred to implementation time — the implementer subagent will fetch them via `get_variable_defs` when needed.
+
+**Clarifying questions (Figma-informed):**
+
+When Figma data was gathered in the previous step, replace open-ended clarifying questions with confirmation-style:
+
+- Present what Figma shows (structure, breakpoints, component hierarchy) and ask the user to confirm or correct
+- Then only ask about things not visible in the design: business logic, data sources, interactions, dynamic behavior
+
+Example:
+- **Open-ended (without Figma):** "How should the page be structured?"
+- **Confirmation-style (with Figma):** "The Figma design shows a hero section, a 3-column feature grid, and a CTA footer across 3 breakpoints (mobile/tablet/desktop). Does this match what you want, or do you need changes?"
+
+When no Figma data is available, use the standard approach: ask questions one at a time to understand purpose, constraints, and success criteria.
+
 **Exploring approaches:**
 
 - Propose 2-3 different approaches with trade-offs
@@ -92,6 +207,7 @@ digraph design {
 - Scale each section to its complexity: a few sentences if straightforward, up to 200-300 words if nuanced
 - Ask after each section whether it looks right so far
 - Cover all sections from the design template: problem statement, requirements, constraints, chosen approach, architecture, data flow, interfaces, error handling, testing strategy, dependencies
+- If Figma discovery was performed, include the `## Figma Resources` section with file info, breakpoints, and node map
 - Be ready to go back and clarify if something doesn't make sense
 
 **Design for isolation and clarity:**

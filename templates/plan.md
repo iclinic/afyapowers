@@ -19,14 +19,22 @@
 
 **Depends on:** none
 
-- [ ] Step 1: ...
-- [ ] Step 2: ...
+- [ ] Step 1: Write the failing test — describe behaviors to test and expected outcomes
+- [ ] Step 2: Run the test and confirm it fails
+- [ ] Step 3: Implement — describe what to build and key decisions
+- [ ] Step 4: Run the test and confirm it passes
+- [ ] Step 5: Commit
 
-### Task 2: [Component Name]
+### Task N: [UI Component Name] (Figma)
 
 **Files:**
-- Create: `exact/path/to/file`
+- Create: `exact/path/to/component`
 
-**Depends on:** Task 1
+**Depends on:** none | Task X
 
-- [ ] Step 1: ...
+**Figma:**
+- **File Key:** `<file_key>`
+- **Node ID:** `<id>`
+- **Breakpoints:** <breakpoint_name> (<width>px), ...
+
+- [ ] Implement using the Figma implementer workflow and commit
