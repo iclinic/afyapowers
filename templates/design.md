@@ -1,5 +1,25 @@
 # Design: {{feature_name}}
 
+## JIRA Context
+<!-- Only included when feature has a backing JIRA issue. Remove this section if not applicable. -->
+
+**Issue:** [PROJ-123](https://your-site.atlassian.net/browse/PROJ-123)
+**Type:** Story | Bug | Task | Epic
+**Summary:** <!-- One-line summary from JIRA -->
+
+### Requirements from JIRA
+<!-- Key requirements extracted from the JIRA description and acceptance criteria -->
+- ...
+
+### Acceptance Criteria
+<!-- Acceptance criteria from the JIRA issue, verbatim or lightly reformatted -->
+- [ ] ...
+
+### Linked Issues
+<!-- Related JIRA issues: blockers, dependencies, related work -->
+- Blocked by: PROJ-100 — ...
+- Related to: PROJ-150 — ...
+
 ## Problem Statement
 <!-- What problem are we solving and why -->
 
