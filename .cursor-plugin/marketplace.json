@@ -1,0 +1,17 @@
+{
+  "name": "devex-marketplace",
+  "owner": {
+    "name": "Rafael Papastamatiou",
+    "email": "rafael.rodrigues@afya.com.br"
+  },
+  "metadata": {
+    "description": "Afya DevEx Marketplace plugin. Skills, plugins, workflows and other productivity tools for software developers."
+  },
+  "plugins": [
+    {
+      "name": "afyapowers",
+      "source": "../",
+      "description": "Deterministic, phase-gated development workflow with persistent state and auditability"
+    }
+  ]
+}
