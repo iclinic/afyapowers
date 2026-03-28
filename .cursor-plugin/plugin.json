@@ -1,6 +1,6 @@
 {
   "name": "afyapowers",
-  "displayName": "Afyapowers",
+  "displayName": "afyapowers",
   "description": "Deterministic, phase-gated development workflow with persistent state and auditability",
   "version": "0.4.0",
   "author": {
