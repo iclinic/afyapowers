@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "afyapowers",
-      "source": "../",
+      "source": "../cursor-afyapowers",
       "description": "Deterministic, phase-gated development workflow with persistent state and auditability"
     }
   ]
