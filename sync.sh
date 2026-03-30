@@ -338,6 +338,7 @@ process_templates() {
 
   if json_is_true "$config_file" '.templates'; then
     if [[ -d "$SRC_DIR/templates" ]]; then
+      rm -rf "$output_dir/templates"
       cp -R "$SRC_DIR/templates" "$output_dir/templates"
       local count
       count=$(find "$output_dir/templates" -type f | wc -l | tr -d ' ')
@@ -355,6 +356,7 @@ process_hooks() {
 
   if json_is_true "$config_file" '.hooks'; then
     if [[ -d "$SRC_DIR/hooks" ]]; then
+      rm -rf "$output_dir/hooks"
       cp -R "$SRC_DIR/hooks" "$output_dir/hooks"
       # Preserve execute permissions
       for f in "$SRC_DIR/hooks/"*; do
