@@ -12,7 +12,13 @@ json_get() {
   if command -v jq &>/dev/null; then
     jq -r "$path" "$file"
   else
-    python3 -c "import json,sys; d=json.load(open('$file')); v=$( echo "$path" | sed 's/^\./d/' | sed 's/\.\([a-zA-Z_]*\)/["\1"]/g' ); print(v if v is not None else '')"
+    python3 -c "
+import json, functools
+d = json.load(open('$file'))
+keys = '$path'.lstrip('.').split('.')
+v = functools.reduce(lambda o, k: o[k] if isinstance(o, dict) else None, keys, d)
+print(v if v is not None else '')
+"
   fi
 }
 
@@ -22,9 +28,10 @@ json_keys() {
     jq -r "$path | keys[]" "$file" 2>/dev/null || true
   else
     python3 -c "
-import json
-d=json.load(open('$file'))
-obj=$(echo "$path" | sed 's/^\./d/' | sed 's/\.\([a-zA-Z_]*\)/[\"\1\"]/g')
+import json, functools
+d = json.load(open('$file'))
+keys = '$path'.lstrip('.').split('.')
+obj = functools.reduce(lambda o, k: o[k] if isinstance(o, dict) else None, keys, d)
 if isinstance(obj, dict):
     for k in obj: print(k)
 " 2>/dev/null || true
@@ -388,14 +395,11 @@ process_manifest() {
   to=$(json_get "$config_file" '.pluginManifest.to')
 
   if [[ -e "$REPO_ROOT/$from" ]]; then
-    local dest_dir
-    dest_dir=$(dirname "$output_dir/$to")
-    mkdir -p "$dest_dir"
+    mkdir -p "$(dirname "$output_dir/$to")"
     if [[ -d "$REPO_ROOT/$from" ]]; then
       mkdir -p "$output_dir/$to"
       cp -R "$REPO_ROOT/$from/"* "$output_dir/$to/"
     else
-      mkdir -p "$(dirname "$output_dir/$to")"
       cp "$REPO_ROOT/$from" "$output_dir/$to"
     fi
     echo "  Manifest: copied from $from"
