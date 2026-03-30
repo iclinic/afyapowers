@@ -1,6 +1,6 @@
 ---
 description: Switch Active Feature
-name: afyapowers:switch
+name: afyapowers-switch
 ---
 # /afyapowers:switch — Switch Active Feature
 

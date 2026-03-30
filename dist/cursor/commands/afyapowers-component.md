@@ -1,6 +1,6 @@
 ---
 description: Develop a Figma Component
-name: afyapowers:component
+name: afyapowers-component
 ---
 # /afyapowers:component — Develop a Figma Component
 

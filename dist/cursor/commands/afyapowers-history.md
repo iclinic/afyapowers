@@ -1,6 +1,6 @@
 ---
 description: Show Feature History
-name: afyapowers:history
+name: afyapowers-history
 ---
 # /afyapowers:history — Show Feature History
 

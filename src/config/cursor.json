@@ -5,7 +5,7 @@
   "commands": {
     "filePrefix": "afyapowers-",
     "frontmatter": {
-      "name": "{{prefix}}:{{slug}}",
+      "name": "{{prefix}}-{{slug}}",
       "description": "{{heading_title}}"
     }
   },
