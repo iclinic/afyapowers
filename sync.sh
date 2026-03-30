@@ -390,10 +390,11 @@ process_manifest() {
     dest_dir=$(dirname "$output_dir/$to")
     mkdir -p "$dest_dir"
     if [[ -d "$REPO_ROOT/$from" ]]; then
-      cp -R "$REPO_ROOT/$from" "$output_dir/$to"
-    else
       mkdir -p "$output_dir/$to"
-      cp "$REPO_ROOT/$from" "$output_dir/$to/"
+      cp -R "$REPO_ROOT/$from/"* "$output_dir/$to/"
+    else
+      mkdir -p "$(dirname "$output_dir/$to")"
+      cp "$REPO_ROOT/$from" "$output_dir/$to"
     fi
     echo "  Manifest: copied from $from"
   else
