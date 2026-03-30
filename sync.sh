@@ -12,10 +12,10 @@ json_get() {
   if command -v jq &>/dev/null; then
     jq -r "$path" "$file"
   else
-    python3 -c "
-import json, functools
-d = json.load(open('$file'))
-keys = '$path'.lstrip('.').split('.')
+    file="$file" path="$path" python3 -c "
+import os, json, functools
+d = json.load(open(os.environ['file']))
+keys = os.environ['path'].lstrip('.').split('.')
 v = functools.reduce(lambda o, k: o[k] if isinstance(o, dict) else None, keys, d)
 print(v if v is not None else '')
 "
@@ -27,10 +27,10 @@ json_keys() {
   if command -v jq &>/dev/null; then
     jq -r "$path | keys[]" "$file" 2>/dev/null || true
   else
-    python3 -c "
-import json, functools
-d = json.load(open('$file'))
-keys = '$path'.lstrip('.').split('.')
+    JSON_FILE="$file" JSON_PATH="$path" python3 -c "
+import os, json, functools
+d = json.load(open(os.environ['JSON_FILE']))
+keys = os.environ['JSON_PATH'].lstrip('.').split('.')
 obj = functools.reduce(lambda o, k: o[k] if isinstance(o, dict) else None, keys, d)
 if isinstance(obj, dict):
     for k in obj: print(k)
