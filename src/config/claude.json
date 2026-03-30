@@ -1,0 +1,22 @@
+{
+  "agent": "claude",
+  "outputDir": "dist/claude",
+  "prefix": "afyapowers",
+  "commands": {
+    "filePrefix": "",
+    "frontmatter": {}
+  },
+  "skills": {
+    "dirPrefix": "",
+    "frontmatter": {
+      "transform": "keep",
+      "fields": {}
+    }
+  },
+  "templates": true,
+  "hooks": true,
+  "pluginManifest": {
+    "from": "src/manifests/claude/.claude-plugin",
+    "to": ".claude-plugin"
+  }
+}

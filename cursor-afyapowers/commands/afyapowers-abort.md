@@ -1,1 +1,0 @@
-../../commands/abort.md

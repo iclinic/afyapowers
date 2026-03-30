@@ -1,0 +1,19 @@
+{
+  "agent": "gemini",
+  "outputDir": "dist/gemini",
+  "prefix": "afyapowers",
+  "commands": {
+    "filePrefix": "",
+    "frontmatter": {}
+  },
+  "skills": {
+    "dirPrefix": "",
+    "frontmatter": {
+      "transform": "keep",
+      "fields": {}
+    }
+  },
+  "templates": true,
+  "hooks": true,
+  "pluginManifest": null
+}

@@ -1,0 +1,27 @@
+{
+  "agent": "cursor",
+  "outputDir": "dist/cursor",
+  "prefix": "afyapowers",
+  "commands": {
+    "filePrefix": "afyapowers-",
+    "frontmatter": {
+      "name": "{{prefix}}:{{slug}}",
+      "description": "{{heading_title}}"
+    }
+  },
+  "skills": {
+    "dirPrefix": "afyapowers-",
+    "frontmatter": {
+      "transform": "merge",
+      "fields": {
+        "name": "{{prefix}}-{{name}}"
+      }
+    }
+  },
+  "templates": true,
+  "hooks": true,
+  "pluginManifest": {
+    "from": "src/manifests/cursor/.cursor-plugin",
+    "to": ".cursor-plugin"
+  }
+}
