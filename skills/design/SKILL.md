@@ -28,19 +28,23 @@ Every project goes through this process. A todo list, a single-function utility,
 You MUST complete these items in order:
 
 1. **Explore project context** — check files, docs, recent commits
-2. **Figma discovery (trigger-based)** — check user request against trigger keywords (see below); if match, ask about Figma and run discovery before clarifying questions
-3. **Ask clarifying questions** — if Figma data is available, use confirmation-style questions (see below); otherwise, standard one-at-a-time clarifying questions
-4. **Propose 2-3 approaches** — with trade-offs and your recommendation
-5. **Present design** — in sections scaled to their complexity, get user approval after each section
-6. **Write design doc** — save to `.afyapowers/features/<feature>/artifacts/design.md`
-7. **Spec review loop** — dispatch spec-document-reviewer subagent; fix issues and re-dispatch until approved (max 5 iterations, then surface to human)
-8. **User reviews written spec** — ask user to review the spec file before proceeding
+2. **JIRA discovery (offer-based)** — offer the user the chance to provide a JIRA issue key; if provided, fetch and summarize the issue (see below)
+3. **Figma discovery (trigger-based)** — check user request against trigger keywords (see below); if match, ask about Figma and run discovery before clarifying questions
+4. **Ask clarifying questions** — if JIRA and/or Figma data is available, use confirmation-style questions (see below); otherwise, standard one-at-a-time clarifying questions
+5. **Propose 2-3 approaches** — with trade-offs and your recommendation
+6. **Present design** — in sections scaled to their complexity, get user approval after each section
+7. **Write design doc** — save to `.afyapowers/features/<feature>/artifacts/design.md`
+8. **Spec review loop** — dispatch spec-document-reviewer subagent; fix issues and re-dispatch until approved (max 5 iterations, then surface to human)
+9. **User reviews written spec** — ask user to review the spec file before proceeding
 
 ## Process Flow
 
 ```dot
 digraph design {
     "Explore project context" [shape=box];
+    "Offer JIRA issue key" [shape=box];
+    "JIRA issue provided?" [shape=diamond];
+    "Fetch JIRA issue" [shape=box];
     "Trigger keywords match?" [shape=diamond];
     "Ask Figma question" [shape=box];
     "Figma discovery" [shape=box];
@@ -55,7 +59,11 @@ digraph design {
     "User reviews spec?" [shape=diamond];
     "Suggest /afyapowers:next" [shape=doublecircle];
 
-    "Explore project context" -> "Trigger keywords match?";
+    "Explore project context" -> "Offer JIRA issue key";
+    "Offer JIRA issue key" -> "JIRA issue provided?";
+    "JIRA issue provided?" -> "Fetch JIRA issue" [label="yes"];
+    "JIRA issue provided?" -> "Trigger keywords match?" [label="no"];
+    "Fetch JIRA issue" -> "Trigger keywords match?";
     "Trigger keywords match?" -> "Ask Figma question" [label="yes"];
     "Trigger keywords match?" -> "Standard clarifying questions" [label="no"];
     "Ask Figma question" -> "Figma discovery" [label="user provides URLs"];
@@ -89,6 +97,44 @@ digraph design {
 - Prefer multiple choice questions when possible, but open-ended is fine too
 - Only one question per message - if a topic needs more exploration, break it into multiple questions
 - Focus on understanding: purpose, constraints, success criteria
+
+**JIRA discovery (offer-based):**
+
+After exploring project context, offer the user:
+
+> "Is there a JIRA issue associated with this feature? If so, share the issue key (e.g., PROJ-123)."
+
+If the user provides a JIRA issue key:
+
+1. **Resolve the Atlassian cloud ID:**
+   - Call `mcp__claude_ai_Atlassian__getAccessibleAtlassianResources` (no parameters)
+   - If exactly one site is returned, use its `id` as the `cloudId`
+   - If multiple sites are returned, present them as a multiple-choice question and let the user pick
+
+2. **Fetch the issue:**
+   ```
+   mcp__claude_ai_Atlassian__getJiraIssue(
+     cloudId: "<resolved_cloud_id>",
+     issueIdOrKey: "<user_provided_key>",
+     responseContentFormat: "markdown"
+   )
+   ```
+
+3. **Build the JIRA context summary** from the response:
+   - **Summary:** issue summary field
+   - **Issue Type:** story, bug, task, epic, etc.
+   - **Description:** full description in markdown
+   - **Acceptance Criteria:** extracted from description or custom fields if present
+   - **Linked Issues:** dependencies, blockers, related issues
+   - **Labels / Components:** for categorization context
+
+   Present this summary to the user for confirmation before proceeding.
+
+4. **Proceed to Figma discovery** (the JIRA summary and description text is now part of the context when evaluating Figma trigger keywords)
+
+If no JIRA issue is provided, proceed directly to Figma discovery.
+
+**If the Atlassian MCP server is unavailable:** Warn the user and **stop the JIRA discovery flow**. Do not attempt to proceed without it — the user asked for JIRA context, so a silent fallback would undermine the purpose. Suggest the user check their MCP server connection and retry.
 
 **Figma discovery (trigger-based):**
 
@@ -175,24 +221,28 @@ If the user provides Figma URL(s):
 
 No `get_screenshot` or `get_design_context` calls during the design phase — these are deferred to implementation, where the subagent already calls them per-task. This keeps the design phase at exactly **1 MCP call** regardless of file complexity.
 
-**If the Figma MCP server is unavailable:** Warn the user and suggest checking the MCP server connection. You cannot proceed with Figma discovery without it, but you can still continue the design process without the Figma Resources section.
+**If the Figma MCP server is unavailable:** Warn the user and **stop the Figma discovery flow**. Do not attempt to proceed without it — the user provided Figma URLs, so a silent fallback would undermine the purpose. Suggest the user check their MCP server connection and retry.
 
 **If no Figma designs:** Proceed normally. Do not include the Figma Resources section in the design doc.
 
 **Design tokens are NOT extracted during design phase.** They are deferred to implementation time — the implementer subagent will fetch them via `get_variable_defs` when needed.
 
-**Clarifying questions (Figma-informed):**
+**Clarifying questions (JIRA and/or Figma-informed):**
 
-When Figma data was gathered in the previous step, replace open-ended clarifying questions with confirmation-style:
+When JIRA data and/or Figma data was gathered in previous steps, replace open-ended clarifying questions with confirmation-style:
 
-- Present what Figma shows (structure, breakpoints, component hierarchy) and ask the user to confirm or correct
-- Then only ask about things not visible in the design: business logic, data sources, interactions, dynamic behavior
+- If JIRA data is available: present the ticket's requirements, acceptance criteria, and scope, and ask the user to confirm, correct, or extend
+- If Figma data is available: present what the design shows (structure, breakpoints, component hierarchy) and ask the user to confirm or correct
+- If both are available: confirm JIRA requirements first, then Figma structural details
+- Then only ask about things not covered by either source: technical constraints, architecture preferences, performance requirements, edge cases
 
-Example:
-- **Open-ended (without Figma):** "How should the page be structured?"
-- **Confirmation-style (with Figma):** "The Figma design shows a hero section, a 3-column feature grid, and a CTA footer across 3 breakpoints (mobile/tablet/desktop). Does this match what you want, or do you need changes?"
+Examples:
+- **Open-ended (without JIRA/Figma):** "What problem are we solving?"
+- **With JIRA:** "The JIRA ticket PROJ-123 describes: '[summary]'. The acceptance criteria include [X, Y, Z]. Does this capture the full scope, or are there additions?"
+- **With Figma:** "The Figma design shows a hero section, a 3-column feature grid, and a CTA footer across 3 breakpoints (mobile/tablet/desktop). Does this match what you want, or do you need changes?"
+- **With JIRA + Figma:** "JIRA describes [requirements]. The Figma design shows [structure]. Do these align with what you want to build?"
 
-When no Figma data is available, use the standard approach: ask questions one at a time to understand purpose, constraints, and success criteria.
+When neither JIRA nor Figma data is available, use the standard approach: ask questions one at a time to understand purpose, constraints, and success criteria.
 
 **Exploring approaches:**
 
@@ -207,6 +257,7 @@ When no Figma data is available, use the standard approach: ask questions one at
 - Scale each section to its complexity: a few sentences if straightforward, up to 200-300 words if nuanced
 - Ask after each section whether it looks right so far
 - Cover all sections from the design template: problem statement, requirements, constraints, chosen approach, architecture, data flow, interfaces, error handling, testing strategy, dependencies
+- If JIRA discovery was performed, include the `## JIRA Context` section with issue key, summary, acceptance criteria, and linked issues
 - If Figma discovery was performed, include the `## Figma Resources` section with file info, breakpoints, and node map
 - Be ready to go back and clarify if something doesn't make sense
 
