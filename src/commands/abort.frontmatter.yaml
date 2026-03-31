@@ -4,3 +4,6 @@ claude:
 cursor:
   description: Abort Current Feature
   name: afyapowers-abort
+github-copilot:
+  description: Abort Current Feature
+  name: abort

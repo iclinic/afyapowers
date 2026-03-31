@@ -4,3 +4,6 @@ claude:
 cursor:
   description: Develop a Figma Component
   name: afyapowers-component
+github-copilot:
+  description: Develop a Figma Component
+  name: component

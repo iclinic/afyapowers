@@ -4,3 +4,6 @@ claude:
 cursor:
   name: afyapowers-writing-plans
   description: Use when the current afyapowers phase is plan — creates implementation plans from tech specs
+github-copilot:
+  name: writing-plans
+  description: Use when the current afyapowers phase is plan — creates implementation plans from tech specs
