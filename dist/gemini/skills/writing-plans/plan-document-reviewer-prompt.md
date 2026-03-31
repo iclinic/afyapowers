@@ -27,6 +27,7 @@ Task tool (general-purpose):
     | Task Syntax | Checkbox syntax (`- [ ]`) on steps for tracking |
     | Chunk Size | Each chunk under 1000 lines |
     | Dependencies | Every task has `**Depends on:**` line, references valid task numbers, no circular deps |
+    | Figma Task Ordering | If Figma tasks exist: split into component-level (Layer 1) and screen-level (Layer 2), all Layer 1 tasks before any Layer 2 tasks |
 
     ## CRITICAL
 
@@ -39,6 +40,9 @@ Task tool (general-purpose):
     - Tasks missing a `**Depends on:**` line
     - Dependency references to non-existent task numbers
     - Parallel-eligible tasks (no mutual dependency) that share files in their `**Files:**` lists
+    - Figma tasks not split into component-level (Layer 1) and screen-level (Layer 2)
+    - Layer 2 (screen) Figma tasks appearing before Layer 1 (component) Figma tasks
+    - Component tasks merged into screen tasks instead of being separate Layer 1 tasks
 
     ## Output Format
 
