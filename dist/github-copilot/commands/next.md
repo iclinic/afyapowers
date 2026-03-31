@@ -1,6 +1,6 @@
 ---
 description: Advance to Next Phase
-name: afyapowers-next
+name: next
 ---
 # /afyapowers:next — Advance to Next Phase
 

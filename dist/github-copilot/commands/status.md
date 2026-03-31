@@ -1,6 +1,6 @@
 ---
 description: Show Feature Status
-name: afyapowers-status
+name: status
 ---
 # /afyapowers:status — Show Feature Status
 

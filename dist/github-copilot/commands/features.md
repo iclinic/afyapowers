@@ -1,6 +1,6 @@
 ---
 description: List All Features
-name: afyapowers-features
+name: features
 ---
 # /afyapowers:features — List All Features
 

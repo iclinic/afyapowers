@@ -6,4 +6,4 @@ cursor:
   name: afyapowers-history
 github-copilot:
   description: Show Feature History
-  name: afyapowers-history
+  name: history

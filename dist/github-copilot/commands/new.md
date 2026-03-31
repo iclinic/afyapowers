@@ -1,6 +1,6 @@
 ---
 description: Start a New Feature
-name: afyapowers-new
+name: new
 ---
 # /afyapowers:new — Start a New Feature
 

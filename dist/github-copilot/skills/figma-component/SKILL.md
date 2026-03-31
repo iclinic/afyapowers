@@ -1,5 +1,5 @@
 ---
-name: afyapowers-figma-component
+name: figma-component
 description: Develop Figma components with strict validation, Code Connect dedup, and autonomous implementation. Standalone — not part of the 5-phase workflow.
 ---
 

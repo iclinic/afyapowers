@@ -6,4 +6,4 @@ cursor:
   name: afyapowers-switch
 github-copilot:
   description: Switch Active Feature
-  name: afyapowers-switch
+  name: switch

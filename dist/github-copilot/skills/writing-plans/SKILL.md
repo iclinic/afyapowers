@@ -1,5 +1,5 @@
 ---
-name: afyapowers-writing-plans
+name: writing-plans
 description: Use when the current afyapowers phase is plan — creates implementation plans from tech specs
 ---
 

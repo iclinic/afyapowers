@@ -1,6 +1,6 @@
 ---
 description: Abort Current Feature
-name: afyapowers-abort
+name: abort
 ---
 # /afyapowers:abort — Abort Current Feature
 
