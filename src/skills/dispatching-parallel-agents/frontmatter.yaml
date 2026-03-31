@@ -1,0 +1,6 @@
+claude:
+  name: afyapowers:dispatching-parallel-agents
+  description: Use when facing 2+ independent tasks that can be worked on without shared state or sequential dependencies
+cursor:
+  name: afyapowers-dispatching-parallel-agents
+  description: Use when facing 2+ independent tasks that can be worked on without shared state or sequential dependencies

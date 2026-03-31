@@ -1,0 +1,20 @@
+{
+  "agent": "cursor",
+  "outputDir": "dist/cursor",
+  "prefix": "afyapowers",
+  "commands": {
+    "filePrefix": "afyapowers-"
+  },
+  "skills": {
+    "dirPrefix": "afyapowers-"
+  },
+  "agents": {
+    "filePrefix": "afyapowers-"
+  },
+  "templates": true,
+  "hooks": true,
+  "pluginManifest": {
+    "from": "src/manifests/cursor/.cursor-plugin",
+    "to": ".cursor-plugin"
+  }
+}
