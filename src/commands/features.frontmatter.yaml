@@ -1,0 +1,6 @@
+claude:
+  description: List All Features
+  name: afyapowers:features
+cursor:
+  description: List All Features
+  name: afyapowers-features

@@ -3,20 +3,13 @@
   "outputDir": "dist/cursor",
   "prefix": "afyapowers",
   "commands": {
-    "filePrefix": "afyapowers-",
-    "frontmatter": {
-      "name": "{{prefix}}-{{slug}}",
-      "description": "{{heading_title}}"
-    }
+    "filePrefix": "afyapowers-"
   },
   "skills": {
-    "dirPrefix": "afyapowers-",
-    "frontmatter": {
-      "transform": "merge",
-      "fields": {
-        "name": "{{prefix}}-{{name}}"
-      }
-    }
+    "dirPrefix": "afyapowers-"
+  },
+  "agents": {
+    "filePrefix": "afyapowers-"
   },
   "templates": true,
   "hooks": true,

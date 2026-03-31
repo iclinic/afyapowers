@@ -1,3 +1,7 @@
+---
+description: Start a New Feature
+name: afyapowers:new
+---
 # /afyapowers:new — Start a New Feature
 
 You are starting a new feature workflow. Follow these steps exactly:

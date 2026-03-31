@@ -1,5 +1,5 @@
 ---
-name: auto-documentation
+name: afyapowers:auto-documentation
 description: "Use after any implementation is finished to automatically generate or update feature documentation in docs/afyapowers/ — analyzes changes, matches to existing docs by domain area, and maintains living documentation with changelog"
 ---
 

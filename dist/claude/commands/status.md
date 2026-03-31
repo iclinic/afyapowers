@@ -1,3 +1,7 @@
+---
+description: Show Feature Status
+name: afyapowers:status
+---
 # /afyapowers:status — Show Feature Status
 
 Display the current state of the active feature.

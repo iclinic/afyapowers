@@ -1,0 +1,6 @@
+claude:
+  description: Switch Active Feature
+  name: afyapowers:switch
+cursor:
+  description: Switch Active Feature
+  name: afyapowers-switch

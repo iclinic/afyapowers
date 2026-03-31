@@ -1,0 +1,6 @@
+claude:
+  description: Abort Current Feature
+  name: afyapowers:abort
+cursor:
+  description: Abort Current Feature
+  name: afyapowers-abort

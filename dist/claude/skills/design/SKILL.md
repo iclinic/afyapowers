@@ -1,5 +1,5 @@
 ---
-name: design
+name: afyapowers:design
 description: "You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements, and produces a full technical design."
 ---
 

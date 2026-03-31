@@ -1,3 +1,7 @@
+---
+description: Show Feature History
+name: afyapowers:history
+---
 # /afyapowers:history — Show Feature History
 
 Display the full event timeline for the active feature.

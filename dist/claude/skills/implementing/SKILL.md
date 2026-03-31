@@ -1,5 +1,5 @@
 ---
-name: implementing
+name: afyapowers:implementing
 description: "Use when the current afyapowers phase is implement — orchestrates implementation via subagent-driven-development"
 ---
 

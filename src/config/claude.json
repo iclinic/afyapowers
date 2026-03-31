@@ -3,15 +3,13 @@
   "outputDir": "dist/claude",
   "prefix": "afyapowers",
   "commands": {
-    "filePrefix": "",
-    "frontmatter": {}
+    "filePrefix": ""
   },
   "skills": {
-    "dirPrefix": "",
-    "frontmatter": {
-      "transform": "keep",
-      "fields": {}
-    }
+    "dirPrefix": ""
+  },
+  "agents": {
+    "filePrefix": ""
   },
   "templates": true,
   "hooks": true,

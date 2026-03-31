@@ -28,9 +28,10 @@ Each agent has a JSON config file in `src/config/`. The sync script (`sync.sh`) 
 |-------|------|-------------|
 | `agent` | `string` | Agent identifier (e.g., `"cursor"`, `"claude"`, `"gemini"`) |
 | `outputDir` | `string` | Output directory relative to repo root (e.g., `"dist/cursor"`) |
-| `prefix` | `string` | Namespace prefix, available as `{{prefix}}` in templates |
+| `prefix` | `string` | Namespace prefix used in naming conventions |
 | `commands` | `object` | Command file generation settings |
 | `skills` | `object` | Skill directory generation settings |
+| `agents` | `object` | Agent file generation settings |
 | `templates` | `boolean` | Whether to copy `src/templates/` to output |
 | `hooks` | `boolean` | Whether to copy `src/hooks/` to output (preserves execute permissions) |
 | `pluginManifest` | `object \| null` | Plugin manifest copy settings, or `null` to skip |
@@ -44,137 +45,36 @@ Controls how command markdown files from `src/commands/` are processed.
 | Field | Type | Description |
 |-------|------|-------------|
 | `filePrefix` | `string` | String prepended to each command filename. `""` keeps original name. |
-| `frontmatter` | `object` | Key-value pairs to inject as YAML frontmatter. `{}` means no frontmatter is added. |
-
-**`frontmatter` object**: Each key becomes a YAML field name, each value is a template string resolved at sync time.
 
 Example:
 
 ```json
 {
-  "filePrefix": "afyapowers-",
-  "frontmatter": {
-    "name": "{{prefix}}:{{slug}}",
-    "description": "{{heading_title}}"
-  }
+  "filePrefix": "afyapowers-"
 }
 ```
 
-Given `src/commands/abort.md` starting with `# /afyapowers:abort — Abort Current Feature`, this produces `dist/<agent>/commands/afyapowers-abort.md`:
-
-```markdown
----
-name: afyapowers:abort
-description: Abort Current Feature
----
-# /afyapowers:abort — Abort Current Feature
-...
-```
-
-To copy commands as-is (no prefix, no frontmatter):
-
-```json
-{
-  "filePrefix": "",
-  "frontmatter": {}
-}
-```
+Given `src/commands/abort.md`, this produces `dist/<agent>/commands/afyapowers-abort.md`.
 
 ---
 
 ### `skills`
 
-Controls how skill directories from `src/skills/` are processed. Each skill directory is copied with its `SKILL.md` frontmatter optionally transformed. All other files in the skill directory (prompts, resources) are always copied as-is.
+Controls how skill directories from `src/skills/` are processed. Each skill directory is copied with its `SKILL.md` frontmatter optionally replaced via a frontmatter file. All other files in the skill directory (prompts, resources) are always copied as-is.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `dirPrefix` | `string` | String prepended to each skill directory name. `""` keeps original name. |
-| `frontmatter` | `object` | Frontmatter transformation settings |
 
-#### `skills.frontmatter`
+---
+
+### `agents`
+
+Controls how agent markdown files from `src/agents/` are processed. Works identically to `commands`.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `transform` | `string` | Transform mode: `"keep"`, `"merge"`, or `"replace"` |
-| `fields` | `object` | Key-value pairs for frontmatter fields (used by `merge` and `replace` modes) |
-
-**Transform modes:**
-
-#### `"keep"` — No changes
-
-Copies `SKILL.md` as-is. The `fields` object is ignored.
-
-```json
-{
-  "transform": "keep",
-  "fields": {}
-}
-```
-
-#### `"merge"` — Overlay fields onto existing frontmatter
-
-Replaces only the specified top-level fields in the existing frontmatter. All other fields (including nested/multi-line ones like `metadata` or `allowed-tools`) are preserved.
-
-```json
-{
-  "transform": "merge",
-  "fields": {
-    "name": "{{prefix}}-{{name}}"
-  }
-}
-```
-
-Given a source `SKILL.md` with:
-```yaml
----
-name: figma-component
-description: Develop Figma components...
-metadata:
-  mcp-server: figma
-allowed-tools:
-  - Read
-  - Bash
----
-```
-
-The output becomes:
-```yaml
----
-name: afyapowers-figma-component
-description: Develop Figma components...
-metadata:
-  mcp-server: figma
-allowed-tools:
-  - Read
-  - Bash
----
-```
-
-Only `name` is overwritten; everything else stays.
-
-#### `"replace"` — Discard existing frontmatter
-
-Removes the original frontmatter entirely and writes only the fields from config.
-
-```json
-{
-  "transform": "replace",
-  "fields": {
-    "name": "{{prefix}}-{{name}}",
-    "description": "{{description}}"
-  }
-}
-```
-
-The same source would become:
-```yaml
----
-name: afyapowers-figma-component
-description: Develop Figma components...
----
-```
-
-All other fields (`metadata`, `allowed-tools`) are dropped.
+| `filePrefix` | `string` | String prepended to each agent filename. `""` keeps original name. |
 
 ---
 
@@ -202,26 +102,76 @@ Set to `null` to skip manifest copying entirely:
 
 ---
 
-## Template Variables
+## Frontmatter Files
 
-Available in `commands.frontmatter` values and `skills.frontmatter.fields` values.
+Frontmatter for each command, skill, or agent is configured via `.frontmatter.yaml` files. These files define per-distribution frontmatter that gets prepended to the output.
 
-### In command context
+### Location
 
-| Variable | Resolves to | Example |
-|----------|-------------|---------|
-| `{{prefix}}` | The top-level `prefix` field | `afyapowers` |
-| `{{slug}}` | Command filename without `.md` | `abort` |
-| `{{filename}}` | Full original filename | `abort.md` |
-| `{{heading_title}}` | Text after the em-dash in the first `#` heading | `Abort Current Feature` |
+| Source type | Frontmatter file |
+|-------------|------------------|
+| Commands | `src/commands/<slug>.frontmatter.yaml` |
+| Skills | `src/skills/<name>/frontmatter.yaml` |
+| Agents | `src/agents/<slug>.frontmatter.yaml` |
 
-### In skill context
+### Format
 
-| Variable | Resolves to | Example |
-|----------|-------------|---------|
-| `{{prefix}}` | The top-level `prefix` field | `afyapowers` |
-| `{{name}}` | `name` field from the source `SKILL.md` frontmatter | `design` |
-| `{{description}}` | `description` field from the source `SKILL.md` frontmatter | `You MUST use this before...` |
+Each `.frontmatter.yaml` file has top-level keys matching agent names from `src/config/`. The content under each key becomes the YAML frontmatter for that distribution's output.
+
+```yaml
+claude:
+  name: afyapowers:design
+  description: "Design phase skill"
+cursor:
+  name: afyapowers-design
+  description: "Design phase skill"
+```
+
+This produces for **claude**:
+
+```markdown
+---
+name: afyapowers:design
+description: "Design phase skill"
+---
+
+# Design Phase
+...
+```
+
+And for **cursor**:
+
+```markdown
+---
+name: afyapowers-design
+description: "Design phase skill"
+---
+
+# Design Phase
+...
+```
+
+### Fallback behavior
+
+If an agent has **no section** in the frontmatter file (or no frontmatter file exists), the source file is copied as-is, preserving any existing frontmatter from the source.
+
+For example, if `gemini` is not listed in a frontmatter file, the gemini distribution gets the original source frontmatter unchanged.
+
+### Complex frontmatter
+
+Frontmatter files support nested YAML structures. Any valid YAML under an agent key will be output as frontmatter:
+
+```yaml
+cursor:
+  name: afyapowers-figma-component
+  description: Figma component skill
+  metadata:
+    mcp-server: figma
+  allowed-tools:
+    - Read
+    - Bash
+    - mcp__figma__get_metadata
+```
 
 ---
 
@@ -231,19 +181,17 @@ Available in `commands.frontmatter` values and `skills.frontmatter.fields` value
 
 ```json
 {
-  "agent": "vanilla",
-  "outputDir": "dist/vanilla",
+  "agent": "gemini",
+  "outputDir": "dist/gemini",
   "prefix": "afyapowers",
   "commands": {
-    "filePrefix": "",
-    "frontmatter": {}
+    "filePrefix": ""
   },
   "skills": {
-    "dirPrefix": "",
-    "frontmatter": {
-      "transform": "keep",
-      "fields": {}
-    }
+    "dirPrefix": ""
+  },
+  "agents": {
+    "filePrefix": ""
   },
   "templates": true,
   "hooks": true,
@@ -251,7 +199,7 @@ Available in `commands.frontmatter` values and `skills.frontmatter.fields` value
 }
 ```
 
-### Full transform config
+### Config with prefixes
 
 ```json
 {
@@ -259,20 +207,13 @@ Available in `commands.frontmatter` values and `skills.frontmatter.fields` value
   "outputDir": "dist/cursor",
   "prefix": "afyapowers",
   "commands": {
-    "filePrefix": "afyapowers-",
-    "frontmatter": {
-      "name": "{{prefix}}:{{slug}}",
-      "description": "{{heading_title}}"
-    }
+    "filePrefix": "afyapowers-"
   },
   "skills": {
-    "dirPrefix": "afyapowers-",
-    "frontmatter": {
-      "transform": "merge",
-      "fields": {
-        "name": "{{prefix}}-{{name}}"
-      }
-    }
+    "dirPrefix": "afyapowers-"
+  },
+  "agents": {
+    "filePrefix": "afyapowers-"
   },
   "templates": true,
   "hooks": true,
@@ -288,6 +229,13 @@ Available in `commands.frontmatter` values and `skills.frontmatter.fields` value
 ## Adding a New Agent
 
 1. Create `src/config/<agent>.json` following the schema above
-2. Optionally add a manifest in `src/manifests/<agent>/`
-3. Run `./sync.sh <agent>` to generate output
-4. Output appears in `dist/<agent>/`
+2. Add a `<agent>:` section to the relevant `.frontmatter.yaml` files for any commands/skills/agents that need custom frontmatter
+3. Optionally add a manifest in `src/manifests/<agent>/`
+4. Run `./sync.sh <agent>` to generate output
+5. Output appears in `dist/<agent>/`
+
+## Adding a New Command / Skill / Agent
+
+1. Create the source file (`src/commands/<name>.md`, `src/skills/<name>/SKILL.md`, or `src/agents/<name>.md`)
+2. Create a `.frontmatter.yaml` file alongside it with sections for each distribution that needs custom frontmatter
+3. Run `./sync.sh` to regenerate all distributions

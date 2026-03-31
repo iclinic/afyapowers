@@ -1,3 +1,7 @@
+---
+description: List All Features
+name: afyapowers:features
+---
 # /afyapowers:features — List All Features
 
 List all features and their current states.

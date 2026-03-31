@@ -22,22 +22,6 @@ print(v if v is not None else '')
   fi
 }
 
-json_keys() {
-  local file="$1" path="$2"
-  if command -v jq &>/dev/null; then
-    jq -r "$path | keys[]" "$file" 2>/dev/null || true
-  else
-    JSON_FILE="$file" JSON_PATH="$path" python3 -c "
-import os, json, functools
-d = json.load(open(os.environ['JSON_FILE']))
-keys = os.environ['JSON_PATH'].lstrip('.').split('.')
-obj = functools.reduce(lambda o, k: o[k] if isinstance(o, dict) else None, keys, d)
-if isinstance(obj, dict):
-    for k in obj: print(k)
-" 2>/dev/null || true
-  fi
-}
-
 json_is_null() {
   local file="$1" path="$2"
   local val
@@ -52,61 +36,7 @@ json_is_true() {
   [[ "$val" == "true" ]]
 }
 
-# --- Template variable resolution ---
-
-resolve_template() {
-  local template="$1"
-  shift
-  local result="$template"
-  while [[ $# -ge 2 ]]; do
-    local key="$1" val="$2"
-    result="${result//\{\{$key\}\}/$val}"
-    shift 2
-  done
-  echo "$result"
-}
-
-# --- Extract heading title from command file ---
-# Parses: # /afyapowers:abort — Abort Current Feature
-# Returns: Abort Current Feature
-
-extract_heading_title() {
-  local file="$1"
-  local first_line
-  first_line=$(head -1 "$file")
-  # Match after em-dash (U+2014) or regular dash
-  if [[ "$first_line" =~ —[[:space:]]*(.*) ]]; then
-    echo "${BASH_REMATCH[1]}"
-  elif [[ "$first_line" =~ --[[:space:]]*(.*) ]]; then
-    echo "${BASH_REMATCH[1]}"
-  else
-    # Fallback: strip the heading prefix
-    echo "${first_line#\# }"
-  fi
-}
-
 # --- YAML frontmatter helpers ---
-
-# Extract frontmatter content (between --- markers) from a file
-extract_frontmatter() {
-  local file="$1"
-  local in_frontmatter=false
-  local line_num=0
-  while IFS= read -r line; do
-    line_num=$((line_num + 1))
-    if [[ "$line" == "---" ]]; then
-      if $in_frontmatter; then
-        return
-      elif [[ $line_num -eq 1 ]]; then
-        in_frontmatter=true
-        continue
-      fi
-    fi
-    if $in_frontmatter; then
-      echo "$line"
-    fi
-  done < "$file"
-}
 
 # Extract body (everything after frontmatter) from a file
 extract_body() {
@@ -137,37 +67,99 @@ extract_body() {
   done < "$file"
 }
 
-# Get a simple top-level YAML value (handles quoted and unquoted)
-yaml_get() {
-  local key="$1"
-  local frontmatter="$2"
-  echo "$frontmatter" | grep -E "^${key}:" | head -1 | sed "s/^${key}:[[:space:]]*//" | sed 's/^"\(.*\)"$/\1/' | sed "s/^'\(.*\)'$/\1/"
-}
+# Extract an agent's section from a .frontmatter.yaml file and output as a --- delimited block.
+# Returns 0 (success) if the agent section exists, 1 otherwise.
+# The YAML files have a simple structure: top-level keys are agent names,
+# and their contents (indented lines) become the frontmatter.
+# Usage: yaml_get_agent_frontmatter "file.frontmatter.yaml" "cursor"
+yaml_get_agent_frontmatter() {
+  local yaml_file="$1" agent_name="$2"
+  local in_section=false
+  local found=false
+  local content=""
 
-# Replace or add a top-level YAML key-value pair
-# Only replaces simple key: value lines (not nested/multi-line)
-yaml_set() {
-  local key="$1" value="$2" frontmatter="$3"
-  if echo "$frontmatter" | grep -qE "^${key}:"; then
-    echo "$frontmatter" | sed "s|^${key}:.*|${key}: ${value}|"
-  else
-    if [[ -n "$frontmatter" ]]; then
-      echo "${frontmatter}"$'\n'"${key}: ${value}"
-    else
-      echo "${key}: ${value}"
+  while IFS= read -r line; do
+    # Top-level key (no leading whitespace, ends with colon)
+    if [[ "$line" =~ ^[a-zA-Z_][a-zA-Z0-9_-]*:$ ]]; then
+      if $in_section; then
+        # We were in our section and hit another top-level key — stop
+        break
+      fi
+      local key="${line%:}"
+      if [[ "$key" == "$agent_name" ]]; then
+        in_section=true
+        found=true
+      fi
+      continue
     fi
+
+    if $in_section; then
+      # Remove exactly 2 spaces of indentation (agent section content)
+      if [[ "$line" =~ ^\ \ (.*) ]]; then
+        content+="${BASH_REMATCH[1]}"$'\n'
+      elif [[ -z "$line" ]]; then
+        content+=$'\n'
+      fi
+    fi
+  done < "$yaml_file"
+
+  if $found && [[ -n "$content" ]]; then
+    echo "---"
+    # Remove trailing blank lines
+    printf '%s' "$content" | awk 'NF{p=1} p' | awk '{lines[NR]=$0} END{for(i=NR;i>=1;i--) if(lines[i]!="") {last=i; break} for(i=1;i<=last;i++) print lines[i]}'
+    echo "---"
+    return 0
   fi
+
+  return 1
 }
 
-# --- Build frontmatter block ---
+# --- Process single-file items (commands or agents) ---
 
-build_frontmatter() {
-  local content="$1"
-  if [[ -n "$content" ]]; then
-    echo "---"
-    echo "$content"
-    echo "---"
+process_single_files() {
+  local src_dir="$1" output_subdir="$2" file_prefix="$3" agent_name="$4" output_dir="$5"
+
+  if [[ ! -d "$src_dir" ]]; then
+    echo "  $(basename "$output_subdir"): 0 files (no source directory)"
+    return
   fi
+
+  mkdir -p "$output_dir/$output_subdir"
+  local count=0
+
+  for src_file in "$src_dir/"*.md; do
+    [[ -f "$src_file" ]] || continue
+    local filename
+    filename=$(basename "$src_file")
+    local slug="${filename%.md}"
+    local out_file="$output_dir/$output_subdir/${file_prefix}${filename}"
+
+    # Look for .frontmatter.yaml file
+    local fm_yaml="$src_dir/${slug}.frontmatter.yaml"
+
+    if [[ -f "$fm_yaml" ]]; then
+      local fm_block
+      if fm_block=$(yaml_get_agent_frontmatter "$fm_yaml" "$agent_name"); then
+        # Agent section found: use it as frontmatter + source body
+        local body
+        body=$(extract_body "$src_file")
+        {
+          echo "$fm_block"
+          echo "$body"
+        } > "$out_file"
+      else
+        # No section for this agent: copy source as-is
+        cp "$src_file" "$out_file"
+      fi
+    else
+      # No frontmatter yaml: copy source as-is
+      cp "$src_file" "$out_file"
+    fi
+
+    count=$((count + 1))
+  done
+
+  echo "  $(basename "$output_subdir"): $count files"
 }
 
 # --- Process commands for an agent ---
@@ -179,58 +171,10 @@ process_commands() {
   file_prefix=$(json_get "$config_file" '.commands.filePrefix')
   [[ "$file_prefix" == "null" ]] && file_prefix=""
 
-  local prefix
-  prefix=$(json_get "$config_file" '.prefix')
+  local agent_name
+  agent_name=$(json_get "$config_file" '.agent')
 
-  local has_frontmatter=false
-  local fm_keys
-  fm_keys=$(json_keys "$config_file" '.commands.frontmatter')
-  [[ -n "$fm_keys" ]] && has_frontmatter=true
-
-  mkdir -p "$output_dir/commands"
-  local count=0
-
-  for src_file in "$SRC_DIR/commands/"*.md; do
-    [[ -f "$src_file" ]] || continue
-    local filename
-    filename=$(basename "$src_file")
-    local slug="${filename%.md}"
-    local heading_title
-    heading_title=$(extract_heading_title "$src_file")
-
-    local out_file="$output_dir/commands/${file_prefix}${filename}"
-
-    if $has_frontmatter; then
-      # Build frontmatter from config fields
-      local fm_content=""
-      for key in $fm_keys; do
-        local template
-        template=$(json_get "$config_file" ".commands.frontmatter.${key}")
-        local value
-        value=$(resolve_template "$template" \
-          "prefix" "$prefix" \
-          "slug" "$slug" \
-          "heading_title" "$heading_title" \
-          "filename" "$filename")
-        if [[ -n "$fm_content" ]]; then
-          fm_content="${fm_content}"$'\n'"${key}: ${value}"
-        else
-          fm_content="${key}: ${value}"
-        fi
-      done
-
-      {
-        build_frontmatter "$fm_content"
-        cat "$src_file"
-      } > "$out_file"
-    else
-      cp "$src_file" "$out_file"
-    fi
-
-    count=$((count + 1))
-  done
-
-  echo "  Commands: $count files"
+  process_single_files "$SRC_DIR/commands" "commands" "$file_prefix" "$agent_name" "$output_dir"
 }
 
 # --- Process skills for an agent ---
@@ -242,12 +186,8 @@ process_skills() {
   dir_prefix=$(json_get "$config_file" '.skills.dirPrefix')
   [[ "$dir_prefix" == "null" ]] && dir_prefix=""
 
-  local prefix
-  prefix=$(json_get "$config_file" '.prefix')
-
-  local transform
-  transform=$(json_get "$config_file" '.skills.frontmatter.transform')
-  [[ "$transform" == "null" ]] && transform="keep"
+  local agent_name
+  agent_name=$(json_get "$config_file" '.agent')
 
   mkdir -p "$output_dir/skills"
   local count=0
@@ -262,69 +202,34 @@ process_skills() {
     # Process SKILL.md
     local skill_file="$src_skill_dir/SKILL.md"
     if [[ -f "$skill_file" ]]; then
-      local existing_fm
-      existing_fm=$(extract_frontmatter "$skill_file")
-      local body
-      body=$(extract_body "$skill_file")
+      local fm_yaml="$src_skill_dir/frontmatter.yaml"
 
-      case "$transform" in
-        keep)
+      if [[ -f "$fm_yaml" ]]; then
+        local fm_block
+        if fm_block=$(yaml_get_agent_frontmatter "$fm_yaml" "$agent_name"); then
+          # Agent section found: use it as frontmatter + skill body
+          local body
+          body=$(extract_body "$skill_file")
+          {
+            echo "$fm_block"
+            echo "$body"
+          } > "$out_skill_dir/SKILL.md"
+        else
+          # No section for this agent: copy as-is
           cp "$skill_file" "$out_skill_dir/SKILL.md"
-          ;;
-        replace)
-          local fm_content=""
-          local fm_field_keys
-          fm_field_keys=$(json_keys "$config_file" '.skills.frontmatter.fields')
-          for key in $fm_field_keys; do
-            local template
-            template=$(json_get "$config_file" ".skills.frontmatter.fields.${key}")
-            local value
-            value=$(resolve_template "$template" \
-              "prefix" "$prefix" \
-              "name" "$dirname" \
-              "description" "$(yaml_get 'description' "$existing_fm")")
-            if [[ -n "$fm_content" ]]; then
-              fm_content="${fm_content}"$'\n'"${key}: ${value}"
-            else
-              fm_content="${key}: ${value}"
-            fi
-          done
-          {
-            build_frontmatter "$fm_content"
-            echo "$body"
-          } > "$out_skill_dir/SKILL.md"
-          ;;
-        merge)
-          local merged_fm="$existing_fm"
-          local fm_field_keys
-          fm_field_keys=$(json_keys "$config_file" '.skills.frontmatter.fields')
-          for key in $fm_field_keys; do
-            local template
-            template=$(json_get "$config_file" ".skills.frontmatter.fields.${key}")
-            local orig_name
-            orig_name=$(yaml_get 'name' "$existing_fm")
-            local orig_desc
-            orig_desc=$(yaml_get 'description' "$existing_fm")
-            local value
-            value=$(resolve_template "$template" \
-              "prefix" "$prefix" \
-              "name" "$orig_name" \
-              "description" "$orig_desc")
-            merged_fm=$(yaml_set "$key" "$value" "$merged_fm")
-          done
-          {
-            build_frontmatter "$merged_fm"
-            echo "$body"
-          } > "$out_skill_dir/SKILL.md"
-          ;;
-      esac
+        fi
+      else
+        # No frontmatter yaml: copy as-is
+        cp "$skill_file" "$out_skill_dir/SKILL.md"
+      fi
     fi
 
-    # Copy all other files in skill directory
+    # Copy all other files in skill directory (skip SKILL.md and frontmatter files)
     for src_file in "$src_skill_dir"*; do
       local fname
       fname=$(basename "$src_file")
       [[ "$fname" == "SKILL.md" ]] && continue
+      [[ "$fname" == "frontmatter.yaml" ]] && continue
       if [[ -d "$src_file" ]]; then
         cp -R "$src_file" "$out_skill_dir/$fname"
       else
@@ -336,6 +241,21 @@ process_skills() {
   done
 
   echo "  Skills: $count directories"
+}
+
+# --- Process agents ---
+
+process_agents() {
+  local config_file="$1" output_dir="$2"
+
+  local file_prefix
+  file_prefix=$(json_get "$config_file" '.agents.filePrefix')
+  [[ "$file_prefix" == "null" ]] && file_prefix=""
+
+  local agent_name
+  agent_name=$(json_get "$config_file" '.agent')
+
+  process_single_files "$SRC_DIR/agents" "agents" "$file_prefix" "$agent_name" "$output_dir"
 }
 
 # --- Process templates ---
@@ -476,6 +396,7 @@ main() {
 
     process_commands "$config_file" "$output_dir"
     process_skills "$config_file" "$output_dir"
+    process_agents "$config_file" "$output_dir"
     process_templates "$config_file" "$output_dir"
     process_hooks "$config_file" "$output_dir"
     process_manifest "$config_file" "$output_dir"

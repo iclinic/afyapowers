@@ -1,3 +1,7 @@
+---
+description: Switch Active Feature
+name: afyapowers:switch
+---
 # /afyapowers:switch — Switch Active Feature
 
 Switch the active feature context. This command accepts an optional argument: the feature name or slug.

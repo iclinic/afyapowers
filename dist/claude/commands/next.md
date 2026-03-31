@@ -1,3 +1,7 @@
+---
+description: Advance to Next Phase
+name: afyapowers:next
+---
 # /afyapowers:next — Advance to Next Phase
 
 You are advancing the active feature to the next workflow phase. Follow these steps exactly:

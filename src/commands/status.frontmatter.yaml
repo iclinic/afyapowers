@@ -1,0 +1,6 @@
+claude:
+  description: Show Feature Status
+  name: afyapowers:status
+cursor:
+  description: Show Feature Status
+  name: afyapowers-status

@@ -1,13 +1,6 @@
 ---
-name: figma-component
+name: afyapowers:figma-component
 description: Develop Figma components with strict validation, Code Connect dedup, and autonomous implementation. Standalone — not part of the 5-phase workflow.
-metadata:
-  mcp-server: figma
-allowed-tools:
-  - Read
-  - Bash
-  - mcp__figma__get_metadata
-  - mcp__figma__get_code_connect_map
 ---
 
 # Component Skill
