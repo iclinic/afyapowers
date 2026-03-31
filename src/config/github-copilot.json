@@ -1,0 +1,20 @@
+{
+  "agent": "github-copilot",
+  "outputDir": "dist/github-copilot",
+  "prefix": "afyapowers",
+  "commands": {
+    "filePrefix": ""
+  },
+  "skills": {
+    "dirPrefix": ""
+  },
+  "agents": {
+    "filePrefix": ""
+  },
+  "templates": true,
+  "hooks": true,
+  "pluginManifest": {
+    "from": "src/manifests/github-copilot/plugin.json",
+    "to": "plugin.json"
+  }
+}

@@ -4,3 +4,6 @@ claude:
 cursor:
   description: Start a New Feature
   name: afyapowers-new
+github-copilot:
+  description: Start a New Feature
+  name: afyapowers-new

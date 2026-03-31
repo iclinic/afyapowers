@@ -4,3 +4,6 @@ claude:
 cursor:
   description: Show Feature Status
   name: afyapowers-status
+github-copilot:
+  description: Show Feature Status
+  name: afyapowers-status
