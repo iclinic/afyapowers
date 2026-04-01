@@ -116,6 +116,10 @@ A session-start hook automatically detects the active feature and injects contex
 - **subagent-driven-development** — Fresh subagent per task with wave execution and review gates
 - **auto-documentation** — Living docs generation after implementation
 
+## Detailed Workflow Documentation
+
+For a comprehensive, in-depth description of the entire workflow — including phase gates, subagent patterns, artifact templates, hook mechanics, Figma/JIRA integrations, standalone skills, and the multi-IDE distribution pipeline — see [WORKFLOW.md](WORKFLOW.md).
+
 ## License
 
 MIT
