@@ -1,125 +1,127 @@
 # afyapowers
 
-A deterministic, phase-gated development workflow plugin for Claude Code, forked from [superpowers](https://github.com/obra/superpowers). Enforces structured feature development with persistent state, session continuity, and full auditability.
+Um plugin de workflow de desenvolvimento determinístico, com fases controladas, para o Claude Code, fork do [superpowers](https://github.com/obra/superpowers). Aplica desenvolvimento estruturado de features com estado persistente, continuidade de sessão e auditabilidade completa.
 
-afyapowers builds on superpowers' skills (TDD, systematic debugging, subagent-driven development, etc.) and adapts them into a 5-phase gated workflow where each phase produces a persistent artifact before the next can begin.
+O afyapowers se baseia nas skills do superpowers (TDD, debugging sistemático, desenvolvimento orientado a subagentes, etc.) e as adapta em um workflow de 5 fases controladas, onde cada fase produz um artefato persistente antes que a próxima possa começar.
 
-## Installation
+## Instalação
 
 ```bash
 claude plugin install afyapowers
 ```
 
-## Quick Start
+## Início Rápido
 
 ```bash
-# Start a new feature
+# Iniciar uma nova feature
 /afyapowers:new
 
-# Work through each phase, advancing with:
+# Trabalhar em cada fase, avançando com:
 /afyapowers:next
 
-# Check current status at any time
+# Verificar o status atual a qualquer momento
 /afyapowers:status
 ```
 
-## Workflow Phases
+## Fases do Workflow
 
-Every feature progresses through 5 ordered phases:
+Toda feature progride por 5 fases ordenadas:
 
-| Phase | What Happens | Artifact |
-|-------|-------------|----------|
-| **Design** | Clarify requirements, explore approaches, define architecture. Optionally pulls context from JIRA issues and Figma designs. | `design.md` |
-| **Plan** | Break design into implementation tasks with dependency graphs. Infers Figma component/screen tasks from the design's Node Map. Validates no file overlap between parallel tasks. | `plan.md` |
-| **Implement** | Execute tasks via wave-based subagent dispatch with TDD. Respects dependency order and Figma rate limits (max 4 Figma tasks per wave). Each subagent self-reviews and flags concerns. | Updated `plan.md` |
-| **Review** | 2-step code review: spec compliance then code quality. Iterates up to 5 times until verdict is "Approved". | `review.md` |
-| **Complete** | Run test suite, merge/PR/cleanup, auto-generate living documentation. | `completion.md` |
+| Fase | O que acontece | Artefato |
+| ---- | -------------- | -------- |
+| **Design** | Esclarecer requisitos, explorar abordagens, definir arquitetura. Opcionalmente busca contexto de issues do JIRA e designs do Figma. | `design.md` |
+| **Planejamento** | Decompor o design em tarefas de implementação com grafos de dependência. Infere tarefas de componentes/telas do Figma a partir do Node Map do design. Valida que não há sobreposição de arquivos entre tarefas paralelas. | `plan.md` |
+| **Implementação** | Executar tarefas via despacho de subagentes baseado em ondas com TDD. Respeita a ordem de dependência e limites de taxa do Figma (máx. 4 tarefas Figma por onda). Cada subagente faz auto-revisão e sinaliza preocupações. | `plan.md` atualizado |
+| **Revisão** | Revisão de código em 2 etapas: conformidade com a spec e depois qualidade do código. Itera até 5 vezes até o veredito ser "Aprovado". | `review.md` |
+| **Conclusão** | Executar suíte de testes, merge/PR/cleanup, gerar documentação viva automaticamente. | `completion.md` |
 
-Phases are gated — you must complete the current phase's artifact before advancing to the next.
+As fases são controladas — você deve completar o artefato da fase atual antes de avançar para a próxima.
 
-## Commands
+## Comandos
 
-| Command | Description |
-|---------|-------------|
-| `/afyapowers:new` | Start a new feature workflow |
-| `/afyapowers:next` | Advance to the next phase (validates current phase completion) |
-| `/afyapowers:status` | Show current feature status and phase progress |
-| `/afyapowers:features` | List all features and their states |
-| `/afyapowers:switch` | Switch the active feature context |
-| `/afyapowers:history` | Show the full event timeline for the active feature |
-| `/afyapowers:abort` | Abandon the active feature (irreversible) |
-| `/afyapowers:component` | Develop a Figma component (standalone, outside the 5-phase workflow) |
+| Comando | Descrição |
+| ------- | --------- |
+| `/afyapowers:new` | Iniciar um novo workflow de feature |
+| `/afyapowers:next` | Avançar para a próxima fase (valida conclusão da fase atual) |
+| `/afyapowers:status` | Mostrar status atual da feature e progresso da fase |
+| `/afyapowers:features` | Listar todas as features e seus estados |
+| `/afyapowers:switch` | Alternar o contexto da feature ativa |
+| `/afyapowers:history` | Mostrar a linha do tempo completa de eventos da feature ativa |
+| `/afyapowers:abort` | Abandonar a feature ativa (irreversível) |
+| `/afyapowers:component` | Desenvolver um componente Figma (standalone, fora do workflow de 5 fases) |
 
-## Integrations
+## Integrações
 
 ### JIRA
 
-During the **Design** phase, you can optionally provide a JIRA issue key. afyapowers fetches the issue context (summary, description, acceptance criteria) via the Atlassian MCP server and incorporates it into the design spec.
+Durante a fase de **Design**, você pode opcionalmente fornecer uma chave de issue do JIRA. O afyapowers busca o contexto da issue (resumo, descrição, critérios de aceitação) via servidor MCP do Atlassian e o incorpora na spec de design.
 
 ### Figma
 
-Figma integration spans multiple phases:
+A integração com o Figma abrange múltiplas fases:
 
-- **Design** — Detects UI-related keywords and prompts for Figma URLs. Performs a shallow metadata call to build a Node Map (page > section > component, up to depth 2).
-- **Plan** — Infers Figma tasks from the Node Map without additional MCP calls. Layer 1 tasks cover reusable components; Layer 2 tasks cover screens that depend on them.
-- **Implement** — Subagents call `get_design_context`, `get_screenshot`, and `get_variable_defs` for full design fidelity. Rate-limited to 4 Figma tasks per wave.
+- **Design** — Detecta palavras-chave relacionadas a UI e solicita URLs do Figma. Realiza uma chamada superficial de metadados para construir um Node Map (página > seção > componente, até profundidade 2).
+- **Planejamento** — Infere tarefas do Figma a partir do Node Map sem chamadas MCP adicionais. Tarefas da Camada 1 cobrem componentes reutilizáveis; tarefas da Camada 2 cobrem telas que dependem deles.
+- **Implementação** — Subagentes chamam `get_design_context`, `get_screenshot` e `get_variable_defs` para fidelidade total ao design. Limitado a 4 tarefas Figma por onda.
 
-## Project Structure
+## Estrutura do Projeto
 
-```
+```text
 .afyapowers/
-  .gitignore                # Auto-created; gitignores features/active
+  .gitignore                # Criado automaticamente; gitignore de features/active
   features/
-    active                  # Current active feature slug (gitignored)
-    <date>-<slug>/
-      state.yaml            # Feature state (phase, status, timestamps)
-      history.yaml          # Full event timeline (immutable)
+    active                  # Slug da feature ativa atual (gitignored)
+    <data>-<slug>/
+      state.yaml            # Estado da feature (fase, status, timestamps)
+      history.yaml          # Linha do tempo completa de eventos (imutável)
       artifacts/
-        design.md           # Design spec (requirements + architecture)
-        plan.md             # Implementation plan with checkboxes
-        review.md           # Code review findings and verdict
-        completion.md       # Completion summary
+        design.md           # Spec de design (requisitos + arquitetura)
+        plan.md             # Plano de implementação com checkboxes
+        review.md           # Achados da revisão de código e veredito
+        completion.md       # Resumo de conclusão
 ```
 
-### Source Layout
+### Layout do Código-Fonte
 
-```
+```text
 src/
-  commands/                 # Slash command definitions (8 total)
-  skills/                   # Phase and cross-cutting skills (13 total)
-  config/                   # IDE-specific configuration (Claude, Cursor, Gemini)
-  hooks/                    # Session start hook for context restoration
-  manifests/                # Plugin manifests for Claude and Cursor
-  templates/                # Markdown templates for artifacts
+  commands/                 # Definições de slash commands (8 no total)
+  skills/                   # Skills de fase e transversais (13 no total)
+  config/                   # Configuração específica por IDE (Claude, Cursor, Gemini)
+  hooks/                    # Hook de início de sessão para restauração de contexto
+  manifests/                # Manifestos do plugin para Claude e Cursor
+  templates/                # Templates Markdown para artefatos
 ```
 
-## Session Continuity
+## Continuidade de Sessão
 
-A session-start hook automatically detects the active feature and injects context into Claude Code — current phase, task progress, available artifacts — so you can resume work seamlessly across sessions.
+Um hook de início de sessão detecta automaticamente a feature ativa e injeta contexto no Claude Code — fase atual, progresso das tarefas, artefatos disponíveis — para que você possa retomar o trabalho de forma transparente entre sessões.
 
 ## Skills
 
-### Phase Skills
-- **design** — Collaborative exploration + technical specification with optional JIRA/Figma context
-- **writing-plans** — Implementation plan creation from design spec with dependency graphs and Figma task inference
-- **implementing** — Wave-based subagent dispatch with dependency ordering and self-review gates
-- **reviewing** — 2-step code review (spec compliance + code quality) with iterative fix cycles
-- **completing** — Test suite execution, merge/PR/cleanup, and completion summary
-- **figma-component** — Standalone Figma component development (outside 5-phase workflow)
+### Skills de Fase
 
-### Cross-Cutting Skills
-- **test-driven-development** — RED-GREEN-REFACTOR cycle
-- **systematic-debugging** — Root cause investigation before fixes
-- **verification-before-completion** — Evidence before claims
-- **using-git-worktrees** — Isolated workspaces for feature work
-- **dispatching-parallel-agents** — Parallel investigation of independent problems
-- **subagent-driven-development** — Fresh subagent per task with wave execution and review gates
-- **auto-documentation** — Living docs generation after implementation
+- **design** — Exploração colaborativa + especificação técnica com contexto opcional de JIRA/Figma
+- **writing-plans** — Criação de plano de implementação a partir da spec de design com grafos de dependência e inferência de tarefas Figma
+- **implementing** — Despacho de subagentes baseado em ondas com ordenação por dependência e gates de auto-revisão
+- **reviewing** — Revisão de código em 2 etapas (conformidade com spec + qualidade do código) com ciclos iterativos de correção
+- **completing** — Execução da suíte de testes, merge/PR/cleanup e resumo de conclusão
+- **figma-component** — Desenvolvimento standalone de componente Figma (fora do workflow de 5 fases)
 
-## Detailed Workflow Documentation
+### Skills Transversais
 
-For a comprehensive, in-depth description of the entire workflow — including phase gates, subagent patterns, artifact templates, hook mechanics, Figma/JIRA integrations, standalone skills, and the multi-IDE distribution pipeline — see [WORKFLOW.md](WORKFLOW.md).
+- **test-driven-development** — Ciclo RED-GREEN-REFACTOR
+- **systematic-debugging** — Investigação de causa raiz antes de correções
+- **verification-before-completion** — Evidência antes de afirmações
+- **using-git-worktrees** — Workspaces isolados para trabalho em features
+- **dispatching-parallel-agents** — Investigação paralela de problemas independentes
+- **subagent-driven-development** — Subagente novo por tarefa com execução em ondas e gates de revisão
+- **auto-documentation** — Geração de documentação viva após implementação
 
-## License
+## Documentação Detalhada do Workflow
+
+Para uma descrição completa e aprofundada de todo o workflow — incluindo gates de fase, padrões de subagentes, templates de artefatos, mecânica de hooks, integrações Figma/JIRA, skills standalone e o pipeline de distribuição multi-IDE — consulte [WORKFLOW.md](WORKFLOW.md).
+
+## Licença
 
 MIT
