@@ -4,13 +4,43 @@ Um plugin de workflow de desenvolvimento determinístico, com fases controladas,
 
 O afyapowers se baseia nas skills do superpowers (TDD, debugging sistemático, desenvolvimento orientado a subagentes, etc.) e as adapta em um workflow de 5 fases controladas, onde cada fase produz um artefato persistente antes que a próxima possa começar.
 
+**Links úteis:**
+- [Marketplace DevEx da Afya](https://github.com/iclinic/devex-marketplace)
+
+## Pré-requisitos
+
+Antes de instalar o afyapowers, é necessário instalar o **Marketplace de DevEx da Afya**. Siga as instruções no repositório do [devex-marketplace](https://github.com/iclinic/devex-marketplace).
+
 ## Instalação
 
+### Claude Code
+
+> **Importante:** O comando deve ser executado **dentro da instância do agente** (com o Claude Code rodando).
+
 ```bash
-claude plugin install afyapowers
+/plugin install afyapowers@devex-marketplace
+```
+
+Após a instalação, execute `/reload-plugins` dentro do agente para carregar o plugin.
+
+### Cursor
+
+1. Abra o Cursor
+2. Vá em **Settings → Plugins -> Marketplace ou Browse Marketplace**
+3. Instale o plugin `afyapowers`
+4. **Faça um reload do Cursor** após a instalação (obrigatório)`
+
+### GitHub Copilot
+
+> O comando deve ser executado **direto no terminal**, fora do agente.
+
+```bash
+copilot plugin install afyapowers@devex-marketplace
 ```
 
 ## Início Rápido
+
+### Claude Code e Copilot CLI
 
 ```bash
 # Iniciar uma nova feature
@@ -21,6 +51,21 @@ claude plugin install afyapowers
 
 # Verificar o status atual a qualquer momento
 /afyapowers:status
+```
+
+### Cursor
+
+> No Cursor, os comandos usam `-` (hífen) ao invés de `:` (dois-pontos).
+
+```bash
+# Iniciar uma nova feature
+/afyapowers-new
+
+# Trabalhar em cada fase, avançando com:
+/afyapowers-next
+
+# Verificar o status atual a qualquer momento
+/afyapowers-status
 ```
 
 ## Fases do Workflow
@@ -39,16 +84,16 @@ As fases são controladas — você deve completar o artefato da fase atual ante
 
 ## Comandos
 
-| Comando | Descrição |
-| ------- | --------- |
-| `/afyapowers:new` | Iniciar um novo workflow de feature |
-| `/afyapowers:next` | Avançar para a próxima fase (valida conclusão da fase atual) |
-| `/afyapowers:status` | Mostrar status atual da feature e progresso da fase |
-| `/afyapowers:features` | Listar todas as features e seus estados |
-| `/afyapowers:switch` | Alternar o contexto da feature ativa |
-| `/afyapowers:history` | Mostrar a linha do tempo completa de eventos da feature ativa |
-| `/afyapowers:abort` | Abandonar a feature ativa (irreversível) |
-| `/afyapowers:component` | Desenvolver um componente Figma (standalone, fora do workflow de 5 fases) |
+| Claude Code / Copilot CLI | Cursor | Descrição |
+| ----------- | ------ | --------- |
+| `/afyapowers:new` | `/afyapowers-new` | Iniciar um novo workflow de feature |
+| `/afyapowers:next` | `/afyapowers-next` | Avançar para a próxima fase (valida conclusão da fase atual) |
+| `/afyapowers:status` | `/afyapowers-status` | Mostrar status atual da feature e progresso da fase |
+| `/afyapowers:features` | `/afyapowers-features` | Listar todas as features e seus estados |
+| `/afyapowers:switch` | `/afyapowers-switch` | Alternar o contexto da feature ativa |
+| `/afyapowers:history` | `/afyapowers-history` | Mostrar a linha do tempo completa de eventos da feature ativa |
+| `/afyapowers:abort` | `/afyapowers-abort` | Abandonar a feature ativa (irreversível) |
+| `/afyapowers:component` | `/afyapowers-component` | Desenvolver um componente Figma (standalone, fora do workflow de 5 fases) |
 
 ## Integrações
 
@@ -63,6 +108,27 @@ A integração com o Figma abrange múltiplas fases:
 - **Design** — Detecta palavras-chave relacionadas a UI e solicita URLs do Figma. Realiza uma chamada superficial de metadados para construir um Node Map (página > seção > componente, até profundidade 2).
 - **Planejamento** — Infere tarefas do Figma a partir do Node Map sem chamadas MCP adicionais. Tarefas da Camada 1 cobrem componentes reutilizáveis; tarefas da Camada 2 cobrem telas que dependem deles.
 - **Implementação** — Subagentes chamam `get_design_context`, `get_screenshot` e `get_variable_defs` para fidelidade total ao design. Limitado a 4 tarefas Figma por onda.
+
+## Configuração dos MCPs (Atlassian e Figma)
+
+O afyapowers utiliza servidores MCP para integração com JIRA (Atlassian) e Figma. A configuração varia por IDE:
+
+> **Importante:** Em todos os agentes (Cursor, Claude Code, Copilot CLI, etc.), ambos os MCPs vão precisar de **autenticação** antes do primeiro uso.
+
+### Claude Code
+
+1. Abra o Claude Code
+2. Execute `/plugins`
+3. Vá para a aba Installed
+4. Autentique nos plugins **claude.ai Atlassian** e **claude.ai Figma**
+
+### Cursor
+
+1. Abra o Cursor
+2. Vá em **Settings → Plugins**
+3. Instale o plugin do **Figma**
+4. Instale o plugin do **Atlassian**
+5. Autentique em ambos os plugins
 
 ## Estrutura do Projeto
 
