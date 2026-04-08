@@ -1,11 +1,14 @@
 # afyapowers
 
-Um plugin de workflow de desenvolvimento determinístico, com fases controladas, para o Claude Code, fork do [superpowers](https://github.com/obra/superpowers). Aplica desenvolvimento estruturado de features com estado persistente, continuidade de sessão e auditabilidade completa.
+afyapowers é um plugin de workflow de desenvolvimento determinístico, derivado do [superpowers](https://github.com/obra/superpowers). Ele traz um processo estruturado para criação de features, com fases bem definidas, estado persistente, continuidade de sessão e auditabilidade total.
 
-O afyapowers se baseia nas skills do superpowers (TDD, debugging sistemático, desenvolvimento orientado a subagentes, etc.) e as adapta em um workflow de 5 fases controladas, onde cada fase produz um artefato persistente antes que a próxima possa começar.
+Baseado nas principais práticas do superpowers (como TDD, debugging sistemático e desenvolvimento orientado a subagentes), o afyapowers organiza o trabalho em 5 fases sequenciais. Cada fase só avança após a conclusão e registro do artefato correspondente, garantindo controle e rastreabilidade em todo o ciclo.
 
-**Links úteis:**
-- [Marketplace DevEx da Afya](https://github.com/iclinic/devex-marketplace)
+## Compatibilidade
+
+- Claude Code
+- Cursor
+- GitHub Copilot
 
 ## Pré-requisitos
 
@@ -15,7 +18,7 @@ Antes de instalar o afyapowers, é necessário instalar o **Marketplace de DevEx
 
 ### Claude Code
 
-> **Importante:** O comando deve ser executado **dentro da instância do agente** (com o Claude Code rodando).
+> **Importante:** O comando deve ser executado **dentro** da instância do agente (com o Claude Code rodando).
 
 ```bash
 /plugin install afyapowers@devex-marketplace
@@ -32,7 +35,7 @@ Após a instalação, execute `/reload-plugins` dentro do agente para carregar o
 
 ### GitHub Copilot
 
-> O comando deve ser executado **direto no terminal**, fora do agente.
+> O comando deve ser executado **fora** da instância do agente (com o Copilot CLI sem estar rodando)
 
 ```bash
 copilot plugin install afyapowers@devex-marketplace
@@ -94,6 +97,7 @@ As fases são controladas — você deve completar o artefato da fase atual ante
 | `/afyapowers:history` | `/afyapowers-history` | Mostrar a linha do tempo completa de eventos da feature ativa |
 | `/afyapowers:abort` | `/afyapowers-abort` | Abandonar a feature ativa (irreversível) |
 | `/afyapowers:component` | `/afyapowers-component` | Desenvolver um componente Figma (standalone, fora do workflow de 5 fases) |
+
 
 ## Integrações
 
@@ -158,29 +162,6 @@ src/
   manifests/                # Manifestos do plugin para Claude e Cursor
   templates/                # Templates Markdown para artefatos
 ```
-
-## Continuidade de Sessão
-
-Um hook de início de sessão detecta automaticamente a feature ativa e injeta contexto no Claude Code — fase atual, progresso das tarefas, artefatos disponíveis — para que você possa retomar o trabalho de forma transparente entre sessões.
-
-## Skills
-
-### Skills de Fase
-
-- **design** — Exploração colaborativa + especificação técnica com contexto opcional de JIRA/Figma
-- **writing-plans** — Criação de plano de implementação a partir da spec de design com grafos de dependência e inferência de tarefas Figma
-- **implementing** — Despacho de subagentes baseado em ondas com ordenação por dependência e gates de auto-revisão
-- **reviewing** — Revisão de código em 2 etapas (conformidade com spec + qualidade do código) com ciclos iterativos de correção
-- **completing** — Execução da suíte de testes, merge/PR/cleanup e resumo de conclusão
-
-### Skills Independentes
-
-- **test-driven-development** — Ciclo RED-GREEN-REFACTOR
-- **systematic-debugging** — Investigação de causa raiz antes de correções
-- **verification-before-completion** — Evidência antes de afirmações
-- **subagent-driven-development** — Subagente novo por tarefa com execução em ondas e gates de revisão
-- **auto-documentation** — Geração de documentação viva após implementação
-- **figma-component** — Desenvolvimento standalone de componente Figma (fora do workflow de 5 fases)
 
 ## Documentação Detalhada do Workflow
 
