@@ -172,9 +172,8 @@ Um hook de início de sessão detecta automaticamente a feature ativa e injeta c
 - **implementing** — Despacho de subagentes baseado em ondas com ordenação por dependência e gates de auto-revisão
 - **reviewing** — Revisão de código em 2 etapas (conformidade com spec + qualidade do código) com ciclos iterativos de correção
 - **completing** — Execução da suíte de testes, merge/PR/cleanup e resumo de conclusão
-- **figma-component** — Desenvolvimento standalone de componente Figma (fora do workflow de 5 fases)
 
-### Skills Transversais
+### Skills Independentes
 
 - **test-driven-development** — Ciclo RED-GREEN-REFACTOR
 - **systematic-debugging** — Investigação de causa raiz antes de correções
@@ -183,6 +182,7 @@ Um hook de início de sessão detecta automaticamente a feature ativa e injeta c
 - **dispatching-parallel-agents** — Investigação paralela de problemas independentes
 - **subagent-driven-development** — Subagente novo por tarefa com execução em ondas e gates de revisão
 - **auto-documentation** — Geração de documentação viva após implementação
+- **figma-component** — Desenvolvimento standalone de componente Figma (fora do workflow de 5 fases)
 
 ## Documentação Detalhada do Workflow
 
