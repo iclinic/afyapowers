@@ -11,38 +11,26 @@ This is a template for dispatching implementer subagents for Figma design tasks.
 
 ## Core Principles
 
-1. **Figma is absolute authority.** Every visual property — colors, typography, spacing, borders, shadows, opacity — comes from Figma. Never substitute, approximate, or prefer codebase patterns over Figma values. If a token does not exist in the project, hardcode the Figma value.
+1. **Project tokens take priority by name.** When a Figma token name matches a project token name, always use the project token — even if the resolved values differ. If values differ, note the mismatch in implementation concerns but do not override the project token. Only hardcode a Figma value when no project token with that name exists.
 
-2. **3 mandatory MCP calls in order.** You must call `get_variable_defs` → `get_screenshot` → `get_design_context` for every task. No skipping, no reordering.
+2. **2 mandatory MCP calls + 1 conditional.** You must call `get_screenshot` and `get_design_context` for every task. Call `get_variable_defs` only when `get_design_context` returns tokens that do not exist in the project, to resolve their values for hardcoding.
 
 3. **Assets come from Figma.** Always use Figma-provided assets. Before downloading, check if the exact same asset already exists in the codebase (dedup). Never substitute with local icon libraries.
 
 ## Prerequisites
 
-- Figma MCP server must be connected. Verify by checking that `get_design_context` and `get_variable_defs` tools are available.
+- Figma MCP server must be connected. Verify by checking that `get_design_context`, `get_screenshot`, and `get_variable_defs` tools are available.
 - If the Figma MCP server is unavailable, report status **BLOCKED** and stop.
 
 ## Workflow
 
-### Step 1 — Build Token Reference Table
-
-Call `get_variable_defs(fileKey, nodeId)` using the single node ID from your task's Figma block.
-
-Build a lookup table mapping token name → resolved value for:
-- Colors (fill, stroke, background, text)
-- Typography (font family, size, weight, line height)
-- Spacing (padding, margin, gap)
-- Border radius, shadows, opacity
-
-This table is the single source of truth for all design values. Keep it accessible — you will cross-reference it in Step 3.
-
-### Step 2 — Capture Visual Reference
+### Step 1 — Capture Visual Reference
 
 Call `get_screenshot(fileKey, nodeId)` using the single node ID from your task's Figma block.
 
 The screenshot is the source of truth for layout: arrangement, sizing, spacing, and overall visual structure. Keep it accessible for comparison throughout implementation. You will validate your final output against this screenshot before reporting back.
 
-### Step 3 — Fetch Design Context + Cross-Reference
+### Step 2 — Fetch Design Context
 
 Call `get_design_context(fileKey, nodeId)` using the single node ID from your task's Figma block.
 
@@ -54,18 +42,22 @@ This provides:
 - Component props and slot/composition patterns
 - Implementation suggestions with token names
 
-**Cross-reference every token name** from this output against the lookup table from Step 1.
+### Step 3 — Token Resolution
+
+For every token name returned by `get_design_context`, check whether a project token with the same name exists:
 
 **Token Mapping Rule — apply for every visual property:**
-1. **Name match + value match:** Figma variable name matches a project token by name AND their resolved values are identical → use the project token.
-2. **Name match + value mismatch:** Figma variable name matches a project token by name BUT the values differ → hardcode the Figma value.
-3. **No match:** No project token matches the Figma variable name → hardcode the Figma value.
+1. **Name match in project** → use the project token. If the Figma resolved value differs from the project token value, note the mismatch in implementation concerns but **do NOT override** — the project token wins. Do not hardcode the Figma value.
+2. **No match in project** → collect these unmatched tokens. You will need their resolved values from `get_variable_defs` (see below).
 
-Never approximate. Never use a "closest" project token. It is either an exact match (name + value) or a hardcoded Figma value.
+Never approximate. Never use a "closest" project token. It is either an exact name match (use project token) or a hardcoded resolved value from `get_variable_defs`.
 
-**Fallback:** If `get_variable_defs` returned no tokens for a node, use the raw resolved values from `get_design_context` and flag the affected properties as DONE_WITH_CONCERNS.
+**Resolving unmatched tokens with `get_variable_defs`:**
+- If ALL tokens from `get_design_context` matched project tokens → skip `get_variable_defs` entirely.
+- If any tokens did NOT match a project token → call `get_variable_defs(fileKey, nodeId)` once to resolve their values. Hardcode the resolved values and note each one in implementation concerns.
+- **Critical:** Do NOT use the inline fallback/resolved values from `get_design_context` for unmatched tokens. These values are unreliable. You must call `get_variable_defs` to obtain the authoritative resolved value. Only if `get_variable_defs` also fails to return a token's value may you fall back to the `get_design_context` value as a last resort — and flag it as DONE_WITH_CONCERNS.
 
-**Truncation fallback:** If `get_design_context` returns a truncated response (indicated by missing expected child nodes or incomplete data), call `get_metadata` on the child nodes that need more detail. This is the only case where additional MCP calls are made beyond the 3 mandatory ones.
+**Truncation fallback:** If `get_design_context` returns a truncated response (indicated by missing expected child nodes or incomplete data), call `get_metadata` on the child nodes that need more detail.
 
 ## Asset Rules
 
@@ -84,7 +76,7 @@ Never approximate. Never use a "closest" project token. It is either an exact ma
 
 1. **Figma overrides codebase patterns.** When the Figma design differs from project conventions, follow Figma.
 2. **Reuse existing components when they match.** If a project component matches what Figma shows, use it. If Figma shows something different, implement what Figma shows.
-3. **Token mapping is strict.** Exact name + exact value = project token. Anything else = hardcode the Figma value.
+3. **Token mapping is strict.** Exact name match in project = use project token (regardless of value). No name match = hardcode the resolved value from `get_variable_defs`.
 4. **Accessibility is the one exception.** Semantic HTML, `aria-label` on icon-only actions, focus states, and keyboard navigation must be added even when Figma does not specify them. Report any accessibility additions in your concerns.
 5. **No other additions beyond Figma.** Do not add features, refactoring, or architectural changes that Figma does not call for.
 6. **File constraint.** Only modify files listed in the task's Files section. If you need files not in the list, report NEEDS_CONTEXT.
@@ -112,7 +104,7 @@ Always search the codebase for an existing exact match before downloading a new 
 
 ### Design token values differ from Figma
 **Cause:** Project tokens have drifted from Figma values, or Figma uses updated values not yet reflected in the codebase.
-**Solution:** Follow the Token Mapping Rule — if the resolved values differ, hardcode the Figma value and flag as DONE_WITH_CONCERNS so the orchestrator can track token drift.
+**Solution:** Follow the Token Mapping Rule — use the project token by name regardless of value mismatch. Note the discrepancy in implementation concerns so the orchestrator can track token drift. Do not hardcode the Figma value when a project token with the same name exists.
 
 ### SVG icons appear stretched or squashed
 **Cause:** Figma MCP exports SVGs with `preserveAspectRatio="none"` and `width="100%" height="100%"`, which removes the intrinsic aspect ratio. When rendered with explicit dimensions that don't match the viewBox ratio, the content distorts.
