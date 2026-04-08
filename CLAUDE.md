@@ -11,10 +11,10 @@ afyapowers is a deterministic, phase-gated development workflow plugin for Claud
 There is no traditional build system. The project uses a single bash script (`sync.sh`) to generate per-agent distributions from a shared source:
 
 ```bash
-./sync.sh                  # Sync all agents
+./sync.sh                  # Sync all agents (stale files removed automatically)
 ./sync.sh claude           # Sync specific agent
-./sync.sh --clean          # Clean output directories before syncing
-./sync.sh cursor --clean   # Clean + specific agent
+./sync.sh --clean          # Nuke output directories before syncing
+./sync.sh cursor --clean   # Nuke + specific agent
 ```
 
 The script reads JSON configs from `src/config/` and produces customized output in `dist/<agent>/`. It handles agent-specific file prefixes, directory prefixes, frontmatter injection, and plugin manifest copying. Requires `jq` (falls back to Python 3 if unavailable).

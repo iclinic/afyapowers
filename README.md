@@ -152,7 +152,7 @@ O afyapowers utiliza servidores MCP para integração com JIRA (Atlassian) e Fig
 ```text
 src/
   commands/                 # Definições de slash commands (8 no total)
-  skills/                   # Skills de fase e transversais (13 no total)
+  skills/                   # Skills de fase e independentes (11 no total)
   config/                   # Configuração específica por IDE (Claude, Cursor, Gemini)
   hooks/                    # Hook de início de sessão para restauração de contexto
   manifests/                # Manifestos do plugin para Claude e Cursor
@@ -178,8 +178,6 @@ Um hook de início de sessão detecta automaticamente a feature ativa e injeta c
 - **test-driven-development** — Ciclo RED-GREEN-REFACTOR
 - **systematic-debugging** — Investigação de causa raiz antes de correções
 - **verification-before-completion** — Evidência antes de afirmações
-- **using-git-worktrees** — Workspaces isolados para trabalho em features
-- **dispatching-parallel-agents** — Investigação paralela de problemas independentes
 - **subagent-driven-development** — Subagente novo por tarefa com execução em ondas e gates de revisão
 - **auto-documentation** — Geração de documentação viva após implementação
 - **figma-component** — Desenvolvimento standalone de componente Figma (fora do workflow de 5 fases)

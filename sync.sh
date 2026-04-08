@@ -159,7 +159,23 @@ process_single_files() {
     count=$((count + 1))
   done
 
-  echo "  $(basename "$output_subdir"): $count files"
+  # Remove stale files from output directory
+  local removed=0
+  for out_file in "$output_dir/$output_subdir/"*.md; do
+    [[ -f "$out_file" ]] || continue
+    local out_filename
+    out_filename=$(basename "$out_file")
+    # Strip file prefix to get the original slug
+    local original_name="${out_filename#"$file_prefix"}"
+    if [[ ! -f "$src_dir/$original_name" ]]; then
+      rm "$out_file"
+      removed=$((removed + 1))
+    fi
+  done
+
+  local msg="  $(basename "$output_subdir"): $count files"
+  [[ $removed -gt 0 ]] && msg+=" ($removed stale removed)"
+  echo "$msg"
 }
 
 # --- Process commands for an agent ---
@@ -237,10 +253,37 @@ process_skills() {
       fi
     done
 
+    # Remove stale files within this skill directory
+    for out_file in "$out_skill_dir/"*; do
+      [[ -e "$out_file" ]] || continue
+      local out_fname
+      out_fname=$(basename "$out_file")
+      # Check if this file exists in the source skill dir (frontmatter.yaml is never copied)
+      if [[ ! -e "$src_skill_dir/$out_fname" ]] || [[ "$out_fname" == "frontmatter.yaml" ]]; then
+        rm -rf "$out_file"
+      fi
+    done
+
     count=$((count + 1))
   done
 
-  echo "  Skills: $count directories"
+  # Remove stale skill directories from output
+  local removed=0
+  for out_skill_dir in "$output_dir/skills/"*/; do
+    [[ -d "$out_skill_dir" ]] || continue
+    local out_dirname
+    out_dirname=$(basename "$out_skill_dir")
+    # Strip dir prefix to get the original dirname
+    local original_name="${out_dirname#"$dir_prefix"}"
+    if [[ ! -d "$SRC_DIR/skills/$original_name" ]]; then
+      rm -rf "$out_skill_dir"
+      removed=$((removed + 1))
+    fi
+  done
+
+  local msg="  Skills: $count directories"
+  [[ $removed -gt 0 ]] && msg+=" ($removed stale removed)"
+  echo "$msg"
 }
 
 # --- Process agents ---
