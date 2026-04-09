@@ -304,7 +304,14 @@ After ALL worktrees create WORKTREE_COMPLETE.md:
      git merge <wt2_branch>
      ...
 
-  2. Consolidate deferred files (if any in _deferred/)
+  2. Consolidate shared-file follow-up:
+     - For `_deferred/`, read each worktree contribution and fold the final content
+       into the real target files on the parent branch
+     - For `append_only` files, keep additive entries from every worktree
+       and resolve conflicts by preserving all valid additions
+     - For `single_owner` files, prefer the designated owner's version unless
+       the parent merge explicitly reconciles extra changes
+     - After consolidation, delete `_deferred/` if nothing still needs follow-up
 
   3. Verify the canonical feature plan:
      .afyapowers/features/<feature_slug>/artifacts/plan.md
