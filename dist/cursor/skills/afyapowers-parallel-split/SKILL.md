@@ -228,50 +228,62 @@ Append to `history.yaml` under the `events:` key:
 
 ---
 
-## Step 6: Launch Terminals
+## Step 6: Launch Worktree Sessions
 
-### 6A. Warp (default on macOS)
+Launch one agent session per worktree using the host the user is already working in.
 
-Generate Warp Launch Configuration:
+### 6A. Cursor
 
-```yaml
----
-name: afyapowers Parallel
-windows:
-  - tabs:
-      - title: "afyapowers - <N> Worktrees"
-        layout:
-          split_direction: vertical
-          panes:
-            - split_direction: horizontal
-              panes:
-                - cwd: "<wt1_abs_path>"
-                  commands:
-                    - exec: "<MCP_SETUP> && <agent-launch-command> 'Read PROMPT.md and implement all assigned tasks following TDD. Create WORKTREE_COMPLETE.md when done.'"
-                - cwd: "<wt2_abs_path>"
-                  commands:
-                    - exec: "<MCP_SETUP> && <agent-launch-command> 'Read PROMPT.md and implement all assigned tasks following TDD. Create WORKTREE_COMPLETE.md when done.'"
-```
+If the user is working in Cursor, including Cursor with a Claude-powered plugin:
 
-Where:
-- `<MCP_SETUP>` chains the optional Claude Code setup commands from Step 3E
-- `<agent-launch-command>` is the command used by the host running in that worktree
-
-Write to `~/.warp/launch_configurations/afyapowers-parallel.yaml`
-Open: `open "warp://launch/afyapowers%20Parallel"`
-
-### 6B. Generic Manual Launch
-
-If automated launch is unavailable or you are using a non-Claude host, open one agent session per worktree manually and tell it to read `PROMPT.md`.
+- Open a separate Cursor window or workspace for each worktree
+- Do NOT reuse the same Cursor window for multiple worktrees
+- In each window, confirm the opened folder is the correct worktree path
+- Start the agent in that window
+- Tell it to read `PROMPT.md` and execute only the assigned worktree scope
 
 Example:
 
 ```text
-cd <wt1_path> && <your-agent-host>
-cd <wt2_path> && <your-agent-host>
+Open <wt1_path> in Cursor -> start agent -> "Read PROMPT.md"
+Open <wt2_path> in Cursor -> start agent -> "Read PROMPT.md"
 ```
 
-Use tmux, Warp, separate terminals, or separate IDE windows according to your host environment.
+### 6B. Claude Code
+
+If the user is working in standalone Claude Code:
+
+- Open a separate terminal or Claude Code session for each worktree
+- Do NOT reuse the same terminal session for multiple worktrees
+- Run each session from the corresponding worktree directory
+- Tell each session to read `PROMPT.md`
+
+Example:
+
+```text
+cd <wt1_path> && claude
+cd <wt2_path> && claude
+```
+
+### 6C. GitHub Copilot / Copilot CLI
+
+If the user is working through GitHub Copilot or Copilot CLI:
+
+- Open a separate terminal or agent session for each worktree
+- Do NOT reuse the same terminal session for multiple worktrees
+- Start each session from the correct worktree path
+- Tell each session to read `PROMPT.md`
+
+Example:
+
+```text
+cd <wt1_path> && <copilot-agent-host>
+cd <wt2_path> && <copilot-agent-host>
+```
+
+### 6D. Optional Local Convenience Tools
+
+Terminal multiplexers or launchers such as tmux, Warp, or IDE tab groups may be used for convenience, but they are optional. They are not part of the architectural contract of this skill.
 
 ---
 
@@ -295,7 +307,7 @@ Territory map: territory_map.json
 Merge order: wt1 → wt2 → wt3
 Shared files: <count> (deferred)
 
-Agents launched.
+Worktree sessions launched.
 
 After ALL worktrees create WORKTREE_COMPLETE.md:
 
