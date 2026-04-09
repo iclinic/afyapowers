@@ -67,11 +67,11 @@ How would you like to execute?
 8. **If user chooses 2 (Parallel):**
    - Invoke `parallel-split` skill with: feature slug, plan content, design content, task groups, parsed tasks
    - The parallel-split skill creates worktrees, each running ONLY the implement phase for its task group
-   - **After all worktrees complete and merge back:**
-     - Re-read the parent plan.md — verify all checkboxes are `[x]` (worktree merges update the parent plan)
-     - If some remain unchecked, report them to the user
-     - **Resume the parent flow at "After SDD Completes" below** (the parent continues with review → complete)
-   - **STOP here** — do not invoke SDD (the worktrees handled implementation)
+   - Each worktree updates the canonical feature plan at `.afyapowers/features/<feature>/artifacts/plan.md` in its own branch, but may only mark the tasks assigned to its group
+   - After all worktrees finish, merge them back into the parent branch and verify the parent plan has all tasks marked `[x]`
+   - If all tasks are `[x]`, the implement phase is complete: run `/afyapowers:next` on the parent feature to proceed to review
+   - If some tasks remain unchecked after the merge, stay in the implement phase and continue from the remaining tasks
+   - **STOP here** — do not invoke SDD in this run (the worktrees handled implementation)
 
 ## Invoke Sub-Skill
 

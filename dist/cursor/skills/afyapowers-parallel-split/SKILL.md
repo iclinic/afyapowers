@@ -88,25 +88,38 @@ git worktree add -b "${BRANCH_NAME}" "${WT_PATH}" HEAD
 
 ## Step 3: Prepare Each Worktree
 
-### 3A. Generate subset plan.md
+### 3A. Copy canonical plan.md
 
-Create a `plan.md` in the worktree root containing ONLY this group's tasks:
+Copy the parent feature's canonical plan artifact into the worktree:
+
+```bash
+mkdir -p "${WT_PATH}/.afyapowers/features/<feature_slug>/artifacts"
+cp ".afyapowers/features/<feature_slug>/artifacts/plan.md" \
+   "${WT_PATH}/.afyapowers/features/<feature_slug>/artifacts/plan.md"
+```
+
+This is the file that must be updated during implementation so checkbox changes merge back cleanly into the parent feature.
+
+### 3B. Generate task scope summary
+
+Create `TASK_SCOPE.md` in the worktree root containing ONLY this group's task blocks:
 
 1. Copy the plan header (Goal, Architecture, Tech Stack)
 2. Include ONLY the `### Task N:` blocks assigned to this group
-3. Preserve original task numbers (do NOT renumber — needed for merging checkboxes back)
-4. Update `**Depends on:**` references: remove deps on tasks outside this group (they have no cross-group deps by definition)
-5. Preserve all step details, file lists, and Figma metadata
+3. Preserve original task numbers (do NOT renumber)
+4. Preserve all step details, file lists, and Figma metadata
 
-Save to `${WT_PATH}/PLAN_SUBSET.md`
+Save to `${WT_PATH}/TASK_SCOPE.md`
 
-### 3B. Copy design.md for context
+### 3C. Copy design.md for context
 
 ```bash
+cp ".afyapowers/features/<feature_slug>/artifacts/design.md" \
+   "${WT_PATH}/.afyapowers/features/<feature_slug>/artifacts/design.md"
 cp ".afyapowers/features/<feature_slug>/artifacts/design.md" "${WT_PATH}/DESIGN_CONTEXT.md"
 ```
 
-### 3C. Generate PROMPT.md with territory rules
+### 3D. Generate PROMPT.md with territory rules
 
 Read `skills/parallel-split/territory-protocol.md` as template. Replace placeholders with this group's territory data.
 
@@ -125,12 +138,14 @@ Focus area: <group_description>
 
 1. Read this file completely
 2. Read `DESIGN_CONTEXT.md` for the full design spec
-3. Read `PLAN_SUBSET.md` for your assigned tasks
-4. Implement ALL tasks following TDD (test first → implement → refactor → commit)
-5. For each completed task, mark its checkbox: `- [ ]` → `- [x]` in PLAN_SUBSET.md
-6. **Respect territory rules below** — do NOT edit files outside your territory
-7. After ALL tasks are complete: create `WORKTREE_COMPLETE.md` with a summary of what was done
-8. Do NOT run /afyapowers:next — do NOT start review or complete phases
+3. Read `TASK_SCOPE.md` for your assigned tasks
+4. Read `.afyapowers/features/<feature_slug>/artifacts/plan.md` for the canonical feature plan
+5. Implement ALL tasks following TDD (test first → implement → refactor → commit)
+6. For each completed assigned task, mark its checkbox: `- [ ]` → `- [x]` in `.afyapowers/features/<feature_slug>/artifacts/plan.md`
+7. Do NOT mark or edit tasks outside your assigned group
+8. **Respect territory rules below** — do NOT edit files outside your territory
+9. After ALL assigned tasks are complete: create `WORKTREE_COMPLETE.md` with a summary of what was done
+10. Do NOT run /afyapowers:next — do NOT start review or complete phases
 
 ## IMPORTANT: Implement Only
 
@@ -141,7 +156,14 @@ WORKTREE_COMPLETE.md and stop.
 <territory-protocol content>
 ```
 
-### 3D. Provision MCP servers (Claude Code only)
+### 3E. Host-Specific Setup
+
+Use the normal project or plugin setup for the host running in each worktree.
+
+- Claude Code: you may provision project MCP servers for each worktree if needed
+- Other hosts: do not assume the `claude` CLI exists; use the host's normal setup flow instead
+
+Optional Claude Code setup example:
 
 ```bash
 WT_ABS_PATH="$(cd "${WT_PATH}" && pwd)"
@@ -231,25 +253,23 @@ windows:
                     - exec: "<MCP_SETUP> && claude 'Read PROMPT.md and implement all assigned tasks following TDD. Create WORKTREE_COMPLETE.md when done.'"
 ```
 
-Where `<MCP_SETUP>` chains the `claude mcp remove` + `claude mcp add` commands from Step 3D.
+Where `<MCP_SETUP>` chains the optional Claude Code setup commands from Step 3E.
 
 Write to `~/.warp/launch_configurations/afyapowers-parallel.yaml`
 Open: `open "warp://launch/afyapowers%20Parallel"`
 
-### 6B. tmux (fallback)
+### 6B. Generic Manual Launch
 
-```bash
-SESSION="afyapowers-parallel"
-tmux new-session -d -s "${SESSION}" -x 200 -y 50
-tmux send-keys -t "${SESSION}:0.0" "cd '<wt1_path>' && claude 'Read PROMPT.md and implement all assigned tasks following TDD. Create WORKTREE_COMPLETE.md when done.'" Enter
-# Split + send-keys for each additional worktree
-tmux select-layout -t "${SESSION}" tiled
-tmux attach -t "${SESSION}"
+If automated launch is unavailable or you are using a non-Claude host, open one agent session per worktree manually and tell it to read `PROMPT.md`.
+
+Example:
+
+```text
+cd <wt1_path> && <your-agent-host>
+cd <wt2_path> && <your-agent-host>
 ```
 
-### 6C. Manual (no multiplexer)
-
-Print commands for user to copy-paste.
+Use tmux, Warp, separate terminals, or separate IDE windows according to your host environment.
 
 ---
 
@@ -284,17 +304,19 @@ After ALL worktrees create WORKTREE_COMPLETE.md:
 
   2. Consolidate deferred files (if any in _deferred/)
 
-  3. Update plan.md checkboxes:
-     The merge brings in each worktree's PLAN_SUBSET.md changes.
-     Verify the parent plan.md has all tasks marked [x].
-     If some checkboxes are still [ ], manually mark them based
-     on the worktree PLAN_SUBSET.md files.
+  3. Verify the canonical feature plan:
+     .afyapowers/features/<feature_slug>/artifacts/plan.md
+     Each worktree updated its assigned task checkboxes in that file.
+     After the merges, confirm every task is [x].
 
-  4. Run /afyapowers:next to proceed to review (on the parent feature)
+  4. If every task is [x], run /afyapowers:next to proceed to review
+     If some tasks are still [ ], stay in implement and continue from there
 
   5. Clean up:
      git worktree list | grep "<feature_short>.*wt" | awk '{print $1}' | xargs -I {} git worktree remove {}
      rm territory_map.json _deferred/ 2>/dev/null
 ```
 
-**IMPORTANT:** After displaying the summary, the `implementing` skill will wait for the user to complete the merge steps and then resume at the "After SDD Completes" check (verifying all plan.md checkboxes are `[x]`).
+**IMPORTANT:** This skill does not implicitly resume later. After merges are finished, continue from the parent feature:
+- If the canonical plan is fully checked off, run `/afyapowers:next`
+- If work remains, stay in implement and continue from the remaining unchecked tasks
