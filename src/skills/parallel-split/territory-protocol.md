@@ -1,6 +1,6 @@
 # Territory Protocol for Parallel Worktrees
 
-You are working in a **parallel worktree** with territory-based file isolation. Other agents are simultaneously working on other task groups in separate worktrees. To prevent merge conflicts, you MUST respect the territory rules below.
+You are working in a **parallel worktree** implementing a subset of tasks. Other agents are simultaneously working on other task groups in separate worktrees. To prevent merge conflicts, you MUST respect the territory rules below.
 
 ---
 
@@ -40,27 +40,16 @@ If during implementation you realize you NEED to edit a file outside your territ
 1. **Do NOT edit it**
 2. Create `_deferred/{{WORKTREE_ID}}/territory-request.md` documenting what you need
 3. Create a stub or workaround within your territory
-4. Continue with implementation — the merge step will handle cross-territory needs
-5. Note the territory limitation as a concern in your implementation
+4. Continue with implementation
 
 ---
 
-## MERGE ORDER
+## SCOPE: IMPLEMENT ONLY
 
-{{MERGE_ORDER}}
+You are running ONLY the implement phase. Do NOT:
+- Run `/afyapowers:next`
+- Start review or complete phases
+- Create review.md or completion.md
+- Merge branches or create PRs
 
-Your worktree will be merged in the order specified above. If you depend on code from a worktree that merges before you, it will be available after their merge completes.
-
----
-
-## WORKFLOW
-
-You are running the afyapowers 5-phase workflow for your assigned tasks:
-
-1. Your plan.md has been pre-populated with your assigned tasks only
-2. Run the implement phase: follow TDD, use subagent-driven-development for wave execution
-3. After implementation: proceed to review phase (`/afyapowers:next`)
-4. After review: proceed to complete phase (`/afyapowers:next`)
-5. At completion: choose "Keep as-is" — the parent orchestrator handles merge
-
-**IMPORTANT:** Always respect territory rules during ALL phases (implement, review, complete).
+When all tasks are done, create `WORKTREE_COMPLETE.md` and stop. The parent branch handles review and completion after merge.
