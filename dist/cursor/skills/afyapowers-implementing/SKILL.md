@@ -23,7 +23,57 @@ Orchestrate plan execution by delegating to subagent-driven-development.
 - If all tasks are already complete, tell the user and suggest `/afyapowers:next`
 - If uncompleted tasks remain, proceed to execution
 
-## Required Sub-Skills
+## Parallel Split Analysis
+
+Before dispatching tasks, check if the plan can be split into independent parallel groups.
+
+### Detect disconnected components
+
+1. Parse all tasks from the plan: extract task numbers, `**Depends on:**` lines, and `**Files:**` sections
+2. Build the dependency graph
+3. Find **disconnected components** — groups of tasks with NO dependencies between them:
+   - Start with each task as its own group
+   - If Task A depends on Task B, merge their groups
+   - If Task A and Task B share files (from `**Files:**` sections), merge their groups
+   - After processing all deps and overlaps, count remaining distinct groups
+
+4. **If only 1 group** (all tasks are connected): proceed directly to the SDD invocation below.
+
+5. **If 2+ disconnected groups exist**, analyze each group:
+   - List tasks in the group
+   - Describe the group by its primary domain (infer from file paths and task names)
+   - List key files/directories the group touches
+
+6. **Present the choice to the user:**
+
+```
+Your plan has <N> independent task groups with no dependencies between them:
+
+  Group A (Tasks 1, 2, 5): <domain_description>
+    Files: <key_directories>
+
+  Group B (Tasks 3, 4): <domain_description>
+    Files: <key_directories>
+
+How would you like to execute?
+
+  1) Sequential (default) — one agent implements all tasks using wave execution
+  2) Parallel worktrees — creates <N> worktrees with territory-based file isolation,
+     each implements its task group, then merges back for unified review
+```
+
+7. **If user chooses 1 (Sequential):** proceed to the SDD invocation below.
+
+8. **If user chooses 2 (Parallel):**
+   - Invoke `parallel-split` skill with: feature slug, plan content, design content, task groups, parsed tasks
+   - The parallel-split skill creates worktrees, each running ONLY the implement phase for its task group
+   - Each worktree updates the canonical feature plan at `.afyapowers/features/<feature>/artifacts/plan.md` in its own branch, but may only mark the tasks assigned to its group
+   - After all worktrees finish, merge them back into the parent branch and verify the parent plan has all tasks marked `[x]`
+   - If all tasks are `[x]`, the implement phase is complete: run `/afyapowers:next` on the parent feature to proceed to review
+   - If some tasks remain unchecked after the merge, stay in the implement phase and continue from the remaining tasks
+   - **STOP here** — do not invoke SDD in this run (the worktrees handled implementation)
+
+## Invoke Sub-Skill
 
 **REQUIRED:** Invoke `afyapowers:subagent-driven-development` via the Skill tool to execute all plan tasks.
 
