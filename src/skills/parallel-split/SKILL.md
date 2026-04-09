@@ -247,13 +247,15 @@ windows:
               panes:
                 - cwd: "<wt1_abs_path>"
                   commands:
-                    - exec: "<MCP_SETUP> && claude 'Read PROMPT.md and implement all assigned tasks following TDD. Create WORKTREE_COMPLETE.md when done.'"
+                    - exec: "<MCP_SETUP> && <agent-launch-command> 'Read PROMPT.md and implement all assigned tasks following TDD. Create WORKTREE_COMPLETE.md when done.'"
                 - cwd: "<wt2_abs_path>"
                   commands:
-                    - exec: "<MCP_SETUP> && claude 'Read PROMPT.md and implement all assigned tasks following TDD. Create WORKTREE_COMPLETE.md when done.'"
+                    - exec: "<MCP_SETUP> && <agent-launch-command> 'Read PROMPT.md and implement all assigned tasks following TDD. Create WORKTREE_COMPLETE.md when done.'"
 ```
 
-Where `<MCP_SETUP>` chains the optional Claude Code setup commands from Step 3E.
+Where:
+- `<MCP_SETUP>` chains the optional Claude Code setup commands from Step 3E
+- `<agent-launch-command>` is the command used by the host running in that worktree
 
 Write to `~/.warp/launch_configurations/afyapowers-parallel.yaml`
 Open: `open "warp://launch/afyapowers%20Parallel"`
@@ -308,6 +310,9 @@ After ALL worktrees create WORKTREE_COMPLETE.md:
      .afyapowers/features/<feature_slug>/artifacts/plan.md
      Each worktree updated its assigned task checkboxes in that file.
      After the merges, confirm every task is [x].
+     If git reports a conflict in plan.md because two worktrees marked different tasks,
+     keep both sets of checkbox updates. Resolve the conflict by preserving every [x]
+     that came from completed assigned tasks.
 
   4. If every task is [x], run /afyapowers:next to proceed to review
      If some tasks are still [ ], stay in implement and continue from there

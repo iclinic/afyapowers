@@ -31,6 +31,8 @@ For each shared file, follow the strategy specified:
 - **single_owner (you own)**: Edit freely, but preserve exports that other worktrees depend on.
 - **single_owner (other owns)**: Do NOT modify. If you need changes, document them in `_deferred/{{WORKTREE_ID}}/request.md`.
 
+`_deferred/` is a temporary merge aid. Do not treat it as final product code. Consolidate its contents during the parent-branch merge, then remove it unless the parent workflow explicitly decides to keep a note for follow-up.
+
 ---
 
 ## TERRITORY VIOLATION PROTOCOL
