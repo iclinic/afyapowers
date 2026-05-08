@@ -3,6 +3,7 @@ name: afyapowers:figma-component
 description: Develop Figma components with strict validation, Code Connect dedup, and autonomous implementation. Standalone — not part of the 5-phase workflow.
 model: sonnet
 effort: medium
+disable-model-invocation: true
 ---
 
 # Component Skill
