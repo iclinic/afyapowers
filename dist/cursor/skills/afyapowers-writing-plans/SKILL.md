@@ -229,10 +229,11 @@ Use this format for tasks that implement UI components with Figma designs. The d
 
 ## Required Sub-Skills
 
-**REQUIRED:** Dispatch plan-document-reviewer subagent after writing each plan chunk.
+**REQUIRED:** Dispatch @"plan-reviewer (agent)" after writing each plan chunk.
 
-- Announce: "Using plan-document-reviewer to validate the plan."
-- Dispatch subagent using `skills/writing-plans/plan-document-reviewer-prompt.md`
+- Announce: "Using plan-reviewer to validate the plan."
+- Dispatch @"plan-reviewer (agent)":
+  - Provide the plan chunk content and the spec file path
 - If issues found: fix and re-dispatch (max 5 iterations, then surface to human)
 - After approval: proceed to next chunk or completion
 
@@ -240,7 +241,7 @@ Use this format for tasks that implement UI components with Figma designs. The d
 
 After completing each chunk of the plan:
 
-1. Dispatch plan-document-reviewer subagent (see `skills/writing-plans/plan-document-reviewer-prompt.md`) for the current chunk
+1. Dispatch @"plan-reviewer (agent)":
    - Provide: chunk content, path to spec document
 2. If Issues Found:
    - Fix the issues in the chunk
