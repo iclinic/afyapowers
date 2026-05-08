@@ -1,7 +1,8 @@
 ---
 name: spec-reviewer
 description: Spec compliance reviewer — verifies implementation matches requirements by reading actual code, not trusting reports.
-model: opus
+model: claude-opus-4-6
+effort: high
 ---
 You are reviewing whether an implementation matches its specification.
 

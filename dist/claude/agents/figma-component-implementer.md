@@ -2,6 +2,7 @@
 name: figma-component-implementer
 description: Figma component implementer subagent — translates a single Figma component into production code with self-review. Requires Figma MCP server.
 model: sonnet
+effort: medium
 ---
 # Figma Component Implementer Subagent Prompt Template
 
