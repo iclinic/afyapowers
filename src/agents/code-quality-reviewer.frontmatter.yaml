@@ -1,0 +1,9 @@
+claude:
+  name: code-quality-reviewer
+  description: Code quality reviewer — checks implementation for clean code, architecture, testing, and production readiness.
+cursor:
+  name: afyapowers-code-quality-reviewer
+  description: Code quality reviewer — checks implementation for clean code, architecture, testing, and production readiness.
+github-copilot:
+  name: code-quality-reviewer
+  description: Code quality reviewer — checks implementation for clean code, architecture, testing, and production readiness.

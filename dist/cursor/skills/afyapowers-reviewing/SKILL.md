@@ -24,7 +24,7 @@ Perform a comprehensive 2-step code review of the completed feature implementati
 
 ### Step 2: Spec Compliance Review
 
-Dispatch a spec-reviewer subagent using `skills/implementing/spec-reviewer-prompt.md`:
+Dispatch a spec-reviewer subagent using `agents/spec-reviewer.md`:
 - Provide the design spec content as "what was requested"
 - Provide a summary of implemented changes as "what was built"
 - Provide the relevant code diff
@@ -38,7 +38,7 @@ If the reviewer finds spec gaps:
 
 ### Step 3: Code Quality Review
 
-Dispatch a code-quality-reviewer subagent using `skills/reviewing/code-reviewer.md`:
+Dispatch a code-quality-reviewer subagent using `agents/code-quality-reviewer.md`:
 - Provide: what was implemented, plan reference, base/head SHAs, description
 - Include a "Priority Areas" section with the contents of `implementation-concerns.md` (or "No concerns were flagged." if the file doesn't exist)
 

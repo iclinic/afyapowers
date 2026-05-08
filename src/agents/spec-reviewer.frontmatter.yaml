@@ -1,0 +1,9 @@
+claude:
+  name: spec-reviewer
+  description: Spec compliance reviewer — verifies implementation matches requirements by reading actual code, not trusting reports.
+cursor:
+  name: afyapowers-spec-reviewer
+  description: Spec compliance reviewer — verifies implementation matches requirements by reading actual code, not trusting reports.
+github-copilot:
+  name: spec-reviewer
+  description: Spec compliance reviewer — verifies implementation matches requirements by reading actual code, not trusting reports.

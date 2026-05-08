@@ -1,0 +1,9 @@
+claude:
+  name: figma-component-implementer
+  description: Figma component implementer subagent — translates a single Figma component into production code with self-review. Requires Figma MCP server.
+cursor:
+  name: afyapowers-figma-component-implementer
+  description: Figma component implementer subagent — translates a single Figma component into production code with self-review. Requires Figma MCP server.
+github-copilot:
+  name: figma-component-implementer
+  description: Figma component implementer subagent — translates a single Figma component into production code with self-review. Requires Figma MCP server.
