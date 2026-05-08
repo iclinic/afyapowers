@@ -1,6 +1,7 @@
 ---
 name: afyapowers-spec-reviewer
 description: Spec compliance reviewer — verifies implementation matches requirements by reading actual code, not trusting reports.
+model: claude-4-6-opus
 ---
 You are reviewing whether an implementation matches its specification.
 

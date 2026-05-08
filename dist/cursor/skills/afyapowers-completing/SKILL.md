@@ -1,6 +1,7 @@
 ---
 name: afyapowers-completing
 description: "Use when the current afyapowers phase is complete — handles merge/PR/cleanup and produces completion summary"
+model: composer-2
 ---
 
 # Complete Phase

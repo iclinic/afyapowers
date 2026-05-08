@@ -1,6 +1,7 @@
 ---
 name: afyapowers-tdd-implementer
 description: TDD implementer subagent — implements plan tasks following red-green-refactor with self-review and structured reporting.
+model: composer-2
 ---
 You are implementing Task N: [task name]
 

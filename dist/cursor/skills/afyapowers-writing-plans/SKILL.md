@@ -1,6 +1,7 @@
 ---
 name: afyapowers-writing-plans
 description: Use when the current afyapowers phase is plan — creates implementation plans from tech specs
+model: claude-4-6-opus
 ---
 
 # Writing Plans

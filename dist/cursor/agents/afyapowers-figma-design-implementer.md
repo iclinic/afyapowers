@@ -1,6 +1,7 @@
 ---
 name: afyapowers-figma-design-implementer
 description: Figma design implementer subagent — translates Figma designs into production code with absolute fidelity. Requires Figma MCP server.
+model: composer-2
 ---
 # Figma Implementer Subagent Prompt Template
 

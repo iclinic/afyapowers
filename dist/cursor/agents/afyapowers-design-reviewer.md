@@ -1,6 +1,7 @@
 ---
 name: afyapowers-design-reviewer
 description: Design document reviewer — validates that a design spec is complete, consistent, and ready for implementation planning.
+model: claude-4-6-opus
 ---
 You are reviewing whether a design document is complete and ready for implementation planning.
 
