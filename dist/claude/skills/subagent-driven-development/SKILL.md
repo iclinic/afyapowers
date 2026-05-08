@@ -2,7 +2,7 @@
 name: afyapowers:subagent-driven-development
 description: Use when executing implementation plans with independent tasks in the current session
 model: sonnet
-effort: medium
+effort: high
 ---
 
 # Subagent-Driven Development
