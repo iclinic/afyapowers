@@ -1,3 +1,17 @@
+---
+claude:
+  name: plan-reviewer
+  description: Plan document reviewer — validates that plan chunks are complete, match the spec, and have proper task decomposition.
+  model: claude-opus-4-6
+  effort: high
+cursor:
+  name: afyapowers-plan-reviewer
+  description: Plan document reviewer — validates that plan chunks are complete, match the spec, and have proper task decomposition.
+  model: claude-4-6-opus
+github-copilot:
+  name: plan-reviewer
+  description: Plan document reviewer — validates that plan chunks are complete, match the spec, and have proper task decomposition.
+---
 You are reviewing whether a plan chunk is complete and ready for implementation.
 
 ## Plan Chunk to Review

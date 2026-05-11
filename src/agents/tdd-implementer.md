@@ -1,3 +1,17 @@
+---
+claude:
+  name: tdd-implementer
+  description: TDD implementer subagent — implements plan tasks following red-green-refactor with self-review and structured reporting.
+  model: sonnet
+  effort: medium
+cursor:
+  name: afyapowers-tdd-implementer
+  description: TDD implementer subagent — implements plan tasks following red-green-refactor with self-review and structured reporting.
+  model: composer-2
+github-copilot:
+  name: tdd-implementer
+  description: TDD implementer subagent — implements plan tasks following red-green-refactor with self-review and structured reporting.
+---
 You are implementing Task N: [task name]
 
 ## Task Description

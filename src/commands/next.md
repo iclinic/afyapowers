@@ -1,3 +1,14 @@
+---
+claude:
+  description: Advance to Next Phase
+  name: afyapowers:next
+cursor:
+  description: Advance to Next Phase
+  name: afyapowers-next
+github-copilot:
+  description: Advance to Next Phase
+  name: next
+---
 # /afyapowers:next — Advance to Next Phase
 
 You are advancing the active feature to the next workflow phase. Follow these steps exactly:

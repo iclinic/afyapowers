@@ -1,6 +1,16 @@
 ---
-name: test-driven-development
-description: Use when implementing any feature or bugfix, before writing implementation code
+claude:
+  name: afyapowers:test-driven-development
+  description: Use when implementing any feature or bugfix, before writing implementation code
+  model: sonnet
+  effort: medium
+cursor:
+  name: afyapowers-test-driven-development
+  description: Use when implementing any feature or bugfix, before writing implementation code
+  model: composer-2
+github-copilot:
+  name: test-driven-development
+  description: Use when implementing any feature or bugfix, before writing implementation code
 ---
 
 # Test-Driven Development (TDD)

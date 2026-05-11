@@ -1,3 +1,14 @@
+---
+claude:
+  description: Develop a Figma Component
+  name: afyapowers:component
+cursor:
+  description: Develop a Figma Component
+  name: afyapowers-component
+github-copilot:
+  description: Develop a Figma Component
+  name: component
+---
 # /afyapowers:component — Develop a Figma Component
 
 You are developing a standalone Figma component. This is **not** part of the 5-phase workflow — it is an independent command for implementing individual components from Figma.
