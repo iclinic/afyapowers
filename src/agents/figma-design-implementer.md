@@ -2,12 +2,12 @@
 claude:
   name: figma-design-implementer
   description: Figma design implementer subagent — translates Figma designs into production code with absolute fidelity. Requires Figma MCP server.
-  model: sonnet
-  effort: medium
+  model: opus
+  effort: high
 cursor:
   name: afyapowers-figma-design-implementer
   description: Figma design implementer subagent — translates Figma designs into production code with absolute fidelity. Requires Figma MCP server.
-  model: composer-2
+  model: claude-opus-4-7
 github-copilot:
   name: figma-design-implementer
   description: Figma design implementer subagent — translates Figma designs into production code with absolute fidelity. Requires Figma MCP server.
