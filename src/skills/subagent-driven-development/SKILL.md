@@ -2,12 +2,12 @@
 claude:
   name: afyapowers:subagent-driven-development
   description: Use when executing implementation plans with independent tasks in the current session
-  model: sonnet
+  model: claude-opus-4-6
   effort: high
 cursor:
   name: afyapowers-subagent-driven-development
   description: Use when executing implementation plans with independent tasks in the current session
-  model: composer-2
+  model: claude-4-6-opus
 github-copilot:
   name: subagent-driven-development
   description: Use when executing implementation plans with independent tasks in the current session
