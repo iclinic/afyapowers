@@ -1,8 +1,8 @@
 ---
 name: figma-design-implementer
 description: Figma design implementer subagent — translates Figma designs into production code with absolute fidelity. Requires Figma MCP server.
-model: sonnet
-effort: medium
+model: claude-opus-4-6
+effort: high
 ---
 # Figma Implementer Subagent Prompt Template
 

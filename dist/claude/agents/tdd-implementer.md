@@ -2,7 +2,7 @@
 name: tdd-implementer
 description: TDD implementer subagent — implements plan tasks following red-green-refactor with self-review and structured reporting.
 model: sonnet
-effort: medium
+effort: high
 ---
 You are implementing Task N: [task name]
 
