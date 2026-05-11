@@ -8,7 +8,7 @@ allowed-tools:
   - Bash
   - mcp__figma__get_metadata
   - mcp__figma__get_code_connect_map
-model: composer-2
+model: claude-4-6-opus
 ---
 
 # Component Skill
