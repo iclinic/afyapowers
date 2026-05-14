@@ -1,3 +1,14 @@
+---
+claude:
+  description: List All Features
+  name: afyapowers:features
+cursor:
+  description: List All Features
+  name: afyapowers-features
+github-copilot:
+  description: List All Features
+  name: features
+---
 # /afyapowers:features — List All Features
 
 List all features and their current states.

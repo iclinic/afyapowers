@@ -1,6 +1,8 @@
 ---
 name: afyapowers:figma-component
 description: Develop Figma components with strict validation, Code Connect dedup, and autonomous implementation. Standalone — not part of the 5-phase workflow.
+model: claude-opus-4-6
+effort: high
 ---
 
 # Component Skill
@@ -240,7 +242,7 @@ You as the orchestrator must NOT call any Figma MCP tools here.
 
 ### Task T9 — Dispatch implementer subagent
 
-Mark T9 `in_progress`. After the user confirms, dispatch the implementer subagent using the **Agent tool**. Build the prompt from `component-implementer-prompt.md`, filling in:
+Mark T9 `in_progress`. After the user confirms, dispatch @"figma-component-implementer (agent)". Build the prompt filling in:
 
 - `[FILE_KEY]` — from Phase 1, Task T1
 - `[NODE_ID]` — from Phase 1, Task T1

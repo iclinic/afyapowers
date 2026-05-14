@@ -1,3 +1,14 @@
+---
+claude:
+  description: Abort Current Feature
+  name: afyapowers:abort
+cursor:
+  description: Abort Current Feature
+  name: afyapowers-abort
+github-copilot:
+  description: Abort Current Feature
+  name: abort
+---
 # /afyapowers:abort — Abort Current Feature
 
 Abandon the active feature. This is irreversible — aborted features cannot be resumed.

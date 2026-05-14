@@ -1,6 +1,16 @@
 ---
-name: completing
-description: "Use when the current afyapowers phase is complete — handles merge/PR/cleanup and produces completion summary"
+claude:
+  name: afyapowers:completing
+  description: "Use when the current afyapowers phase is complete — handles merge/PR/cleanup and produces completion summary"
+  model: sonnet
+  effort: medium
+cursor:
+  name: afyapowers-completing
+  description: "Use when the current afyapowers phase is complete — handles merge/PR/cleanup and produces completion summary"
+  model: composer-2
+github-copilot:
+  name: completing
+  description: "Use when the current afyapowers phase is complete — handles merge/PR/cleanup and produces completion summary"
 ---
 
 # Complete Phase

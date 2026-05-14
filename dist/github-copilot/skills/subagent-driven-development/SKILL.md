@@ -101,9 +101,9 @@ Apply concurrency caps:
 
 Dispatch the combined set (all non-Figma + up to 4 Figma) as parallel Subagent calls in a single message.
 
-**Prompt routing:** Select the correct implementer prompt based on the task type:
-- If the task text contains a `**Figma:**` section → use `skills/implementing/implement-figma-design.md` prompt template. Include the Figma metadata (file key, node ID, breakpoints) in the agent context.
-- If the task does NOT contain a `**Figma:**` section → use `skills/implementing/implementer-prompt.md` prompt template (standard TDD implementer).
+**Prompt routing:** Select the correct implementer agent based on the task type:
+- If the task text contains a `**Figma:**` section → dispatch @"figma-design-implementer (agent)". Include the Figma metadata (file key, node ID, breakpoints) in the agent context.
+- If the task does NOT contain a `**Figma:**` section → dispatch @"tdd-implementer (agent)" (standard TDD implementer).
 
 Each agent gets:
 - Full task text (steps, file list, code/Figma metadata) — paste directly, don't make agent read files
@@ -224,8 +224,8 @@ Implementer subagents report one of four statuses:
 
 ## Prompt Templates
 
-- `skills/implementing/implementer-prompt.md` - Dispatch standard implementer subagent (TDD workflow)
-- `skills/implementing/implement-figma-design.md` - Dispatch Figma design implementer subagent (visual fidelity workflow)
+- @"tdd-implementer (agent)" - Dispatch standard implementer subagent (TDD workflow)
+- @"figma-design-implementer (agent)" - Dispatch Figma design implementer subagent (visual fidelity workflow)
 
 ## Red Flags
 
@@ -252,8 +252,8 @@ Implementer subagents report one of four statuses:
 - **implementing** (REQUIRED SUB-SKILL) — implementing loads the plan and design, then invokes SDD to execute all tasks
 
 **Subagent prompts:**
-- `skills/implementing/implementer-prompt.md` — TDD rules are embedded directly in this prompt (used for standard tasks)
-- `skills/implementing/implement-figma-design.md` — Figma implement-design workflow (used for tasks with `**Figma:**` section)
+- @"tdd-implementer (agent)" — TDD rules are embedded directly in this prompt (used for standard tasks)
+- @"figma-design-implementer (agent)" — Figma implement-design workflow (used for tasks with `**Figma:**` section)
 
 **Context:** When invoked by implementing, the plan and design are already in the conversation context. Use them directly. If the plan is not in context (e.g., invoked standalone), read it from `.afyapowers/features/<feature>/artifacts/plan.md`.
 

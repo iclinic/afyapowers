@@ -1,3 +1,14 @@
+---
+claude:
+  description: Start a New Feature
+  name: afyapowers:new
+cursor:
+  description: Start a New Feature
+  name: afyapowers-new
+github-copilot:
+  description: Start a New Feature
+  name: new
+---
 # /afyapowers:new — Start a New Feature
 
 You are starting a new feature workflow. Follow these steps exactly:

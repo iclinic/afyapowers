@@ -1,3 +1,14 @@
+---
+claude:
+  description: Switch Active Feature
+  name: afyapowers:switch
+cursor:
+  description: Switch Active Feature
+  name: afyapowers-switch
+github-copilot:
+  description: Switch Active Feature
+  name: switch
+---
 # /afyapowers:switch — Switch Active Feature
 
 Switch the active feature context. This command accepts an optional argument: the feature name or slug.

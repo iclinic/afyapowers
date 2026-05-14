@@ -1,3 +1,14 @@
+---
+claude:
+  description: Show Feature History
+  name: afyapowers:history
+cursor:
+  description: Show Feature History
+  name: afyapowers-history
+github-copilot:
+  description: Show Feature History
+  name: history
+---
 # /afyapowers:history — Show Feature History
 
 Display the full event timeline for the active feature.

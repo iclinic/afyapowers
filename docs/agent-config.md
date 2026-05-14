@@ -1,21 +1,21 @@
 # Agent Configuration Reference
 
-Each agent has a JSON config file in `src/config/`. The sync script (`sync.sh`) reads these configs and generates agent-specific output in `dist/<agent>/`.
+Each agent has a JSON config file in `src/config/`. The sync script (`sync.py`) reads these configs and generates agent-specific output in `dist/<agent>/`.
 
 ## Usage
 
 ```bash
 # Sync all agents
-./sync.sh
+python3 sync.py
 
 # Sync a specific agent
-./sync.sh cursor
+python3 sync.py cursor
 
 # Clean output before syncing
-./sync.sh --clean
+python3 sync.py --clean
 
 # Clean + specific agent
-./sync.sh cursor --clean
+python3 sync.py cursor --clean
 ```
 
 ---
@@ -102,30 +102,29 @@ Set to `null` to skip manifest copying entirely:
 
 ---
 
-## Frontmatter Files
+## Embedded Frontmatter
 
-Frontmatter for each command, skill, or agent is configured via `.frontmatter.yaml` files. These files define per-distribution frontmatter that gets prepended to the output.
-
-### Location
-
-| Source type | Frontmatter file |
-|-------------|------------------|
-| Commands | `src/commands/<slug>.frontmatter.yaml` |
-| Skills | `src/skills/<name>/frontmatter.yaml` |
-| Agents | `src/agents/<slug>.frontmatter.yaml` |
+Frontmatter for each command, skill, or agent is embedded directly in the source `.md` files using multi-agent frontmatter. The `---` delimited YAML block at the top of each file uses agent names as top-level keys.
 
 ### Format
 
-Each `.frontmatter.yaml` file has top-level keys matching agent names from `src/config/`. The content under each key becomes the YAML frontmatter for that distribution's output.
+Each source `.md` file contains agent-keyed YAML within standard frontmatter delimiters:
 
-```yaml
+```markdown
+---
 claude:
   name: afyapowers:design
   description: "Design phase skill"
 cursor:
   name: afyapowers-design
   description: "Design phase skill"
+---
+
+# Design Phase
+...
 ```
+
+The sync script extracts each agent's section and outputs it as the file's frontmatter in the corresponding distribution.
 
 This produces for **claude**:
 
@@ -153,15 +152,14 @@ description: "Design phase skill"
 
 ### Fallback behavior
 
-If an agent has **no section** in the frontmatter file (or no frontmatter file exists), the source file is copied as-is, preserving any existing frontmatter from the source.
-
-For example, if `gemini` is not listed in a frontmatter file, the gemini distribution gets the original source frontmatter unchanged.
+If an agent has **no section** in the embedded frontmatter (or no frontmatter block exists), the source body is copied without frontmatter.
 
 ### Complex frontmatter
 
-Frontmatter files support nested YAML structures. Any valid YAML under an agent key will be output as frontmatter:
+Embedded frontmatter supports nested YAML structures. Any valid YAML under an agent key will be output as frontmatter:
 
-```yaml
+```markdown
+---
 cursor:
   name: afyapowers-figma-component
   description: Figma component skill
@@ -171,6 +169,7 @@ cursor:
     - Read
     - Bash
     - mcp__figma__get_metadata
+---
 ```
 
 ---
@@ -229,13 +228,13 @@ cursor:
 ## Adding a New Agent
 
 1. Create `src/config/<agent>.json` following the schema above
-2. Add a `<agent>:` section to the relevant `.frontmatter.yaml` files for any commands/skills/agents that need custom frontmatter
+2. Add a `<agent>:` section to the embedded frontmatter in relevant source `.md` files for any commands/skills/agents that need custom frontmatter
 3. Optionally add a manifest in `src/manifests/<agent>/`
-4. Run `./sync.sh <agent>` to generate output
+4. Run `python3 sync.py <agent>` to generate output
 5. Output appears in `dist/<agent>/`
 
 ## Adding a New Command / Skill / Agent
 
 1. Create the source file (`src/commands/<name>.md`, `src/skills/<name>/SKILL.md`, or `src/agents/<name>.md`)
-2. Create a `.frontmatter.yaml` file alongside it with sections for each distribution that needs custom frontmatter
-3. Run `./sync.sh` to regenerate all distributions
+2. Add agent-keyed frontmatter sections at the top of the file for each distribution that needs custom frontmatter
+3. Run `python3 sync.py` to regenerate all distributions

@@ -1,6 +1,8 @@
 ---
 name: afyapowers:implementing
 description: "Use when the current afyapowers phase is implement — orchestrates implementation via subagent-driven-development"
+model: sonnet
+effort: medium
 ---
 
 # Implementing Phase

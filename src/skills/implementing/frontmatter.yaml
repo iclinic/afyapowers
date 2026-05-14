@@ -1,9 +1,0 @@
-claude:
-  name: afyapowers:implementing
-  description: "Use when the current afyapowers phase is implement — orchestrates implementation via subagent-driven-development"
-cursor:
-  name: afyapowers-implementing
-  description: "Use when the current afyapowers phase is implement — orchestrates implementation via subagent-driven-development"
-github-copilot:
-  name: implementing
-  description: "Use when the current afyapowers phase is implement — orchestrates implementation via subagent-driven-development"

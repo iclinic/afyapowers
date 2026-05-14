@@ -1,9 +1,0 @@
-claude:
-  description: Show Feature History
-  name: afyapowers:history
-cursor:
-  description: Show Feature History
-  name: afyapowers-history
-github-copilot:
-  description: Show Feature History
-  name: history

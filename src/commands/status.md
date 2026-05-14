@@ -1,3 +1,14 @@
+---
+claude:
+  description: Show Feature Status
+  name: afyapowers:status
+cursor:
+  description: Show Feature Status
+  name: afyapowers-status
+github-copilot:
+  description: Show Feature Status
+  name: status
+---
 # /afyapowers:status — Show Feature Status
 
 Display the current state of the active feature.

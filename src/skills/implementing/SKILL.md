@@ -1,6 +1,16 @@
 ---
-name: implementing
-description: "Use when the current afyapowers phase is implement — orchestrates implementation via subagent-driven-development"
+claude:
+  name: afyapowers:implementing
+  description: "Use when the current afyapowers phase is implement — orchestrates implementation via subagent-driven-development"
+  model: sonnet
+  effort: medium
+cursor:
+  name: afyapowers-implementing
+  description: "Use when the current afyapowers phase is implement — orchestrates implementation via subagent-driven-development"
+  model: composer-2
+github-copilot:
+  name: implementing
+  description: "Use when the current afyapowers phase is implement — orchestrates implementation via subagent-driven-development"
 ---
 
 # Implementing Phase
