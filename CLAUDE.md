@@ -55,4 +55,4 @@ The hook at `src/hooks/session-start` is a bash script that detects the active f
 - When adding a new command: create `src/commands/<name>.md` with multi-agent frontmatter (agent names as top-level YAML keys within `---` delimiters).
 - When adding a new skill: create `src/skills/<name>/SKILL.md` with multi-agent frontmatter. Supporting prompt files go alongside SKILL.md.
 - When adding a new agent/IDE: create `src/config/<agent>.json`, add `<agent>:` sections to the frontmatter in relevant source files, optionally add a manifest in `src/manifests/<agent>/`, then run `python3 sync.py <agent>`.
-- Plugin version is maintained in `src/manifests/*/plugin.json` files (currently 0.5.0).
+- Plugin version is maintained in `src/manifests/*/plugin.json` files.
