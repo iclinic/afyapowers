@@ -35,6 +35,11 @@ def parse_agent_config(config_path: Path, repo_root: Path) -> AgentConfig:
         print(f"  {e}")
         sys.exit(1)
 
+    for key in ("agent", "outputDir"):
+        if key not in data:
+            print(f"ERROR: Required field '{key}' missing in config: {config_path}")
+            sys.exit(1)
+
     return AgentConfig(
         agent=data["agent"],
         output_dir=repo_root / data["outputDir"],
