@@ -39,17 +39,19 @@ If `current_phase` is `complete` and `next_phase` is `finalize`:
 
 Tell the user which phase is starting, then invoke the appropriate skill:
 
-| Next Phase | Skill to Invoke |
-|-----------|----------------|
-| plan | **writing-plans** |
-| implement | **implementing** |
-| review | **reviewing** |
-| complete | **completing** |
+| Next Phase | Skill to Invoke | What It Does |
+|-----------|----------------|--------------|
+| plan | **writing-plans** | Break design into implementation tasks |
+| implement | **implementing** | Execute tasks with TDD + subagents |
+| review | **reviewing** | 2-step code review (spec + quality) |
+| complete | **completing** | Merge/PR/cleanup and completion summary |
 
 When the skill completes and produces its artifact:
 1. Save the artifact to `.afyapowers/features/<slug>/artifacts/`
 2. Update `state.yaml` to add the artifact to the current phase's artifacts list
 3. Append an `artifact_created` event to `history.yaml`
-4. Tell the user: "Phase '<current-phase>' complete. Run `/afyapowers:next` to proceed to **<next-phase>**."
+4. Tell the user: "Phase '<phase-that-just-ran>' complete. Run `/afyapowers:next` to proceed to **<phase-after-that>**."
+
+Use the phase names from the table above — the phase that just ran is the one you invoked the skill for (from the `next_phase` in the preflight output), and the phase after that is one step further in the workflow.
 
 For the `complete` phase, instead say: "Phase complete. Run `/afyapowers:next` to finalize the feature."

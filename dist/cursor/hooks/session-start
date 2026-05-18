@@ -18,7 +18,7 @@ ACTIVE_FILE="$AFYA_DIR/features/active"
 
 # Try reading the active file first
 if [ -f "$ACTIVE_FILE" ]; then
-  ACTIVE_FEATURE=$(cat "$ACTIVE_FILE" | tr -d '[:space:]')
+  ACTIVE_FEATURE=$(tr -d '\n\r' < "$ACTIVE_FILE")
   # Validate it points to an existing feature
   if [ ! -d "$AFYA_DIR/features/$ACTIVE_FEATURE" ]; then
     ACTIVE_FEATURE=""

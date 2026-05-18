@@ -9,7 +9,7 @@ if [ ! -f "$AF" ]; then
   exit 0
 fi
 
-SLUG=$(tr -d '[:space:]' < "$AF")
+SLUG=$(tr -d '\n\r' < "$AF")
 F="$D/features/$SLUG"
 S="$F/state.yaml"
 
@@ -33,13 +33,23 @@ case "$PHASE" in
   plan)
     [ -f "$A/plan.md" ] && VALID=true || ERR="Plan artifact missing. Complete the plan phase first." ;;
   implement)
-    TOT=$(grep -c '^\- \[' "$A/plan.md" 2>/dev/null || echo 0)
-    DONE=$(grep -c '^\- \[x\]' "$A/plan.md" 2>/dev/null || echo 0)
-    REM=$((TOT - DONE))
-    TP="$DONE/$TOT"
-    [ "$REM" -eq 0 ] && VALID=true || ERR="$REM of $TOT tasks still unchecked." ;;
+    if [ ! -f "$A/plan.md" ]; then
+      ERR="Plan artifact missing. Complete the plan phase first."
+    else
+      TOT=$(grep -c '^\- \[' "$A/plan.md" 2>/dev/null || echo 0)
+      DONE=$(grep -c '^\- \[x\]' "$A/plan.md" 2>/dev/null || echo 0)
+      REM=$((TOT - DONE))
+      TP="$DONE/$TOT"
+      if [ "$TOT" -eq 0 ]; then
+        ERR="No tasks found in plan.md."
+      elif [ "$REM" -eq 0 ]; then
+        VALID=true
+      else
+        ERR="$REM of $TOT tasks still unchecked."
+      fi
+    fi ;;
   review)
-    if [ -f "$A/review.md" ] && grep -A5 '## Verdict' "$A/review.md" 2>/dev/null | grep -q 'Approved'; then
+    if [ -f "$A/review.md" ] && grep -A5 '## Verdict' "$A/review.md" 2>/dev/null | grep -q '^Approved'; then
       VALID=true
     elif [ ! -f "$A/review.md" ]; then
       ERR="Review artifact missing."
@@ -57,6 +67,13 @@ case "$PHASE" in
   review) NXT=complete ;; complete) NXT=finalize ;; *) NXT="" ;;
 esac
 
-printf '{"slug":"%s","feature":"%s","current_phase":"%s","status":"%s","valid":%s,"next_phase":"%s","error":%s,"task_progress":"%s"}\n' \
-  "$SLUG" "$NAME" "$PHASE" "$STATUS" "$VALID" "$NXT" \
-  "$([ -n "$ERR" ] && printf '"%s"' "$ERR" || echo null)" "$TP"
+jq -n \
+  --arg slug "$SLUG" \
+  --arg feature "$NAME" \
+  --arg phase "$PHASE" \
+  --arg status "$STATUS" \
+  --argjson valid "$VALID" \
+  --arg next "$NXT" \
+  --arg error "$ERR" \
+  --arg progress "$TP" \
+  '{slug:$slug, feature:$feature, current_phase:$phase, status:$status, valid:$valid, next_phase:$next, error:(if $error == "" then null else $error end), task_progress:$progress}'
