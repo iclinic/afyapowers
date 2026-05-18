@@ -19,7 +19,6 @@ TOP_LEVEL_KEY_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_-]*:$")
 class AgentConfig:
     agent: str
     output_dir: Path
-    commands_file_prefix: str
     skills_dir_prefix: str
     agents_file_prefix: str
     templates: bool
@@ -43,7 +42,6 @@ def parse_agent_config(config_path: Path, repo_root: Path) -> AgentConfig:
     return AgentConfig(
         agent=data["agent"],
         output_dir=repo_root / data["outputDir"],
-        commands_file_prefix=data.get("commands", {}).get("filePrefix", ""),
         skills_dir_prefix=data.get("skills", {}).get("dirPrefix", ""),
         agents_file_prefix=data.get("agents", {}).get("filePrefix", ""),
         templates=bool(data.get("templates", False)),
@@ -321,18 +319,6 @@ def sync_agent(
     if do_clean:
         clean_output_dir(config.output_dir)
     config.output_dir.mkdir(parents=True, exist_ok=True)
-
-    count, removed = process_single_files(
-        src_dir / "commands",
-        "commands",
-        config.commands_file_prefix,
-        config.agent,
-        config.output_dir,
-    )
-    msg = f"  commands: {count} files"
-    if removed:
-        msg += f" ({removed} stale removed)"
-    print(msg)
 
     count, removed = process_skills(config, src_dir, config.output_dir)
     msg = f"  Skills: {count} directories"

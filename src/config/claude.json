@@ -2,9 +2,6 @@
   "agent": "claude",
   "outputDir": "dist/claude",
   "prefix": "afyapowers",
-  "commands": {
-    "filePrefix": ""
-  },
   "skills": {
     "dirPrefix": ""
   },

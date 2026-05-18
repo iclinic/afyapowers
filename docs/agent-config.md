@@ -29,32 +29,11 @@ python3 sync.py cursor --clean
 | `agent` | `string` | Agent identifier (e.g., `"cursor"`, `"claude"`, `"gemini"`) |
 | `outputDir` | `string` | Output directory relative to repo root (e.g., `"dist/cursor"`) |
 | `prefix` | `string` | Namespace prefix used in naming conventions |
-| `commands` | `object` | Command file generation settings |
 | `skills` | `object` | Skill directory generation settings |
 | `agents` | `object` | Agent file generation settings |
 | `templates` | `boolean` | Whether to copy `src/templates/` to output |
 | `hooks` | `boolean` | Whether to copy `src/hooks/` to output (preserves execute permissions) |
 | `pluginManifest` | `object \| null` | Plugin manifest copy settings, or `null` to skip |
-
----
-
-### `commands`
-
-Controls how command markdown files from `src/commands/` are processed.
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `filePrefix` | `string` | String prepended to each command filename. `""` keeps original name. |
-
-Example:
-
-```json
-{
-  "filePrefix": "afyapowers-"
-}
-```
-
-Given `src/commands/abort.md`, this produces `dist/<agent>/commands/afyapowers-abort.md`.
 
 ---
 
@@ -70,7 +49,7 @@ Controls how skill directories from `src/skills/` are processed. Each skill dire
 
 ### `agents`
 
-Controls how agent markdown files from `src/agents/` are processed. Works identically to `commands`.
+Controls how agent markdown files from `src/agents/` are processed.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -104,7 +83,7 @@ Set to `null` to skip manifest copying entirely:
 
 ## Embedded Frontmatter
 
-Frontmatter for each command, skill, or agent is embedded directly in the source `.md` files using multi-agent frontmatter. The `---` delimited YAML block at the top of each file uses agent names as top-level keys.
+Frontmatter for each skill or agent is embedded directly in the source `.md` files using multi-agent frontmatter. The `---` delimited YAML block at the top of each file uses agent names as top-level keys.
 
 ### Format
 
@@ -183,9 +162,6 @@ cursor:
   "agent": "gemini",
   "outputDir": "dist/gemini",
   "prefix": "afyapowers",
-  "commands": {
-    "filePrefix": ""
-  },
   "skills": {
     "dirPrefix": ""
   },
@@ -205,9 +181,6 @@ cursor:
   "agent": "cursor",
   "outputDir": "dist/cursor",
   "prefix": "afyapowers",
-  "commands": {
-    "filePrefix": "afyapowers-"
-  },
   "skills": {
     "dirPrefix": "afyapowers-"
   },
@@ -228,13 +201,13 @@ cursor:
 ## Adding a New Agent
 
 1. Create `src/config/<agent>.json` following the schema above
-2. Add a `<agent>:` section to the embedded frontmatter in relevant source `.md` files for any commands/skills/agents that need custom frontmatter
+2. Add a `<agent>:` section to the embedded frontmatter in relevant source `.md` files for any skills/agents that need custom frontmatter
 3. Optionally add a manifest in `src/manifests/<agent>/`
 4. Run `python3 sync.py <agent>` to generate output
 5. Output appears in `dist/<agent>/`
 
-## Adding a New Command / Skill / Agent
+## Adding a New Skill / Agent
 
-1. Create the source file (`src/commands/<name>.md`, `src/skills/<name>/SKILL.md`, or `src/agents/<name>.md`)
+1. Create the source file (`src/skills/<name>/SKILL.md` or `src/agents/<name>.md`). For manual-only skills, add `disable-model-invocation: true` to each agent's frontmatter section.
 2. Add agent-keyed frontmatter sections at the top of the file for each distribution that needs custom frontmatter
 3. Run `python3 sync.py` to regenerate all distributions
