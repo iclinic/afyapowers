@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Compute plugin root (two levels up from hooks/session-start)
+PLUGIN_ROOT=$(cd "$(dirname "$0")/.." && pwd)
+
 # Find .afyapowers directory relative to working directory
 AFYA_DIR=".afyapowers"
 
-# If no .afyapowers directory, nothing to inject
+# If no .afyapowers directory, still provide plugin root for script access
 if [ ! -d "$AFYA_DIR" ]; then
-  echo '{}'
+  echo "{\"additionalContext\": \"Plugin root: ${PLUGIN_ROOT}\"}"
   exit 0
 fi
 
@@ -44,7 +47,7 @@ if [ -z "$ACTIVE_FEATURE" ]; then
     # Multiple in-progress features, list them
     FEATURE_LIST=$(printf ', "%s"' "${IN_PROGRESS_FEATURES[@]}")
     FEATURE_LIST="[${FEATURE_LIST:2}]"
-    CONTEXT="Multiple features are in-progress: ${FEATURE_LIST}. Run /afyapowers:switch to select one, or /afyapowers:features to see all."
+    CONTEXT="Multiple features are in-progress: ${FEATURE_LIST}. Run /afyapowers:switch to select one, or /afyapowers:features to see all.\\nPlugin root: ${PLUGIN_ROOT}"
     echo "{\"additionalContext\": \"$CONTEXT\"}"
     exit 0
   fi
@@ -52,14 +55,14 @@ fi
 
 # No active feature found
 if [ -z "$ACTIVE_FEATURE" ]; then
-  echo '{}'
+  echo "{\"additionalContext\": \"Plugin root: ${PLUGIN_ROOT}\"}"
   exit 0
 fi
 
 # Read state.yaml for the active feature
 STATE_FILE="$AFYA_DIR/features/$ACTIVE_FEATURE/state.yaml"
 if [ ! -f "$STATE_FILE" ]; then
-  echo '{}'
+  echo "{\"additionalContext\": \"Plugin root: ${PLUGIN_ROOT}\"}"
   exit 0
 fi
 
@@ -86,6 +89,6 @@ if [ "$CURRENT_PHASE" = "implement" ] && [ -f "$PLAN_FILE" ]; then
 fi
 
 # Build context message
-CONTEXT="You have an active feature: \\\"$FEATURE_NAME\\\" (started ${CREATED_AT%T*})\\nCurrent phase: ${CURRENT_PHASE}${TASK_INFO}\\nArtifacts: ${ARTIFACTS:-none}\\n\\nRun /afyapowers:status for details, or continue working on the current phase.\\n\\nIMPORTANT: You are operating within the afyapowers deterministic workflow. Do NOT advance phases autonomously. When the current phase is complete, suggest the user run /afyapowers:next."
+CONTEXT="You have an active feature: \\\"$FEATURE_NAME\\\" (started ${CREATED_AT%T*})\\nCurrent phase: ${CURRENT_PHASE}${TASK_INFO}\\nArtifacts: ${ARTIFACTS:-none}\\nPlugin root: ${PLUGIN_ROOT}\\n\\nRun /afyapowers:status for details, or continue working on the current phase.\\n\\nIMPORTANT: You are operating within the afyapowers deterministic workflow. Do NOT advance phases autonomously. When the current phase is complete, suggest the user run /afyapowers:next."
 
 echo "{\"additionalContext\": \"$CONTEXT\"}"
