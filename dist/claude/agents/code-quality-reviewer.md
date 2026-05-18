@@ -1,7 +1,7 @@
 ---
 name: code-quality-reviewer
 description: Code quality reviewer — checks implementation for clean code, architecture, testing, and production readiness.
-model: claude-opus-4-6
+model: sonnet
 effort: high
 ---
 # Code Quality Review Agent
