@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+json_escape() {
+  local s="$1"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  s="${s//$'\n'/\\n}"
+  s="${s//$'\r'/\\r}"
+  s="${s//$'\t'/\\t}"
+  printf '%s' "$s"
+}
+
 D=".afyapowers"
 AF="$D/features/active"
 
@@ -18,8 +28,15 @@ if [ ! -f "$S" ]; then
   exit 0
 fi
 
+strip_yaml_quotes() {
+  local v="$1"
+  v="${v#\"}" ; v="${v%\"}"
+  v="${v#\'}" ; v="${v%\'}"
+  printf '%s' "$v"
+}
+
 PHASE=$(grep "^current_phase:" "$S" | sed 's/^current_phase: *//')
-NAME=$(grep "^feature:" "$S" | sed 's/^feature: *//')
+NAME=$(strip_yaml_quotes "$(grep "^feature:" "$S" | sed 's/^feature: *//')")
 STATUS=$(grep "^status:" "$S" | head -1 | sed 's/^status: *//')
 A="$F/artifacts"
 
@@ -49,7 +66,7 @@ case "$PHASE" in
       fi
     fi ;;
   review)
-    if [ -f "$A/review.md" ] && grep -A5 '## Verdict' "$A/review.md" 2>/dev/null | grep -q '^Approved'; then
+    if [ -f "$A/review.md" ] && grep -A5 '## Verdict' "$A/review.md" 2>/dev/null | grep -qx 'Approved'; then
       VALID=true
     elif [ ! -f "$A/review.md" ]; then
       ERR="Review artifact missing."
@@ -67,13 +84,14 @@ case "$PHASE" in
   review) NXT=complete ;; complete) NXT=finalize ;; *) NXT="" ;;
 esac
 
-jq -n \
-  --arg slug "$SLUG" \
-  --arg feature "$NAME" \
-  --arg phase "$PHASE" \
-  --arg status "$STATUS" \
-  --argjson valid "$VALID" \
-  --arg next "$NXT" \
-  --arg error "$ERR" \
-  --arg progress "$TP" \
-  '{slug:$slug, feature:$feature, current_phase:$phase, status:$status, valid:$valid, next_phase:$next, error:(if $error == "" then null else $error end), task_progress:$progress}'
+ERR_JSON=$([ -n "$ERR" ] && printf '"%s"' "$(json_escape "$ERR")" || echo null)
+
+printf '{"slug":"%s","feature":"%s","current_phase":"%s","status":"%s","valid":%s,"next_phase":"%s","error":%s,"task_progress":"%s"}\n' \
+  "$(json_escape "$SLUG")" \
+  "$(json_escape "$NAME")" \
+  "$(json_escape "$PHASE")" \
+  "$(json_escape "$STATUS")" \
+  "$VALID" \
+  "$(json_escape "$NXT")" \
+  "$ERR_JSON" \
+  "$(json_escape "$TP")"

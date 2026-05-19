@@ -9,10 +9,10 @@ You are advancing the active feature to the next workflow phase. Follow these st
 
 ## Step 1: Preflight Validation
 
-Run the preflight script to validate the current phase without reading artifact files into context. The plugin root path is available in your session context (injected by the session-start hook as "Plugin root: ..."):
+Run the preflight script to validate the current phase without reading artifact files into context. The preflight script path is available in your session context (injected by the session-start hook as "Preflight script: ..."):
 
 ```bash
-bash "<plugin-root>/skills/next/scripts/preflight.sh"
+bash "<preflight-script-path>"
 ```
 
 Parse the JSON output:
