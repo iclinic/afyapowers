@@ -11,7 +11,7 @@ json_escape() {
   printf '%s' "$s"
 }
 
-# Compute plugin root (two levels up from hooks/session-start)
+# Compute plugin root (one level up from hooks/)
 PLUGIN_ROOT=$(cd "$(dirname "$0")/.." && pwd)
 
 # Discover preflight script path (handles agent-specific directory prefixes)
@@ -58,8 +58,8 @@ if [ -z "$ACTIVE_FEATURE" ]; then
     ACTIVE_FEATURE="${IN_PROGRESS_FEATURES[0]}"
   elif [ ${#IN_PROGRESS_FEATURES[@]} -gt 1 ]; then
     # Multiple in-progress features, list them
-    FEATURE_LIST=$(printf ', "%s"' "${IN_PROGRESS_FEATURES[@]}")
-    FEATURE_LIST="[${FEATURE_LIST:2}]"
+    FEATURE_LIST=$(printf ', %s' "${IN_PROGRESS_FEATURES[@]}")
+    FEATURE_LIST="${FEATURE_LIST:2}"
     CONTEXT="Multiple features are in-progress: ${FEATURE_LIST}. Run /afyapowers:switch to select one, or /afyapowers:features to see all.\\nPlugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")"
     echo "{\"additionalContext\": \"$CONTEXT\"}"
     exit 0
@@ -104,6 +104,6 @@ if [ "$CURRENT_PHASE" = "implement" ] && [ -f "$PLAN_FILE" ]; then
 fi
 
 # Build context message
-CONTEXT="You have an active feature: \\\"$(json_escape "$FEATURE_NAME")\\\" (started ${CREATED_AT%T*})\\nCurrent phase: ${CURRENT_PHASE}${TASK_INFO}\\nArtifacts: ${ARTIFACTS:-none}\\nPlugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")\\n\\nRun /afyapowers:status for details, or continue working on the current phase.\\n\\nIMPORTANT: You are operating within the afyapowers deterministic workflow. Do NOT advance phases autonomously. When the current phase is complete, suggest the user run /afyapowers:next."
+CONTEXT="You have an active feature: \\\"$(json_escape "$FEATURE_NAME")\\\" (started ${CREATED_AT%T*})\\nCurrent phase: $(json_escape "$CURRENT_PHASE")${TASK_INFO}\\nArtifacts: $(json_escape "${ARTIFACTS:-none}")\\nPlugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")\\n\\nRun /afyapowers:status for details, or continue working on the current phase.\\n\\nIMPORTANT: You are operating within the afyapowers deterministic workflow. Do NOT advance phases autonomously. When the current phase is complete, suggest the user run /afyapowers:next."
 
 echo "{\"additionalContext\": \"$CONTEXT\"}"

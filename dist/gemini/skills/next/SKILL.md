@@ -10,10 +10,11 @@ Run the preflight script to validate the current phase without reading artifact 
 bash "<preflight-script-path>"
 ```
 
-Parse the JSON output:
-- If `error` is `"no_active_feature"`: tell the user "No active feature. Run `/afyapowers:new` to start one, or `/afyapowers:switch` to select an existing feature." Stop.
-- If `valid` is `false`: report the `error` message. For implement phase, also show `task_progress`. Stop.
-- If `valid` is `true`: proceed to Step 2.
+Parse the key=value output (one `KEY=VALUE` per line):
+- If the only line is `error=no_active_feature`: tell the user "No active feature. Run `/afyapowers:new` to start one, or `/afyapowers:switch` to select an existing feature." Stop.
+- If the only line is `error=no_state_file`: tell the user "Feature state file is missing. The feature may be corrupted. Run `/afyapowers:features` to check." Stop.
+- If `valid=false`: report the `error` value. For implement phase, also show `task_progress`. Stop.
+- If `valid=true`: proceed to Step 2.
 
 ## Step 2: Handle Terminal Phase
 

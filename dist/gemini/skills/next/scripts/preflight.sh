@@ -1,21 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-json_escape() {
-  local s="$1"
-  s="${s//\\/\\\\}"
-  s="${s//\"/\\\"}"
-  s="${s//$'\n'/\\n}"
-  s="${s//$'\r'/\\r}"
-  s="${s//$'\t'/\\t}"
-  printf '%s' "$s"
-}
-
 D=".afyapowers"
 AF="$D/features/active"
 
 if [ ! -f "$AF" ]; then
-  printf '{"error":"no_active_feature"}\n'
+  printf 'error=no_active_feature\n'
   exit 0
 fi
 
@@ -24,7 +14,7 @@ F="$D/features/$SLUG"
 S="$F/state.yaml"
 
 if [ ! -f "$S" ]; then
-  printf '{"error":"no_state_file"}\n'
+  printf 'error=no_state_file\n'
   exit 0
 fi
 
@@ -84,14 +74,11 @@ case "$PHASE" in
   review) NXT=complete ;; complete) NXT=finalize ;; *) NXT="" ;;
 esac
 
-ERR_JSON=$([ -n "$ERR" ] && printf '"%s"' "$(json_escape "$ERR")" || echo null)
-
-printf '{"slug":"%s","feature":"%s","current_phase":"%s","status":"%s","valid":%s,"next_phase":"%s","error":%s,"task_progress":"%s"}\n' \
-  "$(json_escape "$SLUG")" \
-  "$(json_escape "$NAME")" \
-  "$(json_escape "$PHASE")" \
-  "$(json_escape "$STATUS")" \
-  "$VALID" \
-  "$(json_escape "$NXT")" \
-  "$ERR_JSON" \
-  "$(json_escape "$TP")"
+printf 'slug=%s\n' "$SLUG"
+printf 'feature=%s\n' "$NAME"
+printf 'current_phase=%s\n' "$PHASE"
+printf 'status=%s\n' "$STATUS"
+printf 'valid=%s\n' "$VALID"
+printf 'next_phase=%s\n' "$NXT"
+printf 'error=%s\n' "$ERR"
+printf 'task_progress=%s\n' "$TP"
