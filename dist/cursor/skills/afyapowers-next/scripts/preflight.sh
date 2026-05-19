@@ -56,7 +56,7 @@ case "$PHASE" in
       fi
     fi ;;
   review)
-    if [ -f "$A/review.md" ] && grep -A5 '## Verdict' "$A/review.md" 2>/dev/null | grep -qx 'Approved'; then
+    if [ -f "$A/review.md" ] && grep -A5 '## Verdict' "$A/review.md" 2>/dev/null | grep -qi '^[[:space:]]*\*\{0,2\}Approved'; then
       VALID=true
     elif [ ! -f "$A/review.md" ]; then
       ERR="Review artifact missing."
