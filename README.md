@@ -155,8 +155,7 @@ O afyapowers utiliza servidores MCP para integração com JIRA (Atlassian) e Fig
 
 ```text
 src/
-  commands/                 # Definições de slash commands (8 no total)
-  skills/                   # Skills de fase e independentes (11 no total)
+  skills/                   # Todas as skills — workflow commands e skills de fase (19 no total)
   config/                   # Configuração específica por IDE (Claude, Cursor, Gemini)
   hooks/                    # Hook de início de sessão para restauração de contexto
   manifests/                # Manifestos do plugin para Claude e Cursor

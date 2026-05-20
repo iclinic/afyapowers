@@ -29,6 +29,15 @@ inaccurate, or optimistic. You MUST verify everything independently.
 - Check for missing pieces they claimed to implement
 - Look for extra features they didn't mention
 
+## How to Review
+
+Use the provided base and head SHAs to read the changes:
+```bash
+git diff {BASE_SHA}..{HEAD_SHA}          # Full diff
+git diff {BASE_SHA}..{HEAD_SHA} -- path  # Diff for specific file
+```
+You can also read individual files directly. Use the `--stat` summary to identify which files to inspect.
+
 ## Your Job
 
 Read the implementation code and verify:

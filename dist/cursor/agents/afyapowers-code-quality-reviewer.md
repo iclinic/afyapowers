@@ -1,7 +1,7 @@
 ---
 name: afyapowers-code-quality-reviewer
 description: Code quality reviewer — checks implementation for clean code, architecture, testing, and production readiness.
-model: claude-4-6-opus
+model: claude-4-6-sonnet
 ---
 # Code Quality Review Agent
 

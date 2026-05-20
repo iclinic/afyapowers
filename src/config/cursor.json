@@ -2,9 +2,6 @@
   "agent": "cursor",
   "outputDir": "dist/cursor",
   "prefix": "afyapowers",
-  "commands": {
-    "filePrefix": "afyapowers-"
-  },
   "skills": {
     "dirPrefix": "afyapowers-"
   },

@@ -2,12 +2,12 @@
 claude:
   name: code-quality-reviewer
   description: Code quality reviewer — checks implementation for clean code, architecture, testing, and production readiness.
-  model: claude-opus-4-6
+  model: sonnet
   effort: high
 cursor:
   name: afyapowers-code-quality-reviewer
   description: Code quality reviewer — checks implementation for clean code, architecture, testing, and production readiness.
-  model: claude-4-6-opus
+  model: claude-4-6-sonnet
 github-copilot:
   name: code-quality-reviewer
   description: Code quality reviewer — checks implementation for clean code, architecture, testing, and production readiness.

@@ -28,8 +28,7 @@ There are no tests or linting configured for this repository.
 All canonical content lives in `src/`. The `sync.py` script transforms it into agent-specific distributions in `dist/`:
 
 - **`src/config/<agent>.json`** — Per-agent config controlling prefixes, output paths, and which features to include
-- **`src/commands/*.md`** — Slash commands with embedded multi-agent frontmatter
-- **`src/skills/*/SKILL.md`** — Phase and cross-cutting skills with embedded multi-agent frontmatter
+- **`src/skills/*/SKILL.md`** — Skills with embedded multi-agent frontmatter (workflow commands and phase skills alike)
 - **`src/templates/*.md`** — Markdown artifact templates (copied as-is)
 - **`src/hooks/`** — Session-start hook for context restoration (copied with execute permissions preserved)
 - **`src/manifests/<agent>/`** — Plugin manifests per IDE
@@ -52,7 +51,6 @@ The hook at `src/hooks/session-start` is a bash script that detects the active f
 ## Key Conventions
 
 - **Never edit files in `dist/`** — they are generated. Always edit the source in `src/` and run `python3 sync.py`.
-- When adding a new command: create `src/commands/<name>.md` with multi-agent frontmatter (agent names as top-level YAML keys within `---` delimiters).
-- When adding a new skill: create `src/skills/<name>/SKILL.md` with multi-agent frontmatter. Supporting prompt files go alongside SKILL.md.
+- When adding a new skill: create `src/skills/<name>/SKILL.md` with multi-agent frontmatter. Supporting prompt files go alongside SKILL.md. For manual-only skills (user must type `/name`), add `disable-model-invocation: true` to each agent's frontmatter section.
 - When adding a new agent/IDE: create `src/config/<agent>.json`, add `<agent>:` sections to the frontmatter in relevant source files, optionally add a manifest in `src/manifests/<agent>/`, then run `python3 sync.py <agent>`.
 - Plugin version is maintained in `src/manifests/*/plugin.json` files.

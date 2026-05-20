@@ -2,9 +2,6 @@
   "agent": "gemini",
   "outputDir": "dist/gemini",
   "prefix": "afyapowers",
-  "commands": {
-    "filePrefix": ""
-  },
   "skills": {
     "dirPrefix": ""
   },

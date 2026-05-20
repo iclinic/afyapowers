@@ -1,12 +1,28 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+json_escape() {
+  local s="$1"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  s="${s//$'\n'/\\n}"
+  s="${s//$'\r'/\\r}"
+  s="${s//$'\t'/\\t}"
+  printf '%s' "$s"
+}
+
+# Compute plugin root (one level up from hooks/)
+PLUGIN_ROOT=$(cd "$(dirname "$0")/.." && pwd)
+
+# Discover preflight script path (handles agent-specific directory prefixes)
+PREFLIGHT=$(find "$PLUGIN_ROOT/skills" -name "preflight.sh" -path "*next*" 2>/dev/null | head -1)
+
 # Find .afyapowers directory relative to working directory
 AFYA_DIR=".afyapowers"
 
-# If no .afyapowers directory, nothing to inject
+# If no .afyapowers directory, still provide plugin root for script access
 if [ ! -d "$AFYA_DIR" ]; then
-  echo '{}'
+  echo "{\"additionalContext\": \"Plugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")\"}"
   exit 0
 fi
 
@@ -15,7 +31,7 @@ ACTIVE_FILE="$AFYA_DIR/features/active"
 
 # Try reading the active file first
 if [ -f "$ACTIVE_FILE" ]; then
-  ACTIVE_FEATURE=$(cat "$ACTIVE_FILE" | tr -d '[:space:]')
+  ACTIVE_FEATURE=$(tr -d '\n\r' < "$ACTIVE_FILE")
   # Validate it points to an existing feature
   if [ ! -d "$AFYA_DIR/features/$ACTIVE_FEATURE" ]; then
     ACTIVE_FEATURE=""
@@ -42,9 +58,9 @@ if [ -z "$ACTIVE_FEATURE" ]; then
     ACTIVE_FEATURE="${IN_PROGRESS_FEATURES[0]}"
   elif [ ${#IN_PROGRESS_FEATURES[@]} -gt 1 ]; then
     # Multiple in-progress features, list them
-    FEATURE_LIST=$(printf ', "%s"' "${IN_PROGRESS_FEATURES[@]}")
-    FEATURE_LIST="[${FEATURE_LIST:2}]"
-    CONTEXT="Multiple features are in-progress: ${FEATURE_LIST}. Run /afyapowers:switch to select one, or /afyapowers:features to see all."
+    FEATURE_LIST=$(printf ', %s' "${IN_PROGRESS_FEATURES[@]}")
+    FEATURE_LIST="${FEATURE_LIST:2}"
+    CONTEXT="Multiple features are in-progress: ${FEATURE_LIST}. Run /afyapowers:switch to select one, or /afyapowers:features to see all.\\nPlugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")"
     echo "{\"additionalContext\": \"$CONTEXT\"}"
     exit 0
   fi
@@ -52,19 +68,21 @@ fi
 
 # No active feature found
 if [ -z "$ACTIVE_FEATURE" ]; then
-  echo '{}'
+  echo "{\"additionalContext\": \"Plugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")\"}"
   exit 0
 fi
 
 # Read state.yaml for the active feature
 STATE_FILE="$AFYA_DIR/features/$ACTIVE_FEATURE/state.yaml"
 if [ ! -f "$STATE_FILE" ]; then
-  echo '{}'
+  echo "{\"additionalContext\": \"Plugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")\"}"
   exit 0
 fi
 
 # Extract key fields from state.yaml
-FEATURE_NAME=$(grep "^feature:" "$STATE_FILE" | sed 's/^feature: *//')
+FEATURE_NAME_RAW=$(grep "^feature:" "$STATE_FILE" | sed 's/^feature: *//')
+FEATURE_NAME="${FEATURE_NAME_RAW#\"}" ; FEATURE_NAME="${FEATURE_NAME%\"}"
+FEATURE_NAME="${FEATURE_NAME#\'}" ; FEATURE_NAME="${FEATURE_NAME%\'}"
 CURRENT_PHASE=$(grep "^current_phase:" "$STATE_FILE" | sed 's/^current_phase: *//')
 FEATURE_STATUS=$(grep "^status:" "$STATE_FILE" | head -1 | sed 's/^status: *//')
 CREATED_AT=$(grep "^created_at:" "$STATE_FILE" | sed 's/^created_at: *//')
@@ -86,6 +104,6 @@ if [ "$CURRENT_PHASE" = "implement" ] && [ -f "$PLAN_FILE" ]; then
 fi
 
 # Build context message
-CONTEXT="You have an active feature: \\\"$FEATURE_NAME\\\" (started ${CREATED_AT%T*})\\nCurrent phase: ${CURRENT_PHASE}${TASK_INFO}\\nArtifacts: ${ARTIFACTS:-none}\\n\\nRun /afyapowers:status for details, or continue working on the current phase.\\n\\nIMPORTANT: You are operating within the afyapowers deterministic workflow. Do NOT advance phases autonomously. When the current phase is complete, suggest the user run /afyapowers:next."
+CONTEXT="You have an active feature: \\\"$(json_escape "$FEATURE_NAME")\\\" (started ${CREATED_AT%T*})\\nCurrent phase: $(json_escape "$CURRENT_PHASE")${TASK_INFO}\\nArtifacts: $(json_escape "${ARTIFACTS:-none}")\\nPlugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")\\n\\nRun /afyapowers:status for details, or continue working on the current phase.\\n\\nIMPORTANT: You are operating within the afyapowers deterministic workflow. Do NOT advance phases autonomously. When the current phase is complete, suggest the user run /afyapowers:next."
 
 echo "{\"additionalContext\": \"$CONTEXT\"}"
