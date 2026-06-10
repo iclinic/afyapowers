@@ -90,7 +90,12 @@ This is a judgment call — use the diff content and existing docs to make the b
 
 ### Step 6: Commit
 
-Commit the documentation changes:
+Before committing, check the project's commit message conventions:
+1. Run `git log --oneline -5` to see the recent message pattern
+2. Check for commit hooks: `.lefthook.yml`, `lefthook.yml`, `.husky/pre-commit`, `commitlint.config.*`
+3. If commit messages include a Jira/ticket ID, extract it from the branch name: run `git branch --show-current` and look for a pattern like `ABC-123` (uppercase letters, dash, digits). Include the ticket ID in your commit message
+
+Commit the documentation changes using the project's convention. If conventional commits are used, `docs:` is the appropriate type:
 
 ```bash
 git add docs/afyapowers/
@@ -102,6 +107,8 @@ If multiple docs were updated, adjust the commit message accordingly:
 ```bash
 git commit -m "docs: update feature documentation"
 ```
+
+**If the commit fails** (pre-commit hook, commitlint, etc.): read the error, fix the issue (rewrite message format, run formatter, fix lint), re-stage, and retry. Max 3 attempts — if still failing, report the error to the user. Never use `--no-verify`.
 
 ## Document Format
 

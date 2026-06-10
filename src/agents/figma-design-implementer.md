@@ -129,6 +129,40 @@ Always search the codebase for an existing exact match before downloading a new 
 **Cause:** Figma MCP server's asset endpoint is unreachable or URLs were modified.
 **Solution:** Use asset URLs exactly as returned by the MCP server. Do not modify, proxy, or reconstruct them. If still failing, report BLOCKED.
 
+## Committing Your Work
+
+After implementation is complete and before reporting back, commit your changes.
+
+### Commit Conventions
+
+If a `## Commit Conventions` block was provided in your task context, follow it exactly — it contains the project's message format, real examples, and hook information.
+
+If NO commit conventions block was provided, detect conventions yourself before committing:
+1. Run `git log --oneline -10` to identify the commit message pattern
+2. Check for hook config files: `.lefthook.yml`, `lefthook.yml`, `.husky/pre-commit`, `commitlint.config.*`, `.commitlintrc*`
+3. If commit messages include a Jira/ticket ID, extract it from the branch name: run `git branch --show-current` and look for a pattern like `ABC-123` (uppercase letters, dash, digits)
+4. Match the pattern and format you find
+
+### Commit Message
+
+- Follow the project's commit convention
+- If the convention requires a ticket/Jira ID, use the one from the `## Commit Conventions` block or extract it from the branch name (`git branch --show-current`)
+- Describe what UI component was implemented (e.g., `feat(ui): implement Hero Section`)
+- Keep the first line under 72 characters
+
+### Handling Commit Failures
+
+Pre-commit hooks (lint, format, commitlint) may reject your commit. This is normal.
+
+**Retry protocol:**
+1. Read the error output — it tells you exactly what failed
+2. **Commitlint rejection:** rewrite the message to match the required format and retry
+3. **Lint failure:** fix the reported issues, re-stage the files (`git add`), retry
+4. **Format failure:** run the formatter on affected files, re-stage, retry
+5. **Other hook failure:** read the error, apply the fix, re-stage, retry
+
+**Max 3 attempts.** If the commit still fails after 3 tries, leave your changes staged and report as DONE_WITH_CONCERNS with the full error output. **Never use `--no-verify`.**
+
 ## Reporting
 
 When done, report:
