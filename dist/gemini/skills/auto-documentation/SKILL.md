@@ -78,7 +78,7 @@ This is a judgment call — use the diff content and existing docs to make the b
 
 Before committing, check the project's commit message conventions:
 1. Run `git log --oneline -5` to see the recent message pattern
-2. Check for commit hooks: `.lefthook.yml`, `lefthook.yml`, `.husky/pre-commit`, `commitlint.config.*`
+2. Check for commit hooks: `.lefthook.yml`, `lefthook.yml`, `.husky/pre-commit`, `.pre-commit-config.yaml`, `commitlint.config.*`, `.commitlintrc*`
 3. If commit messages include a Jira/ticket ID, extract it from the branch name: run `git branch --show-current` and look for a pattern like `ABC-123` (uppercase letters, dash, digits). Include the ticket ID in your commit message
 
 Commit the documentation changes using the project's convention. If conventional commits are used, `docs:` is the appropriate type:
