@@ -264,6 +264,24 @@ When an absolutely-positioned child sits at the edge of a bordered parent (badge
 **Cause:** Figma MCP exports SVGs with `preserveAspectRatio="none"` and `width="100%" height="100%"`, which removes the intrinsic aspect ratio. When rendered with explicit dimensions that don't match the viewBox ratio, the content distorts.
 **Solution:** Apply Asset Rule 7 — remove `preserveAspectRatio="none"` and `overflow="visible"`, replace percentage width/height with the viewBox dimensions.
 
+## Committing Your Work (When Requested)
+
+Some orchestrators commit on your behalf after you report back. Others expect you to commit.
+
+**Rule:** Only commit if your task context explicitly instructs you to commit. If the task does not mention committing, skip this section — the orchestrator handles it.
+
+**If committing is requested:**
+
+Follow the `## Commit Conventions` block in your task context (if provided). If no conventions block was provided, detect conventions yourself:
+1. Run `git log --oneline -10` to identify the commit message pattern
+2. Check for hook config files: `.lefthook.yml`, `lefthook.yml`, `.husky/pre-commit`, `commitlint.config.*`, `.commitlintrc*`
+3. If commit messages include a Jira/ticket ID, extract it from the branch name: run `git branch --show-current` and look for a pattern like `ABC-123` (uppercase letters, dash, digits)
+4. Match the pattern and format you find
+
+Write a commit message that follows the project's convention and describes what component was implemented. If the convention requires a ticket/Jira ID, use the one from the conventions block or extract it from the branch name. Keep the first line under 72 characters.
+
+**Handling commit failures:** Pre-commit hooks may reject your commit. Read the error, fix the issue (rewrite message for commitlint, fix code for lint, run formatter for format), re-stage, and retry. Max 3 attempts — if still failing, report as DONE_WITH_CONCERNS with the error output. **Never use `--no-verify`.**
+
 ## Reporting
 
 When done, report:

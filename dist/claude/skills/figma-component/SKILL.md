@@ -255,8 +255,16 @@ Mark T9 `in_progress`. After the user confirms, dispatch @"figma-component-imple
 
 ### After the Subagent Returns
 
-- **If DONE (all self-review checks passed):** Commit all created files and report success. Mark T9 `completed`.
-- **If DONE (with unresolved self-review issues):** Commit all created files, report success, and relay the unresolved issues to the user so they can review manually. Mark T9 `completed`.
+Before committing, analyze the project's commit conventions:
+1. Run `git log --oneline -10` to identify the commit message pattern
+2. Check for hook config files: `.lefthook.yml`, `lefthook.yml`, `.husky/pre-commit`, `commitlint.config.*`, `.commitlintrc*`
+3. If commit messages include a Jira/ticket ID, extract it from the branch name: run `git branch --show-current` and look for a pattern like `ABC-123` (uppercase letters, dash, digits)
+4. Use the detected convention for the commit message (e.g., `feat(ABC-123): implement [COMPONENT_NAME]` for conventional commits with ticket ID)
+
+If a commit fails (pre-commit hook, commitlint, etc.): read the error, fix the issue (rewrite message format, run formatter, fix lint), re-stage, and retry up to 3 times. Never use `--no-verify`.
+
+- **If DONE (all self-review checks passed):** Commit all created files using the project's commit convention and report success. Mark T9 `completed`.
+- **If DONE (with unresolved self-review issues):** Commit all created files using the project's commit convention, report success, and relay the unresolved issues to the user so they can review manually. Mark T9 `completed`.
 - **If BLOCKED:** Relay the block reason. Mark T9 `completed` (the task was executed, even though the subagent was blocked):
 ```
 **STOPPED** — Component Implementation: <reason from subagent>

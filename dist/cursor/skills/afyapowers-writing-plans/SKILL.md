@@ -188,7 +188,7 @@ File overlap validation is a safety net, not a substitute for thinking about tas
 
   Specify the exact command to run.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Commit** following the project's commit conventions
 ````
 
 ## Figma Task Structure

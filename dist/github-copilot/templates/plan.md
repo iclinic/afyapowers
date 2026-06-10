@@ -23,7 +23,7 @@
 - [ ] Step 2: Run the test and confirm it fails
 - [ ] Step 3: Implement — describe what to build and key decisions
 - [ ] Step 4: Run the test and confirm it passes
-- [ ] Step 5: Commit
+- [ ] Step 5: Commit following the project's commit conventions
 
 ### Task N: [UI Component Name] (Figma)
 

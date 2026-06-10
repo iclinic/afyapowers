@@ -37,7 +37,7 @@ Once you're clear on requirements:
 1. Implement exactly what the task specifies
 2. Write tests (following TDD if task says to)
 3. Verify implementation works
-4. Commit your work
+4. Commit your work (see "Committing Your Work" below)
 5. Self-review (see below)
 6. Report back
 
@@ -88,6 +88,38 @@ reliable when files are focused. Keep this in mind:
   and note it as a concern in your report
 - In existing codebases, follow established patterns. Improve code you're touching
   the way a good developer would, but don't restructure things outside your task.
+
+## Committing Your Work
+
+### Commit Conventions
+
+If a `## Commit Conventions` block was provided in your task context, follow it exactly — it contains the project's message format, real examples, and hook information.
+
+If NO commit conventions block was provided, detect conventions yourself before committing:
+1. Run `git log --oneline -10` to identify the commit message pattern
+2. Check for hook config files: `.lefthook.yml`, `lefthook.yml`, `.husky/pre-commit`, `commitlint.config.*`, `.commitlintrc*`
+3. If commit messages include a Jira/ticket ID, extract it from the branch name: run `git branch --show-current` and look for a pattern like `ABC-123` (uppercase letters, dash, digits)
+4. Match the pattern and format you find
+
+### Commit Message
+
+- Follow the project's commit convention (conventional commits, ticket prefixes, or whatever the pattern is)
+- If the convention requires a ticket/Jira ID, use the one from the `## Commit Conventions` block or extract it from the branch name (`git branch --show-current`)
+- Describe WHAT changed and WHY, not HOW
+- Keep the first line under 72 characters
+
+### Handling Commit Failures
+
+Pre-commit hooks (lint, format, commitlint) may reject your commit. This is normal.
+
+**Retry protocol:**
+1. Read the error output — it tells you exactly what failed
+2. **Commitlint rejection:** rewrite the message to match the required format and retry
+3. **Lint failure:** fix the reported issues in your code, re-stage the files (`git add`), retry
+4. **Format failure:** run the formatter on affected files (the error usually suggests the command), re-stage, retry
+5. **Other hook failure:** read the error, apply the fix, re-stage, retry
+
+**Max 3 attempts.** If the commit still fails after 3 tries, leave your changes staged and report as DONE_WITH_CONCERNS with the full error output. **Never use `--no-verify`.**
 
 ## When You're in Over Your Head
 
