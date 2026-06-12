@@ -13,7 +13,7 @@ Orchestrate plan execution by delegating to subagent-driven-development.
 
 If this skill was invoked by `/afyapowers:next` (you already know the active feature slug and confirmed the phase is `implement` from the conversation context above):
 - Skip steps 1-3 — use the slug from context
-- Read the plan and design (steps 4-5) — these are working content needed for implementation
+- Read the plan, design, and project context (steps 4-6) — these are working content needed for implementation
 
 Otherwise (direct invocation):
 1. Read `.afyapowers/features/active` to get the active feature
@@ -21,6 +21,7 @@ Otherwise (direct invocation):
 3. If not in implement phase, tell the user the current phase and stop
 4. Read the plan from `.afyapowers/features/<feature>/artifacts/plan.md`
 5. Read the design from `.afyapowers/features/<feature>/artifacts/design.md` for context
+6. Read `.afyapowers/features/<feature>/artifacts/project-context.md` if it exists — project conventions for subagent injection
 
 ## Validate Plan
 

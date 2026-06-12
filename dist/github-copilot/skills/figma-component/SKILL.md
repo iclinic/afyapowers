@@ -164,6 +164,10 @@ The following components are used inside this component but have not been implem
 
 Mark T7 `in_progress`.
 
+**First, check for existing project context.** Look for `.afyapowers/features/*/artifacts/project-context.md` (find the most recent feature's artifact). If found and it contains a `## Framework & Component Detection` section, use that data directly and skip the manual detection steps below.
+
+**If no project-context.md exists, detect manually:**
+
 **Detect output location.** Glob for existing component directories:
 - `src/components/**`
 - `src/ui/**`
@@ -253,11 +257,13 @@ Mark T9 `in_progress`. After the user confirms, dispatch @"figma-component-imple
 
 ### After the Subagent Returns
 
-Before committing, analyze the project's commit conventions:
-1. Run `git log --oneline -10` to identify the commit message pattern
-2. Check for hook config files: `.lefthook.yml`, `lefthook.yml`, `.husky/pre-commit`, `commitlint.config.*`, `.commitlintrc*`
-3. If commit messages include a Jira/ticket ID, extract it from the branch name: run `git branch --show-current` and look for a pattern like `ABC-123` (uppercase letters, dash, digits)
-4. Use the detected convention for the commit message (e.g., `feat(ABC-123): implement [COMPONENT_NAME]` for conventional commits with ticket ID)
+Before committing, obtain commit conventions:
+1. **Check for project context:** Read `.afyapowers/features/*/artifacts/project-context.md` (most recent). If it contains a `## Commit Conventions` section, use it.
+2. **If no project-context.md exists, detect manually:**
+   - Run `git log --oneline -10` to identify the commit message pattern
+   - Check for hook config files: `.lefthook.yml`, `lefthook.yml`, `.husky/pre-commit`, `commitlint.config.*`, `.commitlintrc*`
+   - If commit messages include a Jira/ticket ID, extract it from the branch name: run `git branch --show-current` and look for a pattern like `ABC-123` (uppercase letters, dash, digits)
+3. Use the detected convention for the commit message (e.g., `feat(ABC-123): implement [COMPONENT_NAME]` for conventional commits with ticket ID)
 
 If a commit fails (pre-commit hook, commitlint, etc.): read the error, fix the issue (rewrite message format, run formatter, fix lint), re-stage, and retry up to 3 times. Never use `--no-verify`.
 

@@ -3,7 +3,7 @@
 
 Help turn ideas into fully formed technical designs through natural collaborative dialogue.
 
-Start by understanding the current project context, then ask questions one at a time to refine the idea. Once you understand what you're building, present the full design — from requirements through architecture — and get user approval.
+Start with a baseline exploration of the project (structure, conventions), then gather context from JIRA/Figma if applicable, ask clarifying questions, run a feature-specific exploration, and present the full design — from requirements through architecture — for user approval.
 
 <HARD-GATE>
 Do NOT invoke any implementation skill, write any code, scaffold any project, or take any implementation action until you have presented a design and the user has approved it. This applies to EVERY project regardless of perceived simplicity.
@@ -23,70 +23,166 @@ Every project goes through this process. A todo list, a single-function utility,
 
 You MUST complete these items in order:
 
-1. **Explore project context** — check files, docs, recent commits
+1. **Baseline project exploration** — run the Baseline Exploration (see below) to capture project-wide conventions (structure, build commands, commit conventions, import conventions)
 2. **JIRA discovery (offer-based)** — offer the user the chance to provide a JIRA issue key; if provided, fetch and summarize the issue (see below)
 3. **Figma discovery (trigger-based)** — check user request against trigger keywords (see below); if match, ask about Figma and run discovery before clarifying questions
 4. **Ask clarifying questions** — if JIRA and/or Figma data is available, use confirmation-style questions (see below); otherwise, standard one-at-a-time clarifying questions
-5. **Propose 2-3 approaches** — with trade-offs and your recommendation
-6. **Present design** — in sections scaled to their complexity, get user approval after each section
-7. **Write design doc** — save to `.afyapowers/features/<feature>/artifacts/design.md`
-8. **Design review loop** — dispatch @"design-reviewer (agent)"; fix issues and re-dispatch until approved (max 5 iterations, then surface to human)
-9. **User reviews written spec** — ask user to review the spec file before proceeding
+5. **Feature-specific exploration** — now that you understand what the feature is, run the Feature-Specific Exploration (see below) to capture code patterns, testing patterns, reusable examples, and framework detection relevant to this feature
+6. **Propose 2-3 approaches** — with trade-offs and your recommendation
+7. **Present design** — in sections scaled to their complexity, get user approval after each section
+8. **Write design doc and project-context.md** — save design to `.afyapowers/features/<feature>/artifacts/design.md`, save assembled project context to `.afyapowers/features/<feature>/artifacts/project-context.md`
+9. **Design review loop** — dispatch @"design-reviewer (agent)"; fix issues and re-dispatch until approved (max 5 iterations, then surface to human)
+10. **User reviews written spec** — ask user to review the spec file before proceeding
 
 ## Process Flow
 
 ```dot
 digraph design {
-    "Explore project context" [shape=box];
+    "Baseline exploration" [shape=box];
     "Offer JIRA issue key" [shape=box];
     "JIRA issue provided?" [shape=diamond];
     "Fetch JIRA issue" [shape=box];
     "Trigger keywords match?" [shape=diamond];
     "Ask Figma question" [shape=box];
     "Figma discovery" [shape=box];
+    "Has JIRA or Figma data?" [shape=diamond];
     "Confirmation-style questions" [shape=box];
     "Standard clarifying questions" [shape=box];
+    "Feature-specific exploration" [shape=box];
     "Propose 2-3 approaches" [shape=box];
     "Present design sections" [shape=box];
     "User approves design?" [shape=diamond];
-    "Write design doc" [shape=box];
+    "Write design doc +\nproject-context.md" [shape=box];
     "Design review loop" [shape=box];
     "Design review passed?" [shape=diamond];
     "User reviews design?" [shape=diamond];
     "Suggest /afyapowers:next" [shape=doublecircle];
 
-    "Explore project context" -> "Offer JIRA issue key";
+    "Baseline exploration" -> "Offer JIRA issue key";
     "Offer JIRA issue key" -> "JIRA issue provided?";
     "JIRA issue provided?" -> "Fetch JIRA issue" [label="yes"];
     "JIRA issue provided?" -> "Trigger keywords match?" [label="no"];
     "Fetch JIRA issue" -> "Trigger keywords match?";
     "Trigger keywords match?" -> "Ask Figma question" [label="yes"];
-    "Trigger keywords match?" -> "Standard clarifying questions" [label="no"];
+    "Trigger keywords match?" -> "Has JIRA or Figma data?" [label="no"];
     "Ask Figma question" -> "Figma discovery" [label="user provides URLs"];
-    "Ask Figma question" -> "Standard clarifying questions" [label="no Figma designs"];
-    "Figma discovery" -> "Confirmation-style questions";
-    "Confirmation-style questions" -> "Propose 2-3 approaches";
-    "Standard clarifying questions" -> "Propose 2-3 approaches";
+    "Ask Figma question" -> "Has JIRA or Figma data?" [label="no Figma designs"];
+    "Figma discovery" -> "Has JIRA or Figma data?";
+    "Has JIRA or Figma data?" -> "Confirmation-style questions" [label="yes"];
+    "Has JIRA or Figma data?" -> "Standard clarifying questions" [label="no"];
+    "Confirmation-style questions" -> "Feature-specific exploration";
+    "Standard clarifying questions" -> "Feature-specific exploration";
+    "Feature-specific exploration" -> "Propose 2-3 approaches";
     "Propose 2-3 approaches" -> "Present design sections";
     "Present design sections" -> "User approves design?";
     "User approves design?" -> "Present design sections" [label="no, revise"];
-    "User approves design?" -> "Write design doc" [label="yes"];
-    "Write design doc" -> "Design review loop";
+    "User approves design?" -> "Write design doc +\nproject-context.md" [label="yes"];
+    "Write design doc +\nproject-context.md" -> "Design review loop";
     "Design review loop" -> "Design review passed?";
     "Design review passed?" -> "Design review loop" [label="issues found,\nfix and re-dispatch"];
     "Design review passed?" -> "User reviews design?" [label="approved"];
-    "User reviews design?" -> "Write design doc" [label="changes requested"];
+    "User reviews design?" -> "Write design doc +\nproject-context.md" [label="changes requested"];
     "User reviews design?" -> "Suggest /afyapowers:next" [label="approved"];
 }
 ```
 
 **The terminal state is suggesting `/afyapowers:next`.** Do NOT invoke any implementation skill or advance phases. The `/afyapowers:next` command handles phase transitions.
 
+## Baseline Exploration (Checklist Step 1)
+
+Run **before** understanding the feature. Captures project-wide conventions that don't depend on knowing what the feature is. These populate the corresponding sections in `project-context.md` (template: `templates/project-context.md`).
+
+### Project Structure
+1. Run `find . -type f -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" -o -name "*.py" -o -name "*.go" -o -name "*.rs" | head -50` (adapt extensions to the project's language)
+2. Identify the key directories and their purpose (src/, tests/, lib/, components/, etc.)
+3. Note naming conventions: PascalCase, camelCase, kebab-case, snake_case for files and directories
+
+### Build & Run Commands
+1. Check `package.json` scripts, `Makefile`, `Taskfile.yml`, `Justfile`, or similar
+2. Record: build command, dev server command, test command, lint command
+
+### Import Conventions
+1. Read 2-3 files from the project (pick from representative directories identified above)
+2. Note: path aliases (e.g., `@/`), barrel files, relative vs absolute imports, import grouping order
+
+### Commit Conventions
+1. Run `git log --oneline -20` and identify the message pattern (conventional commits, ticket-prefixed, freeform)
+2. Note which types/prefixes appear, whether scope is used, case conventions
+3. Check for ticket ID in branch name: `git branch --show-current` — look for patterns like `ABC-123`
+4. Check for hook tooling (existence only): `.lefthook.yml`, `lefthook.yml`, `.husky/pre-commit`, `.pre-commit-config.yaml`, `package.json` field `scripts.prepare`
+5. Check for commitlint: `commitlint.config.*`, `.commitlintrc*`, `package.json` field `commitlint`
+6. Build the Commit Conventions block:
+
+**When conventions are detected:**
+```
+**Message format:** <detected format, e.g. "conventional commits — type(scope): description">
+**Common types:** <list of types seen, e.g. feat, fix, chore, refactor, test>
+**Scope:** <"commonly used" or "rarely used" or "not used">
+**Ticket ID:** <extracted ID from branch name, e.g. "ABC-123 (from branch feature/ABC-123-new-login)" or "none detected">
+**Examples from this repo:**
+- <3-5 real examples from git log>
+
+**Pre-commit hooks:** <tool name and what it runs, e.g. "Husky runs lint-staged (eslint + prettier) and commitlint">
+**Commitlint:** <"yes — messages must follow conventional commits format" or "not detected">
+
+**If your commit fails:**
+1. Read the error output — it tells you exactly what's wrong
+2. Commitlint rejection → rewrite the message to match the format above and retry
+3. Lint/format failure → fix the reported issues or run the suggested fix command, re-stage changed files, retry
+4. Other hook failure → read the error, apply the fix, re-stage, retry
+5. After 3 failed attempts → report as DONE_WITH_CONCERNS with the full error output. Never use --no-verify
+```
+
+**When no conventions are detected:**
+```
+**Message format:** no enforced convention detected
+**Pre-commit hooks:** none detected
+**Commit freely** using clear, descriptive messages. If a commit fails unexpectedly, read the error and retry up to 3 times before reporting as DONE_WITH_CONCERNS.
+```
+
+## Feature-Specific Exploration (Checklist Step 5)
+
+Run **after** understanding the feature (post-JIRA, post-Figma, post-clarifying questions). Now you know what the feature is and where in the codebase it will live, so you can target the exploration precisely.
+
+### Code Patterns
+1. Read 2-3 representative files **in the area where this feature's changes will happen**
+2. Extract patterns for: import organization, export style, error handling, module structure
+3. Include 3-5 short, representative snippets (keep each under 10 lines)
+
+### Testing Patterns
+1. Find test files in the relevant area: `find . -name "*.test.*" -o -name "*.spec.*" -o -name "test_*" | head -10`
+2. Read 1-2 test files **for modules similar to what this feature will build** to identify: framework (jest, vitest, pytest, etc.), structure (describe/it, AAA), mock patterns
+3. Identify the test run command from `package.json` scripts, `Makefile`, or similar
+
+### Reusable Patterns & Examples
+Identify existing code in the project that serves as a model for this feature:
+1. Search for features, modules, or flows similar to what this feature needs (e.g., if building a new API endpoint, find an existing endpoint that follows the same pattern; if adding a new component, find a similar component)
+2. For each relevant reference, note: file path, why it's relevant, and include a short snippet (under 15 lines) showing the pattern
+3. Focus on references directly useful for this specific feature — not generic patterns (those belong in Code Patterns)
+4. Common things to look for: similar CRUD operations, auth/validation flows, state management patterns, data fetching approaches, error boundary implementations, test setups for similar modules
+
+### Framework & Component Detection (only for UI/Figma features)
+If the feature involves UI work (Figma trigger keywords matched, or user describes UI components):
+1. Glob for component directories: `src/components/**`, `src/ui/**`, `components/**`, `lib/components/**`, `packages/*/src/components/**`
+2. Detect framework from `package.json` dependencies and config files (`next.config.*`, `nuxt.config.*`, `vite.config.*`)
+3. Detect Storybook: glob for `.storybook/` and `*.stories.*`
+4. Record: framework name, component directory path, Storybook presence
+
+If the feature is not UI work, omit this section from `project-context.md` entirely.
+
+**After completing the Baseline Exploration (step 1) and Feature-Specific Exploration (step 5),** assemble all sections into the full `project-context.md` and save to `.afyapowers/features/<feature>/artifacts/project-context.md`. This is done in checklist step 8 alongside writing the design doc.
+
 ## The Process
 
-**Understanding the idea:**
+**Baseline exploration (checklist step 1):**
 
-- Check out the current project state first (files, docs, recent commits)
+- Run the Baseline Exploration section above: project structure, build commands, import conventions, commit conventions
+- This runs before any user interaction — it captures project-wide conventions that don't depend on knowing the feature
+
+**JIRA discovery (checklist step 2) and Figma discovery (checklist step 3)** are documented in their own sections below.
+
+**Clarifying questions (checklist step 4):**
+
 - Before asking detailed questions, assess scope: if the request describes multiple independent subsystems (e.g., "build a platform with chat, file storage, billing, and analytics"), flag this immediately. Don't spend questions refining details of a project that needs to be decomposed first.
 - If the project is too large for a single spec, help the user decompose into sub-projects: what are the independent pieces, how do they relate, what order should they be built? Then design the first sub-project through the normal flow. Each sub-project gets its own design → plan → implementation cycle.
 - For appropriately-scoped projects, ask questions one at a time to refine the idea
@@ -96,7 +192,7 @@ digraph design {
 
 **JIRA discovery (offer-based):**
 
-After exploring project context, offer the user:
+After the Baseline Exploration (checklist step 1), offer the user:
 
 > "Is there a JIRA issue associated with this feature? If so, share the issue key (e.g., PROJ-123)."
 
@@ -126,15 +222,15 @@ If the user provides a JIRA issue key:
 
    Present this summary to the user for confirmation before proceeding.
 
-4. **Proceed to Figma discovery** (the JIRA summary and description text is now part of the context when evaluating Figma trigger keywords)
+4. **Proceed to Figma discovery (checklist step 3)** — the JIRA summary and description text is now part of the context when evaluating Figma trigger keywords
 
-If no JIRA issue is provided, proceed directly to Figma discovery.
+If no JIRA issue is provided, proceed directly to Figma discovery (checklist step 3).
 
 **If the Atlassian MCP server is unavailable:** Warn the user and **stop the JIRA discovery flow**. Do not attempt to proceed without it — the user asked for JIRA context, so a silent fallback would undermine the purpose. Suggest the user check their MCP server connection and retry.
 
 **Figma discovery (trigger-based):**
 
-After exploring project context, check the user's request for these trigger keywords (case-insensitive, word-level matching):
+After JIRA discovery (checklist step 2), check the user's request for these trigger keywords (case-insensitive, word-level matching):
 
 > page, landing page, screen, view, layout, header, footer, navbar, sidebar, UI component, form, modal, dialog, card, hero, section, banner, responsive, breakpoint, mobile, desktop, dashboard, panel, widget
 
@@ -144,7 +240,7 @@ If any keyword matches, ask the user:
 
 If a keyword matches but the request is clearly not UI work (e.g., "write unit tests for the landing page API endpoint"), use judgment — when in doubt, ask.
 
-If no keywords match, skip Figma discovery and proceed to clarifying questions.
+If no keywords match, skip Figma discovery and proceed to clarifying questions (checklist step 4) — use confirmation-style if JIRA data was gathered, standard otherwise.
 
 If the user provides Figma URL(s):
 
@@ -219,11 +315,11 @@ No `get_screenshot` or `get_design_context` calls during the design phase — th
 
 **If the Figma MCP server is unavailable:** Warn the user and **stop the Figma discovery flow**. Do not attempt to proceed without it — the user provided Figma URLs, so a silent fallback would undermine the purpose. Suggest the user check their MCP server connection and retry.
 
-**If no Figma designs:** Proceed normally. Do not include the Figma Resources section in the design doc.
+**If no Figma designs:** Proceed to clarifying questions (checklist step 4) — use confirmation-style if JIRA data was gathered, standard otherwise. Do not include the Figma Resources section in the design doc.
 
 **Design tokens are NOT extracted during design phase.** They are deferred to implementation time — the implementer subagent will fetch them via `get_variable_defs` when needed.
 
-**Clarifying questions (JIRA and/or Figma-informed):**
+**Clarifying questions (checklist step 4, JIRA and/or Figma-informed):**
 
 When JIRA data and/or Figma data was gathered in previous steps, replace open-ended clarifying questions with confirmation-style:
 
@@ -240,13 +336,18 @@ Examples:
 
 When neither JIRA nor Figma data is available, use the standard approach: ask questions one at a time to understand purpose, constraints, and success criteria.
 
-**Exploring approaches:**
+**Feature-specific exploration (checklist step 5):**
+
+After clarifying questions, you now understand what the feature is and where it lives in the codebase. Run the Feature-Specific Exploration: code patterns in the relevant area, testing patterns for similar modules, reusable patterns & examples, and framework detection (if UI). This informs the approaches you propose next.
+
+**Exploring approaches (checklist step 6):**
 
 - Propose 2-3 different approaches with trade-offs
 - Present options conversationally with your recommendation and reasoning
 - Lead with your recommended option and explain why
+- Use the Reusable Patterns & Examples from the Feature-Specific Exploration to ground your recommendations in existing project code
 
-**Presenting the design:**
+**Presenting the design (checklist step 7):**
 
 - Once you believe you understand what you're building, present the full design
 - Start with requirements and constraints, then move into architecture and technical details
@@ -266,7 +367,7 @@ When neither JIRA nor Figma data is available, use the standard approach: ask qu
 
 **Working in existing codebases:**
 
-- Explore the current structure before proposing changes. Follow existing patterns.
+- The `project-context.md` artifact captures the current structure and patterns. Use it as reference when proposing changes. Follow the patterns documented there.
 - Where existing code has problems that affect the work (e.g., a file that's grown too large, unclear boundaries, tangled responsibilities), include targeted improvements as part of the design - the way a good developer improves code they're working in.
 - Don't propose unrelated refactoring. Stay focused on what serves the current goal.
 
@@ -286,7 +387,7 @@ When neither JIRA nor Figma data is available, use the standard approach: ask qu
 
 - Write the validated design to `.afyapowers/features/<feature>/artifacts/design.md`
   - Use the template from `templates/design.md`
-- Commit the design document to git
+- Both `design.md` and `project-context.md` should be committed together
 
 **Design Review Loop:**
 After writing the design document:
@@ -305,8 +406,8 @@ Wait for the user's response. If they request changes, make them and re-run the 
 
 **Completion:**
 
-- Update `state.yaml` to add `design.md` to the design phase's artifacts list
-- Append `artifact_created` event to `history.yaml`
+- Update `state.yaml` to add `design.md` and `project-context.md` to the design phase's artifacts list
+- Append `artifact_created` events to `history.yaml` (one for each artifact)
 - Tell the user: "Design phase complete. Run `/afyapowers:next` to proceed to **plan**."
 
 ## Key Principles

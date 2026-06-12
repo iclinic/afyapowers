@@ -23,6 +23,16 @@ Do NOT create, modify, or delete any other files. If you believe you need to
 touch a file not in this list, report back with status NEEDS_CONTEXT and explain
 what file you need and why.
 
+## Project Context
+
+[If a project context block was provided, it appears here. It contains code patterns,
+import conventions, reusable patterns & examples, and commit conventions from the project.
+Use this as your reference for following established project patterns and reusing existing
+code instead of exploring the codebase yourself. Pay special attention to "Reusable Patterns
+& Examples" — these are concrete references to existing code that serves as a model for
+your task. If no project context was provided, follow the fallback instructions in each
+relevant section below.]
+
 ## Before You Begin
 
 If you have questions about:
@@ -97,7 +107,7 @@ reliable when files are focused. Keep this in mind:
 
 If a `## Commit Conventions` block was provided in your task context, follow it exactly — it contains the project's message format, real examples, and hook information.
 
-If NO commit conventions block was provided, detect conventions yourself before committing:
+If NO commit conventions block was provided (neither in the project context nor as a standalone section), detect conventions yourself before committing:
 1. Run `git log --oneline -10` to identify the commit message pattern
 2. Check for hook config files: `.lefthook.yml`, `lefthook.yml`, `.husky/pre-commit`, `commitlint.config.*`, `.commitlintrc*`
 3. If commit messages include a Jira/ticket ID, extract it from the branch name: run `git branch --show-current` and look for a pattern like `ABC-123` (uppercase letters, dash, digits)

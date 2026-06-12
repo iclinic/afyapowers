@@ -18,12 +18,14 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 If this skill was invoked by `/afyapowers:next` (you already know the active feature slug and confirmed the phase is `plan` from the conversation context above):
 - Skip steps 1-3 — use the slug from context
 - Read the design from `.afyapowers/features/<feature>/artifacts/design.md` as input
+- Read `.afyapowers/features/<feature>/artifacts/project-context.md` if it exists — use as primary reference for project patterns and conventions
 
 Otherwise (direct invocation):
 1. Read `.afyapowers/features/active` to get the active feature
 2. Read `.afyapowers/features/<feature>/state.yaml` — confirm `current_phase` is `plan`
 3. If not in plan phase, tell the user the current phase and stop
 4. Read the design from `.afyapowers/features/<feature>/artifacts/design.md` as input
+5. Read `.afyapowers/features/<feature>/artifacts/project-context.md` if it exists — this contains project structure, code patterns, testing patterns, import conventions, and commit conventions captured during the design phase. Use this as your primary reference for file naming, patterns, and conventions instead of re-exploring the codebase
 
 **Save plans to:** `.afyapowers/features/<feature>/artifacts/plan.md`
 
@@ -98,7 +100,7 @@ Before defining tasks, map out which files will be created or modified and what 
 - Design units with clear boundaries and well-defined interfaces. Each file should have one clear responsibility.
 - You reason best about code you can hold in context at once, and your edits are more reliable when files are focused. Prefer smaller, focused files over large ones that do too much.
 - Files that change together should live together. Split by responsibility, not by technical layer.
-- In existing codebases, follow established patterns. If the codebase uses large files, don't unilaterally restructure - but if a file you're modifying has grown unwieldy, including a split in the plan is reasonable.
+- In existing codebases, follow established patterns as documented in `project-context.md`. If no `project-context.md` exists, explore the codebase to understand patterns before defining files. If the codebase uses large files, don't unilaterally restructure - but if a file you're modifying has grown unwieldy, including a split in the plan is reasonable.
 
 This structure informs the task decomposition. Each task should produce self-contained changes that make sense independently.
 

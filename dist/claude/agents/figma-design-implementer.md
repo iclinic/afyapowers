@@ -21,6 +21,17 @@ This is a template for dispatching implementer subagents for Figma design tasks.
 - Figma MCP server must be connected. Verify by checking that `get_design_context` and `get_variable_defs` tools are available.
 - If the Figma MCP server is unavailable, report status **BLOCKED** and stop.
 
+## Project Context
+
+[If a project context block was provided, it contains project conventions and may include:
+- Framework & component detection (framework, component directory, Storybook)
+- Code patterns, import conventions, and reusable patterns & examples
+- Commit conventions
+
+Use framework detection to inform your output decisions. Use code/import patterns and
+reusable examples to follow established project conventions. If no project context was
+provided, detect these yourself as described in the relevant sections below.]
+
 ## Workflow
 
 ### Step 1 — Build Token Reference Table
@@ -129,7 +140,7 @@ After implementation is complete and before reporting back, commit your changes.
 
 If a `## Commit Conventions` block was provided in your task context, follow it exactly — it contains the project's message format, real examples, and hook information.
 
-If NO commit conventions block was provided, detect conventions yourself before committing:
+If NO commit conventions block was provided (neither in the project context nor as a standalone section), detect conventions yourself before committing:
 1. Run `git log --oneline -10` to identify the commit message pattern
 2. Check for hook config files: `.lefthook.yml`, `lefthook.yml`, `.husky/pre-commit`, `commitlint.config.*`, `.commitlintrc*`
 3. If commit messages include a Jira/ticket ID, extract it from the branch name: run `git branch --show-current` and look for a pattern like `ABC-123` (uppercase letters, dash, digits)

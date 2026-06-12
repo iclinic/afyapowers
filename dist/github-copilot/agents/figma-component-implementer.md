@@ -32,6 +32,17 @@ You are implementing the Figma component **[COMPONENT_NAME]**.
 - Figma MCP server must be connected. Verify by checking that `get_design_context` and `get_variable_defs` tools are available.
 - If the Figma MCP server is unavailable, report status **BLOCKED** and stop.
 
+## Project Context
+
+[If a project context block was provided, it contains project conventions and may include:
+- Framework & component detection (framework, component directory, Storybook)
+- Code patterns, import conventions, and reusable patterns & examples
+- Commit conventions
+
+Use framework detection to inform your output decisions. Use code/import patterns and
+reusable examples to follow established project conventions. If no project context was
+provided, detect these yourself as described in the relevant sections below.]
+
 ## Rate Limit
 
 Figma MCP has a 15 requests/minute rate limit. Track your MCP call count throughout the workflow:
@@ -271,7 +282,7 @@ Some orchestrators commit on your behalf after you report back. Others expect yo
 
 **If committing is requested:**
 
-Follow the `## Commit Conventions` block in your task context (if provided). If no conventions block was provided, detect conventions yourself:
+Follow the `## Commit Conventions` block in your task context (if provided). If no conventions block was provided (neither in the project context nor as a standalone section), detect conventions yourself:
 1. Run `git log --oneline -10` to identify the commit message pattern
 2. Check for hook config files: `.lefthook.yml`, `lefthook.yml`, `.husky/pre-commit`, `commitlint.config.*`, `.commitlintrc*`
 3. If commit messages include a Jira/ticket ID, extract it from the branch name: run `git branch --show-current` and look for a pattern like `ABC-123` (uppercase letters, dash, digits)

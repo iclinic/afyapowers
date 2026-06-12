@@ -48,11 +48,16 @@ Each dispatched Agent implements the task, performs a self-review, and returns a
 
 Follow these steps exactly to resolve dependencies and dispatch tasks in parallel waves.
 
-### Step 0: Analyze Commit Conventions
+### Step 0: Load Project Context
 
-Before parsing tasks, analyze the project's commit conventions **once**. The result is a text block injected into every subagent prompt so they commit correctly on the first try.
+Before parsing tasks, load the project context artifact generated during the design phase. This contains commit conventions, code patterns, and other project intelligence that will be injected into subagent prompts.
 
-**Run this analysis:**
+1. **Read `.afyapowers/features/<feature>/artifacts/project-context.md`** (the feature path is already in context from the implementing skill)
+2. **Extract the `## Commit Conventions` section** — this text block will be injected verbatim into every subagent prompt so they commit correctly on the first try
+3. **Extract the `## Code Patterns`, `## Import Conventions`, and `## Reusable Patterns & Examples` sections** — these will be included in every subagent prompt as project context so they follow established patterns and reuse existing code
+4. **Extract the `## Framework & Component Detection` section** (if present) — this will be included in Figma subagent prompts only
+
+**Fallback:** If `project-context.md` does not exist (e.g., feature was created before this artifact was introduced, or design phase was skipped), analyze commit conventions inline:
 
 1. **Detect commit message pattern** — run `git log --oneline -20` and identify the pattern:
    - Conventional Commits: `type(scope): description` or `type: description` (look for prefixes like feat, fix, chore, refactor, test, docs, style, ci, build, perf)
@@ -107,7 +112,7 @@ When no conventions are detected:
 **Commit freely** using clear, descriptive messages. If a commit fails unexpectedly, read the error and retry up to 3 times before reporting as DONE_WITH_CONCERNS.
 ```
 
-Store this block — you will include it verbatim in every subagent prompt in Step 5.
+Store the commit conventions block (from artifact or fallback analysis) — you will include it verbatim in every subagent prompt in Step 5.
 
 ### Step 1: Parse Tasks
 
@@ -168,7 +173,9 @@ Each agent gets:
 - Full task text (steps, file list, code/Figma metadata) — paste directly, don't make agent read files
 - Design spec content for context
 - File constraint: "You may ONLY modify these files: [list from task's Files: section]"
-- Commit conventions block (from Step 0 analysis) — paste the full `## Commit Conventions` block
+- Project context block (from Step 0) — paste the `## Code Patterns`, `## Import Conventions`, and `## Reusable Patterns & Examples` sections so agents follow established patterns and reuse existing code without re-exploring
+- Commit conventions block (from Step 0) — paste the full `## Commit Conventions` block
+- Framework & component detection (from Step 0, Figma subagents only) — paste the `## Framework & Component Detection` section if present
 - Return format: status (DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED) + summary
 
 ### Step 6: Wait and Process Results
