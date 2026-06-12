@@ -34,7 +34,7 @@ You MUST complete these items in order:
 5. **Feature-specific exploration** — now that you understand what the feature is, run the Feature-Specific Exploration (see below) to capture code patterns, testing patterns, reusable examples, and framework detection relevant to this feature
 6. **Propose 2-3 approaches** — with trade-offs and your recommendation
 7. **Present design** — in sections scaled to their complexity, get user approval after each section
-8. **Write design doc and project-context.md** — save design to `.afyapowers/features/<feature>/artifacts/design.md`, save assembled project context to `.afyapowers/features/<feature>/artifacts/project-context.md`
+8. **Write design doc and project-context.md** — save design to `.afyapowers/features/<feature>/artifacts/design.md`; refine and save project context to `.afyapowers/features/<feature>/artifacts/project-context.md` (see Refine Project Context below)
 9. **Design review loop** — dispatch @"design-reviewer (agent)"; fix issues and re-dispatch until approved (max 5 iterations, then surface to human)
 10. **User reviews written spec** — ask user to review the spec file before proceeding
 
@@ -174,7 +174,13 @@ If the feature involves UI work (Figma trigger keywords matched, or user describ
 
 If the feature is not UI work, omit this section from `project-context.md` entirely.
 
-**After completing the Baseline Exploration (step 1) and Feature-Specific Exploration (step 5),** assemble all sections into the full `project-context.md` and save to `.afyapowers/features/<feature>/artifacts/project-context.md`. This is done in checklist step 8 alongside writing the design doc.
+## Refine Project Context (Checklist Step 8)
+
+After the user approves the design and the chosen approach is locked, refine `project-context.md` before saving:
+
+1. **Remove irrelevant patterns** — the Feature-Specific Exploration (step 5) ran before the approach was chosen. Drop any Code Patterns, Testing Patterns, or Reusable Patterns & Examples that are only relevant to approaches that were NOT chosen.
+2. **Add approach-specific patterns** — if the chosen approach introduces techniques, libraries, or integrations that weren't covered in step 5, search for existing examples of those in the codebase now and add them to the relevant sections.
+3. **Assemble the final artifact** — combine the Baseline Exploration (step 1) sections with the refined Feature-Specific Exploration sections and save to `.afyapowers/features/<feature>/artifacts/project-context.md` alongside the design doc.
 
 ## The Process
 
