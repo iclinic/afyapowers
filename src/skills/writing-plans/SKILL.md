@@ -1,6 +1,16 @@
 ---
-name: writing-plans
-description: Use when the current afyapowers phase is plan — creates implementation plans from tech specs
+claude:
+  name: afyapowers:writing-plans
+  description: Use when the current afyapowers phase is plan — creates implementation plans from tech specs
+  model: claude-opus-4-6
+  effort: high
+cursor:
+  name: afyapowers-writing-plans
+  description: Use when the current afyapowers phase is plan — creates implementation plans from tech specs
+  model: claude-4-6-opus
+github-copilot:
+  name: writing-plans
+  description: Use when the current afyapowers phase is plan — creates implementation plans from tech specs
 ---
 
 # Writing Plans
@@ -15,6 +25,11 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 ## Phase Gate
 
+If this skill was invoked by `/afyapowers:next` (you already know the active feature slug and confirmed the phase is `plan` from the conversation context above):
+- Skip steps 1-3 — use the slug from context
+- Read the design from `.afyapowers/features/<feature>/artifacts/design.md` as input
+
+Otherwise (direct invocation):
 1. Read `.afyapowers/features/active` to get the active feature
 2. Read `.afyapowers/features/<feature>/state.yaml` — confirm `current_phase` is `plan`
 3. If not in plan phase, tell the user the current phase and stop
@@ -182,7 +197,7 @@ File overlap validation is a safety net, not a substitute for thinking about tas
 
   Specify the exact command to run.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Commit** following the project's commit conventions
 ````
 
 ## Figma Task Structure
@@ -229,10 +244,11 @@ Use this format for tasks that implement UI components with Figma designs. The d
 
 ## Required Sub-Skills
 
-**REQUIRED:** Dispatch plan-document-reviewer subagent after writing each plan chunk.
+**REQUIRED:** Dispatch @"plan-reviewer (agent)" after writing each plan chunk.
 
-- Announce: "Using plan-document-reviewer to validate the plan."
-- Dispatch subagent using `skills/writing-plans/plan-document-reviewer-prompt.md`
+- Announce: "Using plan-reviewer to validate the plan."
+- Dispatch @"plan-reviewer (agent)":
+  - Provide the plan chunk content and the spec file path
 - If issues found: fix and re-dispatch (max 5 iterations, then surface to human)
 - After approval: proceed to next chunk or completion
 
@@ -240,7 +256,7 @@ Use this format for tasks that implement UI components with Figma designs. The d
 
 After completing each chunk of the plan:
 
-1. Dispatch plan-document-reviewer subagent (see `skills/writing-plans/plan-document-reviewer-prompt.md`) for the current chunk
+1. Dispatch @"plan-reviewer (agent)":
    - Provide: chunk content, path to spec document
 2. If Issues Found:
    - Fix the issues in the chunk

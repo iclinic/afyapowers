@@ -674,9 +674,10 @@ src/                           →    dist/<ide>/
 
 ### Frontmatter por IDE
 
-Cada comando e skill tem um `.frontmatter.yaml` com configuracoes por IDE:
+Cada comando e skill tem frontmatter multi-agente embutido no proprio arquivo `.md`:
 
-```yaml
+```markdown
+---
 claude:
   name: afyapowers:new
   description: Start a New Feature
@@ -686,6 +687,7 @@ cursor:
 github-copilot:
   name: new
   description: Start a New Feature
+---
 ```
 
 ### Configuracao por IDE
@@ -697,16 +699,16 @@ github-copilot:
 | Gemini | Nenhum | Nenhum | — |
 | GitHub Copilot | Nenhum | Nenhum | `plugin.json` |
 
-### Usando o sync.sh
+### Usando o sync.py
 
 ```bash
-./sync.sh                  # Sincronizar todos os agentes
-./sync.sh claude           # Sincronizar um agente especifico
-./sync.sh --clean          # Limpar antes de sincronizar
-./sync.sh cursor --clean   # Limpar + agente especifico
+python3 sync.py                  # Sincronizar todos os agentes
+python3 sync.py claude           # Sincronizar um agente especifico
+python3 sync.py --clean          # Limpar antes de sincronizar
+python3 sync.py cursor --clean   # Limpar + agente especifico
 ```
 
-> 💡 **Requisito:** `jq` instalado (com fallback para Python 3 se indisponivel).
+> 💡 **Requisito:** Python 3.9+ (stdlib apenas, sem dependencias pip).
 
 ---
 

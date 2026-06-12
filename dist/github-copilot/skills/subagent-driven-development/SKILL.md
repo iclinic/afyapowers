@@ -15,6 +15,7 @@ Execute plan by dispatching subagents per task. Tasks with no mutual dependencie
 digraph process {
     rankdir=TB;
 
+    "Analyze commit conventions (Step 0)" [shape=box];
     "Read plan, parse tasks and dependencies" [shape=box];
     "Check for circular dependencies" [shape=diamond];
     "Report cycle, stop" [shape=box, style=filled, fillcolor=red, fontcolor=white];
@@ -28,6 +29,7 @@ digraph process {
     "Write implementation-concerns.md" [shape=box];
     "Complete" [shape=doublecircle];
 
+    "Analyze commit conventions (Step 0)" -> "Read plan, parse tasks and dependencies";
     "Read plan, parse tasks and dependencies" -> "Check for circular dependencies";
     "Check for circular dependencies" -> "Report cycle, stop" [label="cycle found"];
     "Check for circular dependencies" -> "Compute ready set" [label="no cycles"];
@@ -49,6 +51,67 @@ Each dispatched Agent implements the task, performs a self-review, and returns a
 ## Wave Execution Algorithm
 
 Follow these steps exactly to resolve dependencies and dispatch tasks in parallel waves.
+
+### Step 0: Analyze Commit Conventions
+
+Before parsing tasks, analyze the project's commit conventions **once**. The result is a text block injected into every subagent prompt so they commit correctly on the first try.
+
+**Run this analysis:**
+
+1. **Detect commit message pattern** — run `git log --oneline -20` and identify the pattern:
+   - Conventional Commits: `type(scope): description` or `type: description` (look for prefixes like feat, fix, chore, refactor, test, docs, style, ci, build, perf)
+   - Ticket-prefixed: `[PROJ-123] description` or `PROJ-123: description`
+   - Other patterns: any consistent prefix or structure
+   - Freeform: no discernible pattern
+   - Note which types/prefixes appear most often, whether scope is used, and whether messages are lowercase or capitalized
+   - **Check if commit messages include a Jira/ticket ID** (e.g., `feat(ABC-123): ...` or `[ABC-123] fix: ...`). If they do, extract the ticket ID from the current branch name — run `git branch --show-current` and look for a pattern like `ABC-123` (uppercase letters, dash, digits). Include the extracted ticket ID in the conventions block so subagents can use it in their commit messages
+
+2. **Detect commit hook tooling** — check for these files (existence only, don't parse deeply):
+   - `.lefthook.yml` or `lefthook.yml` — Lefthook
+   - `.husky/pre-commit` — Husky
+   - `.pre-commit-config.yaml` — pre-commit framework
+   - `package.json` field `scripts.prepare` containing `husky` or `lefthook`
+
+3. **Detect commitlint** — check for:
+   - `commitlint.config.js`, `.cjs`, `.mjs`, `.ts`
+   - `.commitlintrc`, `.commitlintrc.json`, `.commitlintrc.yml`, `.commitlintrc.js`
+   - `package.json` field `commitlint`
+   - If found, note it — subagents need to match the format strictly
+
+4. **Build the Commit Conventions block** — assemble a `## Commit Conventions` text block:
+
+When conventions are detected:
+```markdown
+## Commit Conventions
+
+**Message format:** <detected format, e.g. "conventional commits — type(scope): description">
+**Common types:** <list of types seen in git log, e.g. feat, fix, chore, refactor, test>
+**Scope:** <"commonly used" or "rarely used" or "not used">
+**Ticket ID:** <extracted ID from branch name if the convention requires it, e.g. "ABC-123 (from branch feature/ABC-123-new-login)" or "none detected">
+**Examples from this repo:**
+- <3-5 real examples from git log>
+
+**Pre-commit hooks:** <tool name and what it runs, e.g. "Husky runs lint-staged (eslint + prettier) and commitlint">
+**Commitlint:** <"yes — messages must follow conventional commits format" or "not detected">
+
+**If your commit fails:**
+1. Read the error output — it tells you exactly what's wrong
+2. Commitlint rejection → rewrite the message to match the format above and retry
+3. Lint/format failure → fix the reported issues or run the suggested fix command, re-stage changed files (`git add`), retry
+4. Other hook failure → read the error, apply the fix, re-stage, retry
+5. After 3 failed attempts → report as DONE_WITH_CONCERNS with the full error output. Never use `--no-verify`
+```
+
+When no conventions are detected:
+```markdown
+## Commit Conventions
+
+**Message format:** no enforced convention detected
+**Pre-commit hooks:** none detected
+**Commit freely** using clear, descriptive messages. If a commit fails unexpectedly, read the error and retry up to 3 times before reporting as DONE_WITH_CONCERNS.
+```
+
+Store this block — you will include it verbatim in every subagent prompt in Step 5.
 
 ### Step 1: Parse Tasks
 
@@ -101,14 +164,15 @@ Apply concurrency caps:
 
 Dispatch the combined set (all non-Figma + up to 4 Figma) as parallel Subagent calls in a single message.
 
-**Prompt routing:** Select the correct implementer prompt based on the task type:
-- If the task text contains a `**Figma:**` section → use `skills/implementing/implement-figma-design.md` prompt template. Include the Figma metadata (file key, node ID, breakpoints) in the agent context.
-- If the task does NOT contain a `**Figma:**` section → use `skills/implementing/implementer-prompt.md` prompt template (standard TDD implementer).
+**Prompt routing:** Select the correct implementer agent based on the task type:
+- If the task text contains a `**Figma:**` section → dispatch @"figma-design-implementer (agent)". Include the Figma metadata (file key, node ID, breakpoints) in the agent context.
+- If the task does NOT contain a `**Figma:**` section → dispatch @"tdd-implementer (agent)" (standard TDD implementer).
 
 Each agent gets:
 - Full task text (steps, file list, code/Figma metadata) — paste directly, don't make agent read files
 - Design spec content for context
 - File constraint: "You may ONLY modify these files: [list from task's Files: section]"
+- Commit conventions block (from Step 0 analysis) — paste the full `## Commit Conventions` block
 - Return format: status (DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED) + summary
 
 ### Step 6: Wait and Process Results
@@ -224,8 +288,8 @@ Implementer subagents report one of four statuses:
 
 ## Prompt Templates
 
-- `skills/implementing/implementer-prompt.md` - Dispatch standard implementer subagent (TDD workflow)
-- `skills/implementing/implement-figma-design.md` - Dispatch Figma design implementer subagent (visual fidelity workflow)
+- @"tdd-implementer (agent)" - Dispatch standard implementer subagent (TDD workflow)
+- @"figma-design-implementer (agent)" - Dispatch Figma design implementer subagent (visual fidelity workflow)
 
 ## Red Flags
 
@@ -252,8 +316,8 @@ Implementer subagents report one of four statuses:
 - **implementing** (REQUIRED SUB-SKILL) — implementing loads the plan and design, then invokes SDD to execute all tasks
 
 **Subagent prompts:**
-- `skills/implementing/implementer-prompt.md` — TDD rules are embedded directly in this prompt (used for standard tasks)
-- `skills/implementing/implement-figma-design.md` — Figma implement-design workflow (used for tasks with `**Figma:**` section)
+- @"tdd-implementer (agent)" — TDD rules are embedded directly in this prompt (used for standard tasks)
+- @"figma-design-implementer (agent)" — Figma implement-design workflow (used for tasks with `**Figma:**` section)
 
 **Context:** When invoked by implementing, the plan and design are already in the conversation context. Use them directly. If the plan is not in context (e.g., invoked standalone), read it from `.afyapowers/features/<feature>/artifacts/plan.md`.
 

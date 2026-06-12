@@ -8,16 +8,16 @@ afyapowers is a deterministic, phase-gated development workflow plugin for Claud
 
 ## Build / Sync
 
-There is no traditional build system. The project uses a single bash script (`sync.sh`) to generate per-agent distributions from a shared source:
+There is no traditional build system. The project uses a Python script (`sync.py`) to generate per-agent distributions from a shared source:
 
 ```bash
-./sync.sh                  # Sync all agents (stale files removed automatically)
-./sync.sh claude           # Sync specific agent
-./sync.sh --clean          # Nuke output directories before syncing
-./sync.sh cursor --clean   # Nuke + specific agent
+python3 sync.py                  # Sync all agents (stale files removed automatically)
+python3 sync.py claude           # Sync specific agent
+python3 sync.py --clean          # Nuke output directories before syncing
+python3 sync.py cursor --clean   # Nuke + specific agent
 ```
 
-The script reads JSON configs from `src/config/` and produces customized output in `dist/<agent>/`. It handles agent-specific file prefixes, directory prefixes, frontmatter injection, and plugin manifest copying. Requires `jq` (falls back to Python 3 if unavailable).
+The script reads JSON configs from `src/config/` and produces customized output in `dist/<agent>/`. It handles agent-specific file prefixes, directory prefixes, frontmatter extraction, and plugin manifest copying. Requires Python 3.9+ (stdlib only, no pip dependencies).
 
 There are no tests or linting configured for this repository.
 
@@ -25,16 +25,15 @@ There are no tests or linting configured for this repository.
 
 ### Source → Distribution Pipeline
 
-All canonical content lives in `src/`. The `sync.sh` script transforms it into agent-specific distributions in `dist/`:
+All canonical content lives in `src/`. The `sync.py` script transforms it into agent-specific distributions in `dist/`:
 
 - **`src/config/<agent>.json`** — Per-agent config controlling prefixes, output paths, and which features to include
-- **`src/commands/*.md`** + **`*.frontmatter.yaml`** — Slash commands with per-agent frontmatter overrides
-- **`src/skills/*/SKILL.md`** + **`frontmatter.yaml`** — Phase and cross-cutting skills with per-agent frontmatter
+- **`src/skills/*/SKILL.md`** — Skills with embedded multi-agent frontmatter (workflow commands and phase skills alike)
 - **`src/templates/*.md`** — Markdown artifact templates (copied as-is)
 - **`src/hooks/`** — Session-start hook for context restoration (copied with execute permissions preserved)
 - **`src/manifests/<agent>/`** — Plugin manifests per IDE
 
-The frontmatter system uses `.frontmatter.yaml` files with top-level keys matching agent names. Each agent's section becomes the `---` delimited YAML frontmatter in that distribution's output. If an agent has no section, the source file is copied unchanged.
+Each source `.md` file contains `---` delimited YAML frontmatter with agent names as top-level keys (e.g., `claude:`, `cursor:`, `github-copilot:`). The sync script extracts each agent's section and outputs it as the file's frontmatter in the corresponding distribution. If an agent has no section, the file is output without frontmatter.
 
 ### Feature State (Runtime)
 
@@ -51,8 +50,7 @@ The hook at `src/hooks/session-start` is a bash script that detects the active f
 
 ## Key Conventions
 
-- **Never edit files in `dist/`** — they are generated. Always edit the source in `src/` and run `./sync.sh`.
-- When adding a new command: create `src/commands/<name>.md` and `src/commands/<name>.frontmatter.yaml` with sections for each agent that needs custom frontmatter.
-- When adding a new skill: create `src/skills/<name>/SKILL.md` and `src/skills/<name>/frontmatter.yaml`. Supporting prompt files go alongside SKILL.md.
-- When adding a new agent/IDE: create `src/config/<agent>.json`, add `<agent>:` sections to relevant frontmatter files, optionally add a manifest in `src/manifests/<agent>/`, then run `./sync.sh <agent>`.
-- Plugin version is maintained in `src/manifests/*/plugin.json` files (currently 0.5.0).
+- **Never edit files in `dist/`** — they are generated. Always edit the source in `src/` and run `python3 sync.py`.
+- When adding a new skill: create `src/skills/<name>/SKILL.md` with multi-agent frontmatter. Supporting prompt files go alongside SKILL.md. For manual-only skills (user must type `/name`), add `disable-model-invocation: true` to each agent's frontmatter section.
+- When adding a new agent/IDE: create `src/config/<agent>.json`, add `<agent>:` sections to the frontmatter in relevant source files, optionally add a manifest in `src/manifests/<agent>/`, then run `python3 sync.py <agent>`.
+- Plugin version is maintained in `src/manifests/*/plugin.json` files.

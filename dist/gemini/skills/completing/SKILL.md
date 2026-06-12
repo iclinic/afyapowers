@@ -1,7 +1,3 @@
----
-name: completing
-description: "Use when the current afyapowers phase is complete — handles merge/PR/cleanup and produces completion summary"
----
 
 # Complete Phase
 
@@ -9,6 +5,10 @@ Finalize the feature: verify everything works, merge or create PR, produce compl
 
 ## Phase Gate
 
+If this skill was invoked by `/afyapowers:next` (you already know the active feature slug and confirmed the phase is `complete` from the conversation context above):
+- Skip steps 1-3 and proceed to Final Verification
+
+Otherwise (direct invocation):
 1. Read `.afyapowers/features/active` to get the active feature
 2. Read `.afyapowers/features/<feature>/state.yaml` — confirm `current_phase` is `complete`
 3. If not in complete phase, tell the user the current phase and stop

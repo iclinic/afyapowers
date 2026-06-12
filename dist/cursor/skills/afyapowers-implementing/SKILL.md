@@ -1,6 +1,7 @@
 ---
 name: afyapowers-implementing
 description: "Use when the current afyapowers phase is implement — orchestrates implementation via subagent-driven-development"
+model: composer-2
 ---
 
 # Implementing Phase
@@ -11,6 +12,11 @@ Orchestrate plan execution by delegating to subagent-driven-development.
 
 ## Phase Gate
 
+If this skill was invoked by `/afyapowers:next` (you already know the active feature slug and confirmed the phase is `implement` from the conversation context above):
+- Skip steps 1-3 — use the slug from context
+- Read the plan and design (steps 4-5) — these are working content needed for implementation
+
+Otherwise (direct invocation):
 1. Read `.afyapowers/features/active` to get the active feature
 2. Read `.afyapowers/features/<feature>/state.yaml` — confirm `current_phase` is `implement`
 3. If not in implement phase, tell the user the current phase and stop

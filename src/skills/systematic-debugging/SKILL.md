@@ -1,6 +1,16 @@
 ---
-name: systematic-debugging
-description: Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes
+claude:
+  name: afyapowers:systematic-debugging
+  description: Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes
+  model: sonnet
+  effort: medium
+cursor:
+  name: afyapowers-systematic-debugging
+  description: Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes
+  model: composer-2
+github-copilot:
+  name: systematic-debugging
+  description: Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes
 ---
 
 # Systematic Debugging

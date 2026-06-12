@@ -1,9 +1,0 @@
-claude:
-  description: Switch Active Feature
-  name: afyapowers:switch
-cursor:
-  description: Switch Active Feature
-  name: afyapowers-switch
-github-copilot:
-  description: Switch Active Feature
-  name: switch

@@ -1,6 +1,7 @@
 ---
 name: afyapowers-test-driven-development
 description: Use when implementing any feature or bugfix, before writing implementation code
+model: composer-2
 ---
 
 # Test-Driven Development (TDD)

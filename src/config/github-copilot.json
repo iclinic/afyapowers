@@ -2,9 +2,6 @@
   "agent": "github-copilot",
   "outputDir": "dist/github-copilot",
   "prefix": "afyapowers",
-  "commands": {
-    "filePrefix": ""
-  },
   "skills": {
     "dirPrefix": ""
   },
