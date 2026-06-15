@@ -155,9 +155,9 @@ Run **after** understanding the feature (post-JIRA, post-Figma, post-clarifying 
 3. Identify the test run command from `package.json` scripts, `Makefile`, or similar
 
 ### Reusable Patterns & Examples
-Identify existing code in the project that serves as a model for this feature:
+Identify existing code in the project that serves as a complete reference for this feature:
 1. Search for features, modules, or flows similar to what this feature needs (e.g., if building a new API endpoint, find an existing endpoint that follows the same pattern; if adding a new component, find a similar component)
-2. For each relevant reference, note: file path, why it's relevant, and include a short snippet (under 15 lines) showing the pattern
+2. For each relevant reference, include: file path, why it's relevant, and **the actual code** — embed enough of the file to serve as a self-contained reference (full functions, full components, full test cases). Downstream phases will NOT read these files — this artifact is their only source. Aim for 30-80 lines per reference; go higher if the reference loses meaning when truncated
 3. Focus on references directly useful for this specific feature — not generic patterns (those belong in Code Patterns)
 4. Common things to look for: similar CRUD operations, auth/validation flows, state management patterns, data fetching approaches, error boundary implementations, test setups for similar modules
 

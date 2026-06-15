@@ -35,7 +35,10 @@
      this feature needs to build. For each reference, include:
      - What it is and where it lives (file path)
      - Why it's relevant (what aspect to reuse or follow as a model)
-     - A short snippet showing the pattern (under 15 lines)
+     - The ACTUAL CODE — embed enough of the file to serve as a self-contained
+       reference (full functions, full components, full test cases).
+       Downstream phases will NOT read these files — this is their only source.
+       Aim for 30-80 lines per reference; go higher if it loses meaning truncated.
 
      Examples: an existing API endpoint that follows the same CRUD pattern,
      a component that handles similar state management, a test file that
