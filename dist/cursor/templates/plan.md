@@ -23,7 +23,8 @@
 - [ ] Step 2: Run the test and confirm it fails
 - [ ] Step 3: Implement — describe what to build and key decisions
 - [ ] Step 4: Run the test and confirm it passes
-- [ ] Step 5: Commit following the project's commit conventions
+
+> Committing is handled by the orchestrator after the task completes — do not add a commit step.
 
 ### Task N: [UI Component Name] (Figma)
 
@@ -37,4 +38,4 @@
 - **Node ID:** `<id>`
 - **Breakpoints:** <breakpoint_name> (<width>px), ...
 
-- [ ] Implement using the Figma implementer workflow and commit
+- [ ] Implement using the Figma implementer workflow

@@ -27,6 +27,7 @@ digraph process {
     "Apply Figma concurrency cap\nDispatch parallel Agent calls" [shape=box];
     "Wait for all agents to return" [shape=box];
     "Process results" [shape=box];
+    "Commit completed tasks (sequential)" [shape=box];
     "All tasks done?" [shape=diamond];
     "Write implementation-concerns.md" [shape=box];
     "Complete" [shape=doublecircle];
@@ -41,14 +42,15 @@ digraph process {
     "Validate file overlap in ready set" -> "Apply Figma concurrency cap\nDispatch parallel Agent calls";
     "Apply Figma concurrency cap\nDispatch parallel Agent calls" -> "Wait for all agents to return";
     "Wait for all agents to return" -> "Process results";
-    "Process results" -> "All tasks done?";
+    "Process results" -> "Commit completed tasks (sequential)";
+    "Commit completed tasks (sequential)" -> "All tasks done?";
     "All tasks done?" -> "Compute ready set" [label="more tasks"];
     "All tasks done?" -> "Write implementation-concerns.md" [label="yes"];
     "Write implementation-concerns.md" -> "Complete";
 }
 ```
 
-Each dispatched Agent implements the task, performs a self-review, and returns a status with any concerns. Multiple agents run concurrently.
+Each dispatched Agent implements the task, performs a self-review, and returns a status with any concerns. Multiple agents run concurrently. **Subagents do not commit** — they only implement, test, self-review, and report. After each wave returns, **the orchestrator (you) commits each completed task sequentially**. This is deliberate: parallel agents share one working tree and one git index, so letting them commit concurrently causes them to stage each other's in-flight files, contend on `.git/index.lock`, and trip pre-commit hooks against files they don't own. Committing sequentially from the orchestrator eliminates all of that.
 
 ## Wave Execution Algorithm
 
@@ -56,7 +58,7 @@ Follow these steps exactly to resolve dependencies and dispatch tasks in paralle
 
 ### Step 0: Analyze Commit Conventions
 
-Before parsing tasks, analyze the project's commit conventions **once**. The result is a text block injected into every subagent prompt so they commit correctly on the first try.
+Before parsing tasks, analyze the project's commit conventions **once**. The result is a text block **you (the orchestrator) use when committing completed tasks in Step 6.5**. Subagents do not commit, so this block is your own reference — it is not pasted into subagent prompts.
 
 **Run this analysis:**
 
@@ -96,12 +98,12 @@ When conventions are detected:
 **Pre-commit hooks:** <tool name and what it runs, e.g. "Husky runs lint-staged (eslint + prettier) and commitlint">
 **Commitlint:** <"yes — messages must follow conventional commits format" or "not detected">
 
-**If your commit fails:**
+**If a commit fails:**
 1. Read the error output — it tells you exactly what's wrong
 2. Commitlint rejection → rewrite the message to match the format above and retry
-3. Lint/format failure → fix the reported issues or run the suggested fix command, re-stage changed files (`git add`), retry
-4. Other hook failure → read the error, apply the fix, re-stage, retry
-5. After 3 failed attempts → report as DONE_WITH_CONCERNS with the full error output. Never use `--no-verify`
+3. Lint/format failure → fix the reported issues or run the suggested fix command, re-stage **only the same task's files** (`git add -- <files>`), retry
+4. Other hook failure → read the error, apply the fix, re-stage the same task's files, retry
+5. After 3 failed attempts → leave the changes staged and surface the full error to the user. Never use `--no-verify`
 ```
 
 When no conventions are detected:
@@ -110,10 +112,10 @@ When no conventions are detected:
 
 **Message format:** no enforced convention detected
 **Pre-commit hooks:** none detected
-**Commit freely** using clear, descriptive messages. If a commit fails unexpectedly, read the error and retry up to 3 times before reporting as DONE_WITH_CONCERNS.
+**Commit freely** using clear, descriptive messages. If a commit fails unexpectedly, read the error and retry up to 3 times before surfacing the error to the user.
 ```
 
-Store this block — you will include it verbatim in every subagent prompt in Step 5.
+Store this block — you will use it when committing completed tasks in Step 6.5.
 
 ### Step 1: Parse Tasks
 
@@ -174,8 +176,9 @@ Each agent gets:
 - Full task text (steps, file list, code/Figma metadata) — paste directly, don't make agent read files
 - Design spec content for context
 - File constraint: "You may ONLY modify these files: [list from task's Files: section]"
-- Commit conventions block (from Step 0 analysis) — paste the full `## Commit Conventions` block
-- Return format: status (DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED) + summary
+- Return format: status (DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED) + summary, **including the exact list of files changed**
+
+**Subagents do NOT commit.** They implement, test, self-review, and report. Do not paste the commit conventions block into subagent prompts — you commit each completed task yourself in Step 6.5.
 
 ### Step 6: Wait and Process Results
 
@@ -186,6 +189,26 @@ All Agent calls return together. For each result:
   - **Store-and-continue examples:** "I'm not sure this edge case is handled correctly", "The API response format might differ in production", "This works but the approach feels fragile"
 - **NEEDS_CONTEXT**: surface question to user. Mark task `needs-retry`. Continue with other tasks — do NOT pause the entire execution
 - **BLOCKED**: assess blocker per standard SDD rules (more context, more capable model, break into pieces, or escalate). Mark task `needs-retry`
+
+### Step 6.5: Commit Completed Tasks
+
+Subagents do not commit. Once results are processed, **you** commit each task that
+returned `DONE` or `DONE_WITH_CONCERNS` this wave — **one commit per task, strictly
+sequentially** (never in parallel). Sequential commits are what eliminate the
+index-lock races and cross-task contamination that parallel committing causes.
+
+For each completed task, in order:
+
+1. **Stage only that task's files** — `git add -- <files from the task's **Files:** section>`. Never `git add .` or `git add -A`; that would sweep in other tasks' changes.
+2. **Verify staging** — run `git diff --cached --name-only` and confirm only this task's files are staged. If unexpected files appear (e.g. an agent edited outside its constraint), stop and surface it to the user instead of committing.
+3. **Commit** — write a message following the `## Commit Conventions` block from Step 0, with the subject derived from the task name (`### Task N:` heading).
+4. **Handle hook failures** (safe to retry now, since commits are sequential):
+   - Commitlint rejection → rewrite the message to match the format, retry.
+   - Lint/format failure → fix the reported issues or run the formatter, re-stage **only this task's files** (`git add -- <files>`), retry.
+   - Other hook failure → read the error, apply the fix, re-stage this task's files, retry.
+   - Max 3 attempts. After that, leave the changes staged and surface the full error to the user. **Never use `--no-verify`.**
+
+Do **not** commit `BLOCKED` or `needs-retry` tasks — their work stays uncommitted until a later wave completes them successfully.
 
 ### Step 7: Repeat
 
@@ -204,7 +227,8 @@ Plan: 5 tasks. Task 1,2 have no deps. Task 3,4 depend on 1,2. Task 5 depends on 
 Completed: []
 Ready: [1, 2] → no file overlap → dispatch both
   → Agent(Task 1), Agent(Task 2) dispatched in parallel
-  → Both return DONE
+  → Both return DONE (no commits — agents only implement + report)
+  → Orchestrator commits sequentially: commit Task 1 files, then commit Task 2 files
 Completed: [1, 2]
 
 --- Cycle 2 ---
@@ -212,6 +236,7 @@ Ready: [3, 4] (deps [1,2] all completed) → no file overlap → dispatch both
   → Agent(Task 3), Agent(Task 4) dispatched in parallel
   → Task 3 returns DONE_WITH_CONCERNS (concern noted)
   → Task 4 returns DONE
+  → Orchestrator commits sequentially: commit Task 3 files, then commit Task 4 files
 Completed: [1, 2, 3, 4]
 Concerns collected: [Task 3: "..."]
 
@@ -219,6 +244,7 @@ Concerns collected: [Task 3: "..."]
 Ready: [5] (deps [3,4] all completed) → dispatch
   → Agent(Task 5) dispatched
   → Returns DONE
+  → Orchestrator commits Task 5 files
 Completed: [1, 2, 3, 4, 5] → Write implementation-concerns.md → Done
 ```
 
@@ -239,7 +265,7 @@ If a plan has all tasks depending on the previous one (linear chain), the wave e
 
 ### Post-Wave Verification
 
-After each wave completes:
+After each wave's tasks are committed (Step 6.5):
 1. **Review each agent's summary** — understand what changed
 2. **Check for conflicts** — did any agents edit the same code despite file validation?
 3. **Run the test suite** — verify all changes work together
@@ -298,6 +324,8 @@ Implementer subagents report one of four statuses:
 **Never:**
 - Start implementation on main/master branch without explicit user consent
 - Dispatch implementation subagents that modify the same files in parallel (file overlap = sequential)
+- Let subagents commit — committing is the orchestrator's job, done sequentially after the wave (Step 6.5)
+- Stage with `git add .` / `git add -A` — always stage a task's specific files (`git add -- <files>`)
 - Make subagent read plan file (provide full text instead)
 - Skip scene-setting context
 - Ignore subagent questions

@@ -268,7 +268,7 @@ When an absolutely-positioned child sits at the edge of a bordered parent (badge
 
 Some orchestrators commit on your behalf after you report back. Others expect you to commit.
 
-**Rule:** Only commit if your task context explicitly instructs you to commit. If the task does not mention committing, skip this section — the orchestrator handles it.
+**Rule:** Only commit if your task context explicitly instructs you to commit. If the task does not mention committing, skip this section — the orchestrator handles it. In the afyapowers implement phase (subagent-driven-development), the orchestrator always commits sequentially after the wave, so you will **not** be asked to commit there — just report your changed files precisely.
 
 **If committing is requested:**
 
