@@ -453,8 +453,28 @@ def ensure_gitignore(afya_dir):
 # Main
 # --------------------------------------------------------------------------- #
 
-def resolve_history_dir(cwd):
+def resolve_agent(data):
+    """Identify the host IDE so its sessions get their own `history/<agent>/`.
+
+    Primary signal is argv[1], set explicitly by each per-agent hook config
+    (e.g. `render-history cursor`). If absent (a host that strips args), sniff
+    the stdin payload: Cursor sends `cursor_version`/`conversation_id`.
+    """
+    name = sys.argv[1].strip() if len(sys.argv) > 1 and sys.argv[1].strip() else ""
+    if not name:
+        if data.get("cursor_version") or data.get("conversation_id"):
+            name = "cursor"
+        else:
+            name = "claude"
+    safe = "".join(c if (c.isalnum() or c in "-_") else "-" for c in name)
+    return safe or "unknown"
+
+
+def resolve_history_dir(cwd, agent):
     """Pick where logs go. Every session is logged (no active-feature gate).
+
+    Sessions are grouped per agent (`history/<agent>/`) so that a repo opened by
+    more than one IDE keeps each agent's sessions and index separate.
 
     - If `<cwd>/.afyapowers/` already exists -> log beside the workflow artifacts and
       keep history out of git. Never create `.afyapowers/` ourselves: its presence is
@@ -465,10 +485,10 @@ def resolve_history_dir(cwd):
     afya_dir = os.path.join(cwd, ".afyapowers")
     if os.path.isdir(afya_dir):
         ensure_gitignore(afya_dir)
-        return os.path.join(afya_dir, "history")
+        return os.path.join(afya_dir, "history", agent)
     config = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.expanduser("~/.claude")
     slug = cwd.replace(os.sep, "-").strip("-") or "root"
-    return os.path.join(config, "afyapowers", "history", slug)
+    return os.path.join(config, "afyapowers", "history", slug, agent)
 
 
 def run():
@@ -480,11 +500,12 @@ def run():
     roots = data.get("workspace_roots") or []
     cwd = data.get("cwd") or (roots[0] if roots else None) or os.getcwd()
     session_id = data.get("session_id") or data.get("conversation_id") or "session"
+    agent = resolve_agent(data)
 
     if not transcript or not os.path.isfile(transcript):
         return
 
-    history_dir = resolve_history_dir(cwd)
+    history_dir = resolve_history_dir(cwd, agent)
     os.makedirs(history_dir, exist_ok=True)
 
     entries = read_transcript(transcript)

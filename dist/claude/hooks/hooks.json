@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/render-history"
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/render-history claude"
           }
         ]
       }

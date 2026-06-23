@@ -8,7 +8,7 @@
     ],
     "sessionEnd": [
       {
-        "command": "./render-history"
+        "command": "./render-history cursor"
       }
     ]
   }
