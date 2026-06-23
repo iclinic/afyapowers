@@ -186,7 +186,10 @@ def render_blocks(entry, ctx, depth):
             if blk.get("text", "").strip():
                 out.append(render_text(blk["text"]))
         elif btype == "thinking":
-            out.append(render_thinking(blk.get("thinking", "")))
+            # Claude Code persists only the thinking `signature`, not the text,
+            # so most thinking blocks are empty — skip those to avoid clutter.
+            if blk.get("thinking", "").strip():
+                out.append(render_thinking(blk["thinking"]))
         elif btype == "tool_use":
             out.append(render_tool_use(blk, ctx, depth))
         elif btype == "tool_result":
