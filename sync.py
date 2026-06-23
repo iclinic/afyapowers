@@ -260,6 +260,11 @@ def process_hooks(
     agent_hooks = hooks_src / f"hooks.{config.agent}.json"
     if agent_hooks.is_file():
         shutil.copy2(agent_hooks, hooks_out / "hooks.json")
+    else:
+        print(
+            f"  WARNING: hooks.{config.agent}.json not found — no hooks.json emitted "
+            f"(phase-context injection and history logging disabled for this agent)"
+        )
     return sum(1 for _ in hooks_out.rglob("*") if _.is_file())
 
 

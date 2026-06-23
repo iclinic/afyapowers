@@ -15,6 +15,7 @@ Mirrors the original preflight.sh contract exactly.
 import io
 import os
 import re
+import sys
 
 AFYA = ".afyapowers"
 NEXT_PHASE = {
@@ -61,7 +62,6 @@ def emit(**fields):
     order = ["slug", "feature", "current_phase", "status",
              "valid", "next_phase", "error", "task_progress"]
     out = "".join("%s=%s\n" % (k, fields.get(k, "")) for k in order)
-    import sys
     sys.stdout.write(out)
 
 
@@ -72,6 +72,9 @@ def main():
         return
 
     slug = read_text(active).strip()
+    if not slug or slug in (".", "..") or os.path.basename(slug) != slug:
+        print("error=no_active_feature")
+        return
     feature_dir = os.path.join(AFYA, "features", slug)
     state_file = os.path.join(feature_dir, "state.yaml")
     if not os.path.isfile(state_file):
@@ -88,8 +91,8 @@ def main():
     err = ""
     task_progress = ""
 
-    def has(name):
-        return os.path.isfile(os.path.join(artifacts, name))
+    def has(filename):
+        return os.path.isfile(os.path.join(artifacts, filename))
 
     if phase == "design":
         valid = has("design.md")

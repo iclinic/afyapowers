@@ -169,6 +169,13 @@ def render_subagent(tool_id, label, ctx, depth):
     of = tr.get("outputFile")
     if not of or of in ctx["seen"] or not os.path.isfile(of):
         return ""
+    # Containment: never follow an outputFile that resolves outside the
+    # transcript's own directory tree (defends against a crafted transcript
+    # pointing outputFile at sensitive local files).
+    root = ctx.get("root")
+    real = os.path.realpath(of)
+    if root and not (real == root or real.startswith(root + os.sep)):
+        return ""
     ctx["seen"].add(of)
     sub_entries = read_transcript(of)
     collect_results(sub_entries, ctx["results"])  # resolve deeper Agent calls
@@ -245,8 +252,8 @@ def render_entry_list(entries, ctx, depth):
     return "".join(parts)
 
 
-def render_html(session_id, entries):
-    ctx = {"results": {}, "seen": set()}
+def render_html(session_id, entries, root=None):
+    ctx = {"results": {}, "seen": set(), "root": root}
     collect_results(entries, ctx["results"])
 
     main = [e for e in entries if is_turn(e)]
@@ -494,7 +501,7 @@ def resolve_history_dir(cwd, agent):
         ensure_gitignore(afya_dir)
         return os.path.join(afya_dir, "history", agent)
     config = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.expanduser("~/.claude")
-    slug = cwd.replace(os.sep, "-").strip("-") or "root"
+    slug = os.path.abspath(cwd).replace(os.sep, "-").strip("-") or "root"
     return os.path.join(config, "afyapowers", "history", slug, agent)
 
 
@@ -516,8 +523,9 @@ def run():
     os.makedirs(history_dir, exist_ok=True)
 
     entries = read_transcript(transcript)
+    root = os.path.realpath(os.path.dirname(transcript))
     safe = "".join(c if (c.isalnum() or c in "-_") else "-" for c in str(session_id))
-    atomic_write(os.path.join(history_dir, safe + ".html"), render_html(session_id, entries))
+    atomic_write(os.path.join(history_dir, safe + ".html"), render_html(session_id, entries, root))
     atomic_write(os.path.join(history_dir, "index.html"), render_index(history_dir))
 
 
