@@ -15,14 +15,24 @@ json_escape() {
 PLUGIN_ROOT=$(cd "$(dirname "$0")/.." && pwd)
 
 # Discover preflight script path (handles agent-specific directory prefixes)
-PREFLIGHT=$(find "$PLUGIN_ROOT/skills" -name "preflight.sh" -path "*next*" 2>/dev/null | head -1)
+PREFLIGHT=$(find "$PLUGIN_ROOT/skills" -name "preflight.py" -path "*next*" 2>/dev/null | head -1)
+
+# Discover setup script path (handles agent-specific directory prefixes)
+SETUP=$(find "$PLUGIN_ROOT/skills" -name "setup.py" -path "*new*" 2>/dev/null | head -1)
+
+# Warn if Python 3 is unavailable — afyapowers setup and history logging require it.
+# SessionStart cannot block, so this is a non-blocking warning only.
+PYWARN=""
+if ! command -v python3 >/dev/null 2>&1; then
+  PYWARN="\\n⚠️ Python 3 not found on PATH — afyapowers setup and history logging will not work. Install Python 3.9+."
+fi
 
 # Find .afyapowers directory relative to working directory
 AFYA_DIR=".afyapowers"
 
 # If no .afyapowers directory, still provide plugin root for script access
 if [ ! -d "$AFYA_DIR" ]; then
-  echo "{\"additionalContext\": \"Plugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")\"}"
+  echo "{\"additionalContext\": \"Plugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")\\nSetup script: $(json_escape "$SETUP")${PYWARN}\"}"
   exit 0
 fi
 
@@ -60,7 +70,7 @@ if [ -z "$ACTIVE_FEATURE" ]; then
     # Multiple in-progress features, list them
     FEATURE_LIST=$(printf ', %s' "${IN_PROGRESS_FEATURES[@]}")
     FEATURE_LIST="${FEATURE_LIST:2}"
-    CONTEXT="Multiple features are in-progress: ${FEATURE_LIST}. Run /afyapowers:switch to select one, or /afyapowers:features to see all.\\nPlugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")"
+    CONTEXT="Multiple features are in-progress: ${FEATURE_LIST}. Run /afyapowers:switch to select one, or /afyapowers:features to see all.\\nPlugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")\\nSetup script: $(json_escape "$SETUP")${PYWARN}"
     echo "{\"additionalContext\": \"$CONTEXT\"}"
     exit 0
   fi
@@ -68,14 +78,14 @@ fi
 
 # No active feature found
 if [ -z "$ACTIVE_FEATURE" ]; then
-  echo "{\"additionalContext\": \"Plugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")\"}"
+  echo "{\"additionalContext\": \"Plugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")\\nSetup script: $(json_escape "$SETUP")${PYWARN}\"}"
   exit 0
 fi
 
 # Read state.yaml for the active feature
 STATE_FILE="$AFYA_DIR/features/$ACTIVE_FEATURE/state.yaml"
 if [ ! -f "$STATE_FILE" ]; then
-  echo "{\"additionalContext\": \"Plugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")\"}"
+  echo "{\"additionalContext\": \"Plugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")\\nSetup script: $(json_escape "$SETUP")${PYWARN}\"}"
   exit 0
 fi
 
@@ -104,6 +114,6 @@ if [ "$CURRENT_PHASE" = "implement" ] && [ -f "$PLAN_FILE" ]; then
 fi
 
 # Build context message
-CONTEXT="You have an active feature: \\\"$(json_escape "$FEATURE_NAME")\\\" (started ${CREATED_AT%T*})\\nCurrent phase: $(json_escape "$CURRENT_PHASE")${TASK_INFO}\\nArtifacts: $(json_escape "${ARTIFACTS:-none}")\\nPlugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")\\n\\nRun /afyapowers:status for details, or continue working on the current phase.\\n\\nIMPORTANT: You are operating within the afyapowers deterministic workflow. Do NOT advance phases autonomously. When the current phase is complete, suggest the user run /afyapowers:next."
+CONTEXT="You have an active feature: \\\"$(json_escape "$FEATURE_NAME")\\\" (started ${CREATED_AT%T*})\\nCurrent phase: $(json_escape "$CURRENT_PHASE")${TASK_INFO}\\nArtifacts: $(json_escape "${ARTIFACTS:-none}")\\nPlugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")\\nSetup script: $(json_escape "$SETUP")${PYWARN}\\n\\nRun /afyapowers:status for details, or continue working on the current phase.\\n\\nIMPORTANT: You are operating within the afyapowers deterministic workflow. Do NOT advance phases autonomously. When the current phase is complete, suggest the user run /afyapowers:next."
 
 echo "{\"additionalContext\": \"$CONTEXT\"}"

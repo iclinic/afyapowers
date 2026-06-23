@@ -1,0 +1,483 @@
+#!/usr/bin/env python3
+"""afyapowers conversation history renderer.
+
+SessionEnd hook. Reads the Claude Code session transcript (JSONL) named on stdin
+and renders one interactive, self-contained HTML file per session under
+`.afyapowers/history/`, plus a regenerated index.html.
+
+Subagents are not stored in the main transcript. Each `Agent` tool call records a
+`toolUseResult.outputFile` pointing to a separate JSONL holding that subagent's full
+internal turns (same message format). We follow those files recursively to render
+subagent conversations nested under the call that spawned them.
+
+Contract: this is observability only. It must NEVER block a session or crash a
+host. Any error -> exit 0 silently. Runs only when a .afyapowers feature is active.
+"""
+
+import sys
+import os
+import io
+import json
+import html
+import tempfile
+from datetime import datetime
+
+
+# --------------------------------------------------------------------------- #
+# Parsing
+# --------------------------------------------------------------------------- #
+
+def read_transcript(path):
+    """Parse a JSONL file into a list of objects, skipping bad lines."""
+    entries = []
+    with io.open(path, "r", encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entries.append(json.loads(line))
+            except (ValueError, TypeError):
+                continue
+    return entries
+
+
+def fmt_ts(raw):
+    if not raw:
+        return ""
+    try:
+        return datetime.fromisoformat(str(raw).replace("Z", "+00:00")).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+    except (ValueError, TypeError):
+        return str(raw)
+
+
+def content_blocks(entry):
+    msg = entry.get("message")
+    if not isinstance(msg, dict):
+        return []
+    content = msg.get("content")
+    if isinstance(content, str):
+        return [{"type": "text", "text": content}]
+    if isinstance(content, list):
+        return content
+    return []
+
+
+def role_of(entry):
+    msg = entry.get("message")
+    if isinstance(msg, dict) and msg.get("role"):
+        return msg.get("role")
+    return entry.get("type", "")
+
+
+def text_of_result(content):
+    """Flatten a tool_result `content` field into plain text."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for blk in content:
+            if isinstance(blk, dict):
+                if blk.get("type") == "text":
+                    parts.append(blk.get("text", ""))
+                else:
+                    parts.append(json.dumps(blk, indent=2, ensure_ascii=False))
+            else:
+                parts.append(str(blk))
+        return "\n".join(parts)
+    if content is None:
+        return ""
+    return json.dumps(content, indent=2, ensure_ascii=False)
+
+
+def collect_results(entries, results):
+    """Index tool_use_id -> toolUseResult object (carries `outputFile` for Agents)."""
+    for e in entries:
+        tr = e.get("toolUseResult")
+        if not isinstance(tr, dict):
+            continue
+        for b in content_blocks(e):
+            if isinstance(b, dict) and b.get("type") == "tool_result":
+                tid = b.get("tool_use_id")
+                if tid:
+                    results[tid] = tr
+
+
+# --------------------------------------------------------------------------- #
+# HTML rendering
+# --------------------------------------------------------------------------- #
+
+def esc(s):
+    return html.escape(s if isinstance(s, str) else str(s))
+
+
+def render_text(text):
+    return '<div class="text">%s</div>' % esc(text)
+
+
+def render_thinking(text):
+    return (
+        '<details class="thinking" data-kind="thinking">'
+        '<summary>\U0001f4ad thinking</summary><pre>%s</pre></details>' % esc(text)
+    )
+
+
+def render_tool_result(text, is_error=False):
+    cls = "result error" if is_error else "result"
+    label = "⚠️ tool error" if is_error else "✅ tool result"
+    if len(text) > 40000:
+        text = text[:40000] + "\n\n… [truncated]"
+    return (
+        '<details class="tool %s" data-kind="tool"><summary>%s</summary>'
+        '<pre>%s</pre></details>' % (cls, label, esc(text))
+    )
+
+
+def render_tool_use(block, ctx, depth):
+    name = block.get("name", "tool")
+    try:
+        args = json.dumps(block.get("input", {}), indent=2, ensure_ascii=False)
+    except (TypeError, ValueError):
+        args = str(block.get("input"))
+    head = (
+        '<details class="tool" data-kind="tool">'
+        '<summary>\U0001f527 <b>%s</b></summary><pre>%s</pre></details>'
+        % (esc(name), esc(args))
+    )
+    # An Agent call has a separate transcript file we can nest inline.
+    if name == "Agent":
+        inp = block.get("input", {}) or {}
+        label = inp.get("subagent_type") or inp.get("description") or "agent"
+        nested = render_subagent(block.get("id"), str(label), ctx, depth)
+        return head + nested
+    return head
+
+
+def render_subagent(tool_id, label, ctx, depth):
+    """Render a subagent's own transcript file nested under its spawning call."""
+    if depth > 8:
+        return ""
+    tr = ctx["results"].get(tool_id) or {}
+    of = tr.get("outputFile")
+    if not of or of in ctx["seen"] or not os.path.isfile(of):
+        return ""
+    ctx["seen"].add(of)
+    sub_entries = read_transcript(of)
+    collect_results(sub_entries, ctx["results"])  # resolve deeper Agent calls
+    inner = render_entry_list(sub_entries, ctx, depth + 1)
+    if not inner.strip():
+        return ""
+    return (
+        '<details class="subagent" data-kind="subagent" open>'
+        '<summary>\U0001f916 subagent: %s</summary>'
+        '<div class="subthread">%s</div></details>' % (esc(label), inner)
+    )
+
+
+def render_blocks(entry, ctx, depth):
+    out = []
+    for blk in content_blocks(entry):
+        if not isinstance(blk, dict):
+            continue
+        btype = blk.get("type")
+        if btype == "text":
+            if blk.get("text", "").strip():
+                out.append(render_text(blk["text"]))
+        elif btype == "thinking":
+            out.append(render_thinking(blk.get("thinking", "")))
+        elif btype == "tool_use":
+            out.append(render_tool_use(blk, ctx, depth))
+        elif btype == "tool_result":
+            out.append(
+                render_tool_result(
+                    text_of_result(blk.get("content")),
+                    is_error=bool(blk.get("is_error")),
+                )
+            )
+    return "".join(out)
+
+
+def render_card(entry, ctx, depth, turn_idx=None):
+    role = role_of(entry)
+    kind = "user" if role == "user" else "assistant"
+    inner = render_blocks(entry, ctx, depth)
+    if not inner.strip():
+        return ""
+    ts = fmt_ts(entry.get("timestamp"))
+    anchor = ' id="turn-%d"' % turn_idx if (kind == "user" and turn_idx) else ""
+    return (
+        '<div class="msg %s" data-kind="%s"%s>'
+        '<div class="meta"><span class="role">%s</span>'
+        '<span class="ts">%s</span></div>%s</div>'
+        % (kind, kind, anchor, esc(role.capitalize()), esc(ts), inner)
+    )
+
+
+def render_entry_list(entries, ctx, depth):
+    """Render a flat list of message entries (used for subagent threads)."""
+    parts = []
+    for e in entries:
+        if e.get("type") not in ("user", "assistant") or not e.get("message"):
+            continue
+        card = render_card(e, ctx, depth)
+        if card:
+            parts.append(card)
+    return "".join(parts)
+
+
+def render_html(session_id, entries):
+    ctx = {"results": {}, "seen": set()}
+    collect_results(entries, ctx["results"])
+
+    main = [e for e in entries if e.get("type") in ("user", "assistant") and e.get("message")]
+
+    model = ""
+    for e in main:
+        m = e.get("message")
+        if isinstance(m, dict) and m.get("model"):
+            model = m["model"]
+            break
+    stamps = [e.get("timestamp") for e in main if e.get("timestamp")]
+    started = fmt_ts(stamps[0]) if stamps else ""
+    ended = fmt_ts(stamps[-1]) if stamps else ""
+
+    body, nav, turn = [], [], 0
+    for e in main:
+        turn_idx = None
+        if role_of(e) == "user":
+            text_blk = next(
+                (b for b in content_blocks(e)
+                 if isinstance(b, dict) and b.get("type") == "text" and b.get("text", "").strip()),
+                None,
+            )
+            if text_blk:
+                turn += 1
+                turn_idx = turn
+                label = text_blk["text"].strip().splitlines()[0][:60]
+                nav.append('<a href="#turn-%d">%s</a>' % (turn_idx, esc(label)))
+        card = render_card(e, ctx, 0, turn_idx)
+        if card:
+            body.append(card)
+
+    return HTML_TEMPLATE % {
+        "title": esc("Session %s" % session_id),
+        "session": esc(session_id),
+        "model": esc(model or "unknown"),
+        "count": len(main),
+        "started": esc(started),
+        "ended": esc(ended),
+        "nav": "".join(nav) or "<em>no prompts</em>",
+        "body": "".join(body) or "<p>Empty session.</p>",
+    }
+
+
+HTML_TEMPLATE = """<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>%(title)s</title>
+<style>
+:root{--bg:#0f1115;--panel:#171a21;--user:#1e3a5f;--asst:#1f2a22;--tool:#2a2520;--sub:#2a2233;--txt:#e6e6e6;--mut:#8a93a3;--bd:#2a2f3a;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--bd);padding:12px 18px}
+header h1{margin:0 0 4px;font-size:16px}
+.hmeta{color:var(--mut);font-size:12px;display:flex;gap:16px;flex-wrap:wrap}
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.toolbar input[type=search]{flex:1;min-width:180px;background:var(--bg);border:1px solid var(--bd);color:var(--txt);padding:6px 10px;border-radius:6px}
+.toolbar button{background:var(--bg);border:1px solid var(--bd);color:var(--txt);padding:6px 10px;border-radius:6px;cursor:pointer}
+.toolbar label{color:var(--mut);font-size:12px;display:inline-flex;gap:4px;align-items:center;cursor:pointer}
+.wrap{display:flex;align-items:flex-start}
+nav{position:sticky;top:120px;width:240px;flex:none;max-height:calc(100vh - 130px);overflow:auto;padding:14px;border-right:1px solid var(--bd)}
+nav a{display:block;color:var(--mut);text-decoration:none;font-size:12px;padding:3px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+nav a:hover{color:var(--txt)}
+main{flex:1;padding:18px;max-width:1000px}
+.msg{border:1px solid var(--bd);border-radius:8px;padding:10px 14px;margin:10px 0;background:var(--panel)}
+.msg.user{background:var(--user)}
+.msg.assistant{background:var(--asst)}
+.meta{display:flex;justify-content:space-between;color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+.role{font-weight:700}
+.text{white-space:pre-wrap;word-wrap:break-word}
+details{margin:6px 0;border:1px solid var(--bd);border-radius:6px;background:var(--tool)}
+details>summary{cursor:pointer;padding:6px 10px;user-select:none;list-style:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary:before{content:"\\25b8 ";color:var(--mut)}
+details[open]>summary:before{content:"\\25be "}
+details.thinking{background:#202028}
+details.subagent{background:var(--sub)}
+details.result.error{border-color:#5a2a2a}
+pre{margin:0;padding:8px 12px;overflow:auto;white-space:pre-wrap;word-wrap:break-word;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:#d7dce5}
+.subthread{padding:4px 10px 10px;border-left:2px solid #4a3a66;margin-left:8px}
+.hidden{display:none !important}
+</style></head><body>
+<header>
+  <h1>\U0001f4dc afyapowers — %(title)s</h1>
+  <div class="hmeta">
+    <span>session: %(session)s</span><span>model: %(model)s</span>
+    <span>messages: %(count)d</span><span>start: %(started)s</span><span>end: %(ended)s</span>
+  </div>
+  <div class="toolbar">
+    <input type="search" id="q" placeholder="search… (filters messages)">
+    <button onclick="setAll(true)">expand all</button>
+    <button onclick="setAll(false)">collapse all</button>
+    <label><input type="checkbox" class="flt" value="user" checked>user</label>
+    <label><input type="checkbox" class="flt" value="assistant" checked>assistant</label>
+    <label><input type="checkbox" class="flt" value="tool" checked>tools</label>
+    <label><input type="checkbox" class="flt" value="thinking" checked>thinking</label>
+    <label><input type="checkbox" class="flt" value="subagent" checked>subagents</label>
+  </div>
+</header>
+<div class="wrap">
+  <nav>%(nav)s</nav>
+  <main id="main">%(body)s</main>
+</div>
+<script>
+function setAll(open){document.querySelectorAll('details').forEach(function(d){d.open=open;});}
+var kinds={};
+function applyFilters(){
+  document.querySelectorAll('.flt').forEach(function(c){kinds[c.value]=c.checked;});
+  document.querySelectorAll('[data-kind]').forEach(function(el){
+    el.classList.toggle('hidden', kinds[el.getAttribute('data-kind')]===false);
+  });
+}
+document.querySelectorAll('.flt').forEach(function(c){c.addEventListener('change',applyFilters);});
+var q=document.getElementById('q');
+q.addEventListener('input',function(){
+  var term=q.value.toLowerCase();
+  document.querySelectorAll('#main > .msg, #main > details').forEach(function(el){
+    if(!term){el.classList.remove('hidden');return;}
+    el.classList.toggle('hidden', el.textContent.toLowerCase().indexOf(term)===-1);
+  });
+});
+applyFilters();
+</script>
+</body></html>
+"""
+
+
+# --------------------------------------------------------------------------- #
+# Index
+# --------------------------------------------------------------------------- #
+
+def render_index(history_dir):
+    files = [n for n in os.listdir(history_dir) if n.endswith(".html") and n != "index.html"]
+    files.sort(key=lambda n: os.path.getmtime(os.path.join(history_dir, n)), reverse=True)
+    rows = []
+    for name in files:
+        st = os.stat(os.path.join(history_dir, name))
+        mtime = datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+        rows.append(
+            '<tr><td><a href="%s">%s</a></td><td>%s</td><td>%.1f KB</td></tr>'
+            % (esc(name), esc(name[:-5]), esc(mtime), st.st_size / 1024.0)
+        )
+    return INDEX_TEMPLATE % {
+        "rows": "".join(rows) or '<tr><td colspan="3"><em>no sessions yet</em></td></tr>',
+        "count": len(files),
+    }
+
+
+INDEX_TEMPLATE = """<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>afyapowers history</title>
+<style>
+body{margin:0;background:#0f1115;color:#e6e6e6;font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:24px}
+h1{font-size:18px}
+table{border-collapse:collapse;width:100%%;max-width:900px}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid #2a2f3a}
+th{color:#8a93a3;font-size:12px;text-transform:uppercase}
+a{color:#6fb3ff;text-decoration:none}a:hover{text-decoration:underline}
+.mut{color:#8a93a3}
+</style></head><body>
+<h1>\U0001f4dc afyapowers — conversation history</h1>
+<p class="mut">%(count)d session(s)</p>
+<table><thead><tr><th>session</th><th>last updated</th><th>size</th></tr></thead>
+<tbody>%(rows)s</tbody></table>
+</body></html>
+"""
+
+
+# --------------------------------------------------------------------------- #
+# Helpers
+# --------------------------------------------------------------------------- #
+
+def atomic_write(path, text):
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), suffix=".tmp")
+    try:
+        with io.open(fd, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        os.replace(tmp, path)
+    except Exception:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def ensure_gitignore(afya_dir):
+    gi = os.path.join(afya_dir, ".gitignore")
+    line = "history/"
+    try:
+        existing = ""
+        if os.path.isfile(gi):
+            with io.open(gi, "r", encoding="utf-8", errors="replace") as fh:
+                existing = fh.read()
+        if line not in existing.split():
+            with io.open(gi, "a", encoding="utf-8") as fh:
+                if existing and not existing.endswith("\n"):
+                    fh.write("\n")
+                fh.write(line + "\n")
+    except OSError:
+        pass
+
+
+# --------------------------------------------------------------------------- #
+# Main
+# --------------------------------------------------------------------------- #
+
+def resolve_history_dir(cwd):
+    """Pick where logs go. Every session is logged (no active-feature gate).
+
+    - If `<cwd>/.afyapowers/` already exists -> log beside the workflow artifacts and
+      keep history out of git. Never create `.afyapowers/` ourselves: its presence is
+      what `session-start` uses to treat a project as afyapowers-enabled.
+    - Otherwise -> a global per-project store under the Claude config dir, so plain
+      projects are logged without being touched.
+    """
+    afya_dir = os.path.join(cwd, ".afyapowers")
+    if os.path.isdir(afya_dir):
+        ensure_gitignore(afya_dir)
+        return os.path.join(afya_dir, "history")
+    config = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.expanduser("~/.claude")
+    slug = cwd.replace(os.sep, "-").strip("-") or "root"
+    return os.path.join(config, "afyapowers", "history", slug)
+
+
+def run():
+    raw = sys.stdin.read()
+    data = json.loads(raw) if raw.strip() else {}
+    transcript = data.get("transcript_path")
+    cwd = data.get("cwd") or os.getcwd()
+    session_id = data.get("session_id") or "session"
+
+    if not transcript or not os.path.isfile(transcript):
+        return
+
+    history_dir = resolve_history_dir(cwd)
+    os.makedirs(history_dir, exist_ok=True)
+
+    entries = read_transcript(transcript)
+    safe = "".join(c if (c.isalnum() or c in "-_") else "-" for c in str(session_id))
+    atomic_write(os.path.join(history_dir, safe + ".html"), render_html(session_id, entries))
+    atomic_write(os.path.join(history_dir, "index.html"), render_index(history_dir))
+
+
+if __name__ == "__main__":
+    try:
+        run()
+    except Exception:
+        # Observability only: never block the session or surface noise.
+        pass
+    sys.exit(0)

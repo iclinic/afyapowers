@@ -21,6 +21,8 @@ The script reads JSON configs from `src/config/` and produces customized output 
 
 There are no tests or linting configured for this repository.
 
+**Runtime requirement:** the plugin itself also needs Python 3.9+ at runtime, not just for `sync.py`. The `/afyapowers:new` setup script (`src/skills/new/scripts/setup.py`) and the conversation-history hook (`src/hooks/render-history`) are Python. The `session-start` hook warns when `python3` is absent, and `/afyapowers:new` stops rather than scaffolding into a broken state.
+
 ## Architecture
 
 ### Source → Distribution Pipeline
