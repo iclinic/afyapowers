@@ -31,7 +31,11 @@ def ensure_gitignore():
     if os.path.isfile(path):
         with io.open(path, "r", encoding="utf-8", errors="replace") as fh:
             existing = fh.read()
-    present = set(existing.split())
+    present = {
+        ln.strip()
+        for ln in existing.splitlines()
+        if ln.strip() and not ln.strip().startswith("#")
+    }
     missing = [ln for ln in GITIGNORE_LINES if ln not in present]
     if not missing:
         return

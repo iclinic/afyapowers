@@ -12,7 +12,9 @@ internal turns (same message format). We follow those files recursively to rende
 subagent conversations nested under the call that spawned them.
 
 Contract: this is observability only. It must NEVER block a session or crash a
-host. Any error -> exit 0 silently. Runs only when a .afyapowers feature is active.
+host. Any error -> exit 0 silently. Logs every session: into
+`.afyapowers/history/<agent>/` when a `.afyapowers/` dir exists, otherwise into a
+global per-project store under the Claude config dir.
 """
 
 import sys
@@ -440,7 +442,12 @@ def ensure_gitignore(afya_dir):
         if os.path.isfile(gi):
             with io.open(gi, "r", encoding="utf-8", errors="replace") as fh:
                 existing = fh.read()
-        if line not in existing.split():
+        present = {
+            ln.strip()
+            for ln in existing.splitlines()
+            if ln.strip() and not ln.strip().startswith("#")
+        }
+        if line not in present:
             with io.open(gi, "a", encoding="utf-8") as fh:
                 if existing and not existing.endswith("\n"):
                     fh.write("\n")
