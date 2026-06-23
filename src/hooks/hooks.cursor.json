@@ -5,6 +5,11 @@
       {
         "command": "./session-start"
       }
+    ],
+    "sessionEnd": [
+      {
+        "command": "./render-history cursor"
+      }
     ]
   }
 }

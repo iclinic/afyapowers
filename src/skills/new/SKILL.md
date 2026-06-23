@@ -16,6 +16,16 @@ github-copilot:
 
 You are starting a new feature workflow. Follow these steps exactly:
 
+## Step 0: Verify Python
+
+afyapowers requires Python 3.9+ at runtime (setup and history logging). Check it is available:
+
+```bash
+command -v python3 >/dev/null && echo OK || echo MISSING
+```
+
+If the result is `MISSING`, tell the user: "afyapowers requires Python 3.9+, which isn't on your PATH. Install Python 3.9 or newer and run `/afyapowers:new` again." Then **stop** — do not create any feature.
+
 ## Step 1: Get Feature Name
 
 Ask the user: "What feature are you working on? Give me a short name and a brief description."
@@ -30,9 +40,12 @@ Using the feature name provided:
 2. Get today's date in YYYY-MM-DD format
 3. Construct the directory name: `<date>-<slug>`
 4. Check if `.afyapowers/features/<directory-name>/` already exists. If so, append `-2` (then `-3`, etc.) until unique
-5. Ensure `.afyapowers/features/` directory exists (create if not)
-6. If `.afyapowers/.gitignore` does not exist, create it with content: `features/active`
-7. Create the directory structure:
+5. Scaffold the base `.afyapowers/` structure by running the setup script. Its path is in your session context (injected by the session-start hook as "Setup script: ..."):
+   ```bash
+   python3 "<setup-script-path>"
+   ```
+   This idempotently creates `.afyapowers/features/`, `.afyapowers/history/`, and `.afyapowers/.gitignore`. Confirm the output is `ok=true`; if it is `ok=false` or the command errors, report the error and stop.
+6. Create the feature directory structure:
    - `.afyapowers/features/<directory-name>/`
    - `.afyapowers/features/<directory-name>/artifacts/`
 

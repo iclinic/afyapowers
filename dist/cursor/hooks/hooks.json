@@ -1,13 +1,14 @@
 {
+  "version": 1,
   "hooks": {
-    "SessionStart": [
+    "sessionStart": [
       {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-start"
-          }
-        ]
+        "command": "./session-start"
+      }
+    ],
+    "sessionEnd": [
+      {
+        "command": "./render-history cursor"
       }
     ]
   }

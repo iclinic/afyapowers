@@ -16,12 +16,22 @@ github-copilot:
 
 You are advancing the active feature to the next workflow phase. Follow these steps exactly:
 
+## Step 0: Verify Python
+
+afyapowers requires Python 3.9+ at runtime (the preflight validator is Python). Check it is available:
+
+```bash
+command -v python3 >/dev/null && echo OK || echo MISSING
+```
+
+If the result is `MISSING`, tell the user: "afyapowers requires Python 3.9+, which isn't on your PATH. Install Python 3.9 or newer and run `/afyapowers:next` again." Then **stop**.
+
 ## Step 1: Preflight Validation
 
 Run the preflight script to validate the current phase without reading artifact files into context. The preflight script path is available in your session context (injected by the session-start hook as "Preflight script: ..."):
 
 ```bash
-bash "<preflight-script-path>"
+python3 "<preflight-script-path>"
 ```
 
 Parse the key=value output (one `KEY=VALUE` per line):

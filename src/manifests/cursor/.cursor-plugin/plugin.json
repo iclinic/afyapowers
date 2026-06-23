@@ -18,5 +18,5 @@
     "best-practices",
     "workflows"
   ],
-  "hooks": "../hooks/hooks.cursor.json"
+  "hooks": "../hooks/hooks.json"
 }

@@ -253,6 +253,18 @@ def process_hooks(
             if out_file.is_file():
                 st = out_file.stat()
                 out_file.chmod(st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    # Each agent has its own `hooks.<agent>.json` source file. Emit only that
+    # agent's config as a single `hooks.json`; drop the other agents' configs.
+    for out_file in hooks_out.glob("hooks*.json"):
+        out_file.unlink()
+    agent_hooks = hooks_src / f"hooks.{config.agent}.json"
+    if agent_hooks.is_file():
+        shutil.copy2(agent_hooks, hooks_out / "hooks.json")
+    else:
+        print(
+            f"  WARNING: hooks.{config.agent}.json not found — no hooks.json emitted "
+            f"(phase-context injection and history logging disabled for this agent)"
+        )
     return sum(1 for _ in hooks_out.rglob("*") if _.is_file())
 
 
