@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """afyapowers conversation history renderer.
 
-SessionEnd hook. Reads the Claude Code session transcript (JSONL) named on stdin
-and renders one interactive, self-contained HTML file per session under
-`.afyapowers/history/`, plus a regenerated index.html.
+SessionEnd hook. Reads the session transcript (JSONL) named on stdin and renders
+one interactive, self-contained HTML file per session under `.afyapowers/history/`,
+plus a regenerated index.html. Handles both Claude Code transcripts and Cursor
+transcripts (role at the top level; `conversation_id`/`workspace_roots` on stdin).
 
 Subagents are not stored in the main transcript. Each `Agent` tool call records a
 `toolUseResult.outputFile` pointing to a separate JSONL holding that subagent's full
@@ -69,6 +70,9 @@ def role_of(entry):
     msg = entry.get("message")
     if isinstance(msg, dict) and msg.get("role"):
         return msg.get("role")
+    # Cursor transcripts put role at the top level, not under `message`.
+    if entry.get("role"):
+        return entry.get("role")
     return entry.get("type", "")
 
 
@@ -176,6 +180,15 @@ def render_subagent(tool_id, label, ctx, depth):
     )
 
 
+def is_turn(entry):
+    """A renderable conversation turn, in either Claude or Cursor format.
+
+    Claude tags entries with a top-level `type`; Cursor does not, so fall back
+    to `role_of` (which reads Cursor's top-level `role`).
+    """
+    return role_of(entry) in ("user", "assistant") and bool(entry.get("message"))
+
+
 def render_blocks(entry, ctx, depth):
     out = []
     for blk in content_blocks(entry):
@@ -222,7 +235,7 @@ def render_entry_list(entries, ctx, depth):
     """Render a flat list of message entries (used for subagent threads)."""
     parts = []
     for e in entries:
-        if e.get("type") not in ("user", "assistant") or not e.get("message"):
+        if not is_turn(e):
             continue
         card = render_card(e, ctx, depth)
         if card:
@@ -234,7 +247,7 @@ def render_html(session_id, entries):
     ctx = {"results": {}, "seen": set()}
     collect_results(entries, ctx["results"])
 
-    main = [e for e in entries if e.get("type") in ("user", "assistant") and e.get("message")]
+    main = [e for e in entries if is_turn(e)]
 
     model = ""
     for e in main:
@@ -462,8 +475,11 @@ def run():
     raw = sys.stdin.read()
     data = json.loads(raw) if raw.strip() else {}
     transcript = data.get("transcript_path")
-    cwd = data.get("cwd") or os.getcwd()
-    session_id = data.get("session_id") or "session"
+    # Cursor sessionEnd gives `workspace_roots`/`conversation_id` instead of
+    # Claude's `cwd`/`session_id`.
+    roots = data.get("workspace_roots") or []
+    cwd = data.get("cwd") or (roots[0] if roots else None) or os.getcwd()
+    session_id = data.get("session_id") or data.get("conversation_id") or "session"
 
     if not transcript or not os.path.isfile(transcript):
         return
