@@ -174,7 +174,7 @@ def render_subagent(tool_id, label, ctx, depth):
     # pointing outputFile at sensitive local files).
     root = ctx.get("root")
     real = os.path.realpath(of)
-    if root and not (real == root or real.startswith(root + os.sep)):
+    if not root or not (real == root or real.startswith(root + os.sep)):
         return ""
     ctx["seen"].add(of)
     sub_entries = read_transcript(of)
@@ -386,19 +386,26 @@ applyFilters();
 # --------------------------------------------------------------------------- #
 
 def render_index(history_dir):
-    files = [n for n in os.listdir(history_dir) if n.endswith(".html") and n != "index.html"]
-    files.sort(key=lambda n: os.path.getmtime(os.path.join(history_dir, n)), reverse=True)
+    entries = []
+    for name in os.listdir(history_dir):
+        if not name.endswith(".html") or name == "index.html":
+            continue
+        try:
+            st = os.stat(os.path.join(history_dir, name))
+        except OSError:
+            continue
+        entries.append((name, st.st_mtime, st.st_size))
+    entries.sort(key=lambda e: e[1], reverse=True)
     rows = []
-    for name in files:
-        st = os.stat(os.path.join(history_dir, name))
-        mtime = datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+    for name, mtime, size in entries:
+        ts = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
         rows.append(
             '<tr><td><a href="%s">%s</a></td><td>%s</td><td>%.1f KB</td></tr>'
-            % (esc(name), esc(name[:-5]), esc(mtime), st.st_size / 1024.0)
+            % (esc(name), esc(name[:-5]), esc(ts), size / 1024.0)
         )
     return INDEX_TEMPLATE % {
         "rows": "".join(rows) or '<tr><td colspan="3"><em>no sessions yet</em></td></tr>',
-        "count": len(files),
+        "count": len(rows),
     }
 
 

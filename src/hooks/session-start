@@ -24,7 +24,7 @@ SETUP=$(find "$PLUGIN_ROOT/skills" -name "setup.py" -path "*new*" 2>/dev/null | 
 # SessionStart cannot block, so this is a non-blocking warning only.
 PYWARN=""
 if ! command -v python3 >/dev/null 2>&1; then
-  PYWARN="\\n⚠️ Python 3 not found on PATH — afyapowers setup and history logging will not work. Install Python 3.9+."
+  PYWARN="\\n$(json_escape "⚠️ Python 3 not found on PATH — afyapowers setup and history logging will not work. Install Python 3.9+.")"
 fi
 
 # Find .afyapowers directory relative to working directory
