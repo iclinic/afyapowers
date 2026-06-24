@@ -3,12 +3,12 @@
   "hooks": {
     "sessionStart": [
       {
-        "command": "./session-start"
+        "command": "./hooks/session-start"
       }
     ],
     "sessionEnd": [
       {
-        "command": "./render-history cursor"
+        "command": "./hooks/render-history cursor"
       }
     ]
   }
