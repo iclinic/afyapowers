@@ -117,9 +117,11 @@ Tasks must never contain code blocks with implementation code, test code, or inl
 
 **For standard (non-Figma) tasks,** each step is TDD-inspired with descriptive instructions (no code snippets). Each step describes what to do, why, which edge cases to cover, and expected outcomes:
 
-- Write the failing test (describe behaviors and expected outcomes) → run test and confirm failure (specify command and expected error) → implement minimal code (describe approach, patterns, decisions) → run test and confirm pass (specify command) → commit
+- Write the failing test (describe behaviors and expected outcomes) → run test and confirm failure (specify command and expected error) → implement minimal code (describe approach, patterns, decisions) → run test and confirm pass (specify command)
 
-**For Figma tasks:** a single step — "Implement using the Figma implementer workflow and commit". The subagent prompt owns the how. No implementation steps in the plan.
+Do **not** add a commit step to tasks — the orchestrator commits each task sequentially after its wave completes.
+
+**For Figma tasks:** a single step — "Implement using the Figma implementer workflow". The subagent prompt owns the how. No implementation steps in the plan.
 
 ## Dependency Declaration
 
@@ -188,8 +190,6 @@ File overlap validation is a safety net, not a substitute for thinking about tas
 - [ ] **Step 4: Run test to verify it passes**
 
   Specify the exact command to run.
-
-- [ ] **Step 5: Commit** following the project's commit conventions
 ````
 
 ## Figma Task Structure
@@ -215,7 +215,7 @@ Use this format for tasks that implement UI components with Figma designs. The d
 - **Node ID:** `<id>`
 - **Breakpoints:** <breakpoint_name> (<width>px), ...
 
-- [ ] Implement using the Figma implementer workflow and commit
+- [ ] Implement using the Figma implementer workflow
 ```
 
 **Building the Figma block:**

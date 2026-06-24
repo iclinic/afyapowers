@@ -383,7 +383,7 @@ O arquivo `.afyapowers/features/active` contem o slug da feature ativa (ex: `202
 | `/afyapowers:switch` | 🔀 Troca a feature ativa |
 | `/afyapowers:features` | 📋 Lista todas as features |
 | `/afyapowers:abort` | ❌ Aborta a feature atual |
-| `/afyapowers:component` | 🧩 Cria componente Figma standalone |
+| `/afyapowers:figma-component` | 🧩 Cria componente Figma standalone |
 
 > 💡 **Nomes variam por IDE:** No Cursor, o prefixo e `afyapowers-` (ex: `/afyapowers-new`). No GitHub Copilot, sem prefixo (ex: `/new`).
 
@@ -427,7 +427,7 @@ Exibe a timeline cronologica de eventos da feature ativa.
 
 Marca a feature como abortada. **Irreversivel!** O plugin pede confirmacao antes de executar.
 
-#### 🧩 `/afyapowers:component` — Componente Figma
+#### 🧩 `/afyapowers:figma-component` — Componente Figma
 
 Cria um componente a partir do Figma **fora do workflow de 5 fases**. Util para implementar componentes isolados rapidamente. Veja a [secao de Skills Extras](#figma-component) para mais detalhes.
 
@@ -600,7 +600,7 @@ Gera e atualiza documentacao viva em `docs/afyapowers/` com base nas mudancas fe
 
 ### 🧩 Figma Component {#figma-component}
 
-**Quando usar:** Para desenvolver um componente Figma isolado, fora do workflow de 5 fases. Acionado via `/afyapowers:component` ou quando voce pede um componente com URL do Figma.
+**Quando usar:** Para desenvolver um componente Figma isolado, fora do workflow de 5 fases. Acionado apenas manualmente via `/afyapowers:figma-component` (nunca invocado automaticamente).
 
 **Protocolo em 3 fases:**
 
@@ -743,7 +743,7 @@ python3 sync.py cursor --clean   # Limpar + agente especifico
 | 5 | `/afyapowers:switch` | `src/commands/switch.md` |
 | 6 | `/afyapowers:features` | `src/commands/features.md` |
 | 7 | `/afyapowers:abort` | `src/commands/abort.md` |
-| 8 | `/afyapowers:component` | `src/commands/component.md` |
+| 8 | `/afyapowers:figma-component` | `src/skills/figma-component/SKILL.md` |
 
 ### Todos os templates
 

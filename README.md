@@ -96,7 +96,7 @@ As fases são controladas — você deve completar o artefato da fase atual ante
 | `/afyapowers:switch` | `/afyapowers-switch` | Alternar o contexto da feature ativa |
 | `/afyapowers:history` | `/afyapowers-history` | Mostrar a linha do tempo completa de eventos da feature ativa |
 | `/afyapowers:abort` | `/afyapowers-abort` | Abandonar a feature ativa (irreversível) |
-| `/afyapowers:component` | `/afyapowers-component` | Desenvolver um componente Figma (standalone, fora do workflow de 5 fases) |
+| `/afyapowers:figma-component` | `/afyapowers-figma-component` | Desenvolver um componente Figma (standalone, fora do workflow de 5 fases) |
 
 
 ## Integrações
