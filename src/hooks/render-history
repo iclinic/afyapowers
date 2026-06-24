@@ -303,7 +303,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>%(title)s</title>
 <style>
-:root{--bg:#0f1115;--panel:#171a21;--user:#1e3a5f;--asst:#1f2a22;--tool:#2a2520;--sub:#2a2233;--txt:#e6e6e6;--mut:#8a93a3;--bd:#2a2f3a;}
+:root{--bg:#0f1115;--panel:#171a21;--user:#1e3a5f;--asst:#1f2a22;--tool:#2a2520;--sub:#2a2233;--think:#1a1530;--think-accent:#9d7bff;--txt:#e6e6e6;--mut:#8a93a3;--bd:#2a2f3a;}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
 header{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--bd);padding:12px 18px}
@@ -329,7 +329,10 @@ details>summary{cursor:pointer;padding:6px 10px;user-select:none;list-style:none
 details>summary::-webkit-details-marker{display:none}
 details>summary:before{content:"\\25b8 ";color:var(--mut)}
 details[open]>summary:before{content:"\\25be "}
-details.thinking{background:#202028}
+details.thinking{background:var(--think);border-color:var(--think-accent);border-left:3px solid var(--think-accent)}
+details.thinking>summary{color:var(--think-accent);font-style:italic}
+details.thinking>summary:before{color:var(--think-accent)}
+details.thinking pre{color:#cdc3f0;font-style:italic}
 details.subagent{background:var(--sub)}
 details.result.error{border-color:#5a2a2a}
 pre{margin:0;padding:8px 12px;overflow:auto;white-space:pre-wrap;word-wrap:break-word;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:#d7dce5}
