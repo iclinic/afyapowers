@@ -1,6 +1,7 @@
 ---
 name: figma-component
 description: Develop Figma components with strict validation, Code Connect dedup, and autonomous implementation. Standalone — not part of the 5-phase workflow.
+disable-model-invocation: true
 ---
 
 # Component Skill
@@ -24,9 +25,7 @@ Develop a single Figma component into production code. This skill is **standalon
 
 ## Trigger Conditions
 
-**Explicit:** User runs `/afyapowers:figma-component`.
-
-**Implicit:** User asks to implement/build/create/develop a Figma component. Requires all three: action keyword + "component" + Figma URL. If no URL, ask for it.
+**Manual only.** This skill is never auto-invoked. It runs only when the user explicitly runs `/afyapowers:figma-component`. If no Figma URL was provided, ask for it.
 
 ---
 
