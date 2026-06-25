@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Optional
 
 TOP_LEVEL_KEY_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_-]*:$")
+SKILL_REF_RE = re.compile(r"\{\{skill:([a-zA-Z0-9_-]+)\}\}")
+NAME_FIELD_RE = re.compile(r"^name:\s*[\"']?(.+?)[\"']?\s*$", re.MULTILINE)
 
 
 @dataclass
@@ -119,6 +121,34 @@ def render_frontmatter(yaml_str: str) -> str:
     return f"---\n{yaml_str}\n---\n"
 
 
+def resolve_skill_name(skills_src: Path, skill_dir: str, agent_name: str) -> str:
+    """Return the per-agent invocation name for a referenced skill.
+
+    Reads the referenced skill's SKILL.md frontmatter and returns the `name`
+    field from the given agent's section (single source of truth). Falls back to
+    the bare skill directory name when the skill or the agent's section is absent
+    (e.g. Gemini, which has no frontmatter).
+    """
+    skill_file = skills_src / skill_dir / "SKILL.md"
+    if skill_file.is_file():
+        agent_sections, _ = parse_embedded_frontmatter(
+            skill_file.read_text(encoding="utf-8")
+        )
+        agent_yaml = agent_sections.get(agent_name)
+        if agent_yaml:
+            match = NAME_FIELD_RE.search(agent_yaml)
+            if match:
+                return match.group(1)
+    return skill_dir
+
+
+def substitute_skill_refs(body: str, skills_src: Path, agent_name: str) -> str:
+    """Replace every `{{skill:NAME}}` token with the agent-correct skill name."""
+    return SKILL_REF_RE.sub(
+        lambda m: resolve_skill_name(skills_src, m.group(1), agent_name), body
+    )
+
+
 # ---------------------------------------------------------------------------
 # Processors
 # ---------------------------------------------------------------------------
@@ -180,6 +210,7 @@ def process_skills(
             if skill_file.is_file():
                 file_text = skill_file.read_text(encoding="utf-8")
                 agent_sections, body = parse_embedded_frontmatter(file_text)
+                body = substitute_skill_refs(body, skills_src, config.agent)
                 agent_yaml = agent_sections.get(config.agent)
                 if agent_yaml:
                     (out_skill_dir / "SKILL.md").write_text(

@@ -95,7 +95,10 @@ Then go to **Write Docs**, and **Commit** (standalone mode asks the user first).
 
 ### Prepare the directory
 
-1. Slugify the feature name to kebab-case → `<feature>`.
+1. Slugify the feature name to kebab-case → `<feature>`. Only allow lowercase letters,
+   digits, and hyphens; reject or strip any other character (including `.`, `/`, and
+   `..`). If the resulting slug is empty or starts with a dot or hyphen, abort and ask the
+   user for a valid name.
 2. Ensure `docs/` exists; create `docs/<feature>/` if missing.
 3. Ensure `docs/<feature>/` is **not gitignored**. If a `.gitignore` pattern would exclude it,
    add a negation pattern so the docs can be committed:

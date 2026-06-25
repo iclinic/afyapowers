@@ -301,7 +301,7 @@ O plugin usa um algoritmo de execucao em ondas (**wave execution**):
 | Design → Plan | `writing-plans` |
 | Plan → Implement | `implementing` + `subagent-driven-development` |
 | Implement → Review | `reviewing` |
-| Review → Complete | `completing` + `auto-documentation` |
+| Review → Complete | `completing` + `autodoc` |
 
 ---
 
@@ -500,10 +500,14 @@ Os templates ficam em `src/templates/` e definem a estrutura de cada documento g
 - **How to Test** — Passos para verificar a feature
 - **PR / Merge Info** — Link do PR, branch, detalhes de merge
 
-### feature-doc.md
+### Templates de documentacao viva (autodoc)
 
-Template para documentacao viva (gerada automaticamente na fase Complete):
-- Overview, Business Rules, Usage, Technical Details, Changelog
+Gerados/atualizados automaticamente na fase Complete pelo skill `autodoc`, um arquivo por
+aspecto em `docs/<feature>/`:
+- `feature-business-rules.md` — o que a feature faz, em termos de produto
+- `feature-architecture.md` — visao tecnica completa
+- `feature-data-models.md` — formatos de dados (apenas se a feature tiver)
+- `feature-changelog.md` — entradas datadas, mais recente primeiro
 
 ---
 
@@ -729,7 +733,7 @@ python3 sync.py cursor --clean   # Limpar + agente especifico
 | 9 | `verification-before-completion` | Cross-cutting | `src/skills/verification-before-completion/SKILL.md` |
 | 10 | `using-git-worktrees` | Cross-cutting | `src/skills/using-git-worktrees/SKILL.md` |
 | 11 | `dispatching-parallel-agents` | Cross-cutting | `src/skills/dispatching-parallel-agents/SKILL.md` |
-| 12 | `auto-documentation` | Cross-cutting | `src/skills/auto-documentation/SKILL.md` |
+| 12 | `autodoc` | Cross-cutting | `src/skills/autodoc/SKILL.md` |
 | 13 | `figma-component` | Standalone | `src/skills/figma-component/SKILL.md` |
 
 ### Todos os comandos
@@ -753,4 +757,7 @@ python3 sync.py cursor --clean   # Limpar + agente especifico
 | 2 | `plan.md` | Plan | `src/templates/plan.md` |
 | 3 | `review.md` | Review | `src/templates/review.md` |
 | 4 | `completion.md` | Complete | `src/templates/completion.md` |
-| 5 | `feature-doc.md` | Auto-docs | `src/templates/feature-doc.md` |
+| 5 | `feature-business-rules.md` | Auto-docs | `src/templates/feature-business-rules.md` |
+| 6 | `feature-architecture.md` | Auto-docs | `src/templates/feature-architecture.md` |
+| 7 | `feature-data-models.md` | Auto-docs | `src/templates/feature-data-models.md` |
+| 8 | `feature-changelog.md` | Auto-docs | `src/templates/feature-changelog.md` |
