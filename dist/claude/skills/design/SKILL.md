@@ -152,78 +152,20 @@ If a keyword matches but the request is clearly not UI work (e.g., "write unit t
 
 If no keywords match, skip Figma discovery and proceed to clarifying questions.
 
-If the user provides Figma URL(s):
+If the user provides Figma URL(s), invoke `afyapowers:reading-figma-designs`. It parses each URL,
+builds the shallow Node Map via a single `get_metadata` call, and extracts **all** Dev Mode data
+annotations via a read-only `use_figma` call. It returns the complete `## Figma Resources` section
+— file info, breakpoints, Node Map, and a `### Design Annotations` subsection — ready to drop into
+the design doc (template: `templates/design.md`).
 
-1. **Parse each URL** to extract the file key and node ID
-   - URL format: `https://figma.com/design/:fileKey/:fileName?node-id=X-Y`
-   - Extract `:fileKey` (segment after `/design/`) and `X-Y` (value of `node-id` parameter)
+Annotations carry semantic intent: business rules, responsive rules, interactive-state behavior,
+animations, accessibility rules, content rules, development-specific instructions, spacing, and
+more. Treat them as real requirements — business rules flow into the design's requirements, and
+the rest into the relevant design sections. Carry them into the clarifying questions below so the
+user can confirm them before the design is written.
 
-2. **Single `get_metadata` call** on the root node
-   ```
-   get_metadata(fileKey=":fileKey", nodeId="X-Y")
-   ```
-   From the response, build the Node Map using only the first 2 depth levels of the returned tree:
-   - **Depth 0:** Page
-   - **Depth 1:** Screen/Section (top-level frames — names and dimensions are included in metadata)
-   - **Depth 2:** Component or element (the task unit)
-
-   Ignore any nodes deeper than depth 2. Breakpoints are inferred from top-level frame names and dimensions (e.g., "Desktop" at 1440px, "Mobile" at 375px).
-
-   From the response, build the Node Map with two subsections:
-   a. **Reusable Components:** Extract all depth-2 nodes typed COMPONENT or COMPONENT_SET. List each with its node ID and type. If none exist, write `(none — all components are external or pre-existing)`.
-   b. **Screens:** List each depth-1 FRAME with its node ID, type, and dimensions. Under each frame, list its depth-2 children (excluding COMPONENT/COMPONENT_SET nodes already listed above). Collapse repeated INSTANCE nodes sharing the same `componentId` with a `×N` count.
-
-3. **Build the `## Figma Resources` section** for the design doc:
-   - File info (URL, file key)
-   - Breakpoints (inferred from top-level frame names and dimensions in the metadata response)
-   - Node Map (shallow structure from `get_metadata`: page → section → component/element)
-
-   Use the template from `templates/design.md` for the section structure.
-
-   #### Example
-
-   `get_metadata` returns:
-   ```
-   Page "Landing Page"
-     Frame "Hero Section" (id: 1:2, type: FRAME, 1440x800)
-       ├── "Hero Title" (id: 1:3, type: TEXT)
-       ├── "CTA Button" (id: 1:4, type: COMPONENT)
-       ├── "Card" (id: 1:5, type: INSTANCE, componentId: 2:10)
-       ├── "Card" (id: 1:6, type: INSTANCE, componentId: 2:10)
-       └── "Card" (id: 1:7, type: INSTANCE, componentId: 2:10)
-     Frame "Pricing Section" (id: 2:1, type: FRAME, 1440x600)
-       ├── "Pricing Tier" (id: 2:10, type: COMPONENT_SET)
-       ├── "Section Title" (id: 2:11, type: TEXT)
-       └── "Pricing Tier" (id: 2:12, type: INSTANCE, componentId: 2:10)
-   ```
-
-   Correct Node Map output:
-   ```
-   #### Page: Landing Page
-
-   **Reusable Components:**
-   - CTA Button (node `1:4`, COMPONENT)
-   - Pricing Tier (node `2:10`, COMPONENT_SET)
-
-   **Screens:**
-   - **Hero Section** (node `1:2`, FRAME, 1440x800)
-     - Card (node `1:5`, INSTANCE, componentId: `2:10`) ×3
-     - Hero Title (node `1:3`, TEXT)
-   - **Pricing Section** (node `2:1`, FRAME, 1440x600)
-     - Pricing Tier (node `2:12`, INSTANCE, componentId: `2:10`) ×1
-     - Section Title (node `2:11`, TEXT)
-   ```
-
-   **Node Map validation (run before finalizing the Figma Resources section):**
-   1. Every COMPONENT/COMPONENT_SET node from the metadata has an entry with `node \`<id>\`` and its type in **Reusable Components**
-   2. No COMPONENT/COMPONENT_SET node was omitted or merged into a screen's children
-   3. INSTANCE nodes with the same componentId are collapsed with ×N count under their parent screen in **Screens**
-   4. Every depth-1 FRAME has its node ID and dimensions in **Screens**
-   5. If no COMPONENT/COMPONENT_SET nodes exist, **Reusable Components** says `(none — all components are external or pre-existing)`
-
-No `get_screenshot` or `get_design_context` calls during the design phase — these are deferred to implementation, where the subagent already calls them per-task. This keeps the design phase at exactly **1 MCP call** regardless of file complexity.
-
-**If the Figma MCP server is unavailable:** Warn the user and **stop the Figma discovery flow**. Do not attempt to proceed without it — the user provided Figma URLs, so a silent fallback would undermine the purpose. Suggest the user check their MCP server connection and retry.
+No `get_screenshot` or `get_design_context` calls during the design phase — these are deferred to
+implementation, where the subagent already calls them per-task.
 
 **If no Figma designs:** Proceed normally. Do not include the Figma Resources section in the design doc.
 
@@ -234,7 +176,7 @@ No `get_screenshot` or `get_design_context` calls during the design phase — th
 When JIRA data and/or Figma data was gathered in previous steps, replace open-ended clarifying questions with confirmation-style:
 
 - If JIRA data is available: present the ticket's requirements, acceptance criteria, and scope, and ask the user to confirm, correct, or extend
-- If Figma data is available: present what the design shows (structure, breakpoints, component hierarchy) and ask the user to confirm or correct
+- If Figma data is available: present what the design shows (structure, breakpoints, component hierarchy) and ask the user to confirm or correct. If the design carries data annotations, surface them explicitly — they encode business rules, behavior, animations, accessibility, and development instructions the user should validate (e.g. "The Figma annotations specify: CTA disabled until the form is valid; cards collapse to a single column < 768px; error summary receives focus on submit. Confirm these?")
 - If both are available: confirm JIRA requirements first, then Figma structural details
 - Then only ask about things not covered by either source: technical constraints, architecture preferences, performance requirements, edge cases
 
@@ -260,7 +202,7 @@ When neither JIRA nor Figma data is available, use the standard approach: ask qu
 - Ask after each section whether it looks right so far
 - Cover all sections from the design template: problem statement, requirements, constraints, chosen approach, architecture, data flow, interfaces, error handling, testing strategy, dependencies
 - If JIRA discovery was performed, include the `## JIRA Context` section with issue key, summary, acceptance criteria, and linked issues
-- If Figma discovery was performed, include the `## Figma Resources` section with file info, breakpoints, and node map
+- If Figma discovery was performed, include the `## Figma Resources` section with file info, breakpoints, node map, and the `### Design Annotations` list. Reflect the annotations in the relevant design sections too — business rules in Requirements, the rest wherever they fit (Constraints, Architecture, Error Handling, Testing Strategy) — not just the annotations list.
 - Be ready to go back and clarify if something doesn't make sense
 
 **Design for isolation and clarity:**

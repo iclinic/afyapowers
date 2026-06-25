@@ -86,3 +86,9 @@
 - **<screen_name>** (node `<node_id>`, FRAME, <width>x<height>)
   - <element_name> (node `<node_id>`, INSTANCE, componentId: `<component_id>`) ×N
   - <leaf_name> (node `<node_id>`, TEXT)
+
+### Design Annotations
+<!-- All Dev Mode annotations extracted via use_figma. One entry per annotated node, verbatim. Omit this subsection if none. -->
+<!-- Annotations are requirements (business rules, behavior, animations, accessibility, dev instructions). Reflect them in the sections above too — business rules in Requirements. -->
+<!-- Drop [<category>] if no Figma category; drop the "— pins:" clause if no pinned properties. -->
+- node `<node_id>` (<node_name>) [<category>]: "<annotation label / note text>" — pins: <property types>
