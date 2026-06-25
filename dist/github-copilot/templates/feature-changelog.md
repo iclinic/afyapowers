@@ -1,2 +1,2 @@
 # {{feature_name}} — Changelog
-<!-- Newest first. Each entry: date heading (### YYYY-MM-DD), then What and Files. -->
+<!-- Mais recente primeiro. Cada entrada: heading de data (### YYYY-MM-DD), depois What e Files. -->

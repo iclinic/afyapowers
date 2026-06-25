@@ -1,10 +1,10 @@
-# {{feature_name}} — Business Rules
+# {{feature_name}} — Regras de Negócio
 
-## Overview
-<!-- What this feature does and why it exists, in product terms -->
+## Visão Geral
+<!-- O que esta feature faz e por que existe, em termos de produto -->
 
-## Rules
-<!-- Detailed business rules: behaviors, validations, states, edge cases. Number them. -->
+## Regras
+<!-- Regras de negócio detalhadas: comportamentos, validações, estados, edge cases. Numere-as. -->
 
-## User Flows
-<!-- Step-by-step how users/actors interact and what the system decides at each step -->
+## Fluxos de Usuário
+<!-- Passo a passo de como usuários/actors interagem e o que o sistema decide em cada etapa -->

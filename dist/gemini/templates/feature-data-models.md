@@ -1,10 +1,10 @@
 # {{feature_name}} — Data Models
 
-## Persistence
-<!-- DB tables/collections/documents: fields, types, relations, indexes -->
+## Persistência
+<!-- Tables/collections/documents do DB: fields, types, relations, indexes -->
 
-## External Contracts
-<!-- Request/response payload shapes for inbound/outbound APIs -->
+## Contratos Externos
+<!-- Shapes de payload de request/response para APIs inbound/outbound -->
 
-## Events / Messages
-<!-- Event/message schemas, if applicable -->
+## Events / Mensagens
+<!-- Schemas de event/message, se aplicável -->

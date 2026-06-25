@@ -7,6 +7,12 @@ effort: medium
 
 # Autodoc
 
+**Language:** Always write the documentation in Brazilian Portuguese (pt-BR) — prose, headings,
+and explanations. Keep in English the technical and product terms that are conventionally used
+in English in software/product work (e.g. Tech Stack, endpoint, deploy, queue, worker, cron,
+payload, index, request/response, feature, design pattern, changelog, code identifiers, file
+paths). Do not translate code, identifiers, or file paths.
+
 Generate or update living feature documentation. Each feature gets a folder under `docs/`:
 
 ```
@@ -27,7 +33,7 @@ Read `.afyapowers/features/active`.
 - **Missing or empty** → **Standalone mode**. The user is running `/afyapowers:autodoc` (or
   asked for documentation) outside the workflow.
 
-Follow the matching section below, then converge on the shared **Write Docs** and **Commit**
+Follow the matching section below, then converge on the shared **Write Docs** and **Finish**
 steps.
 
 ---
@@ -63,7 +69,7 @@ The changes usually map to the active feature. If the diff clearly spans multipl
 domain areas, document each one (run **Write Docs** per feature). Reason about the semantic
 domain of the changes — do not keyword-match.
 
-Then go to **Write Docs**, and **Commit** (workflow mode always commits).
+Then go to **Write Docs**, and **Finish**.
 
 ---
 
@@ -88,7 +94,7 @@ current files first so you rewrite from the true current state. Also scan siblin
 folders in case the feature is already documented under a different slug (reason semantically;
 do not keyword-match). Reuse the existing folder rather than creating a near-duplicate.
 
-Then go to **Write Docs**, and **Commit** (standalone mode asks the user first).
+Then go to **Write Docs**, and **Finish**.
 
 ---
 
@@ -136,47 +142,21 @@ Each entry:
 
 ```markdown
 ### 2026-03-13
-- **What:** Detailed description of what changed — be specific about what was added, modified,
-  or removed and the effect on the feature.
+- **What:** Descrição detalhada do que mudou — seja específico sobre o que foi adicionado,
+  modificado ou removido e o efeito na feature.
 - **Files:** `src/session/config.ts`, `src/session/middleware.ts`
 ```
 
 In standalone mode where there's no diff, base the **What** on the documentation action (e.g.,
-"Documented existing billing flow") and list the key files the docs cover.
+"Documentado o fluxo de billing existente") and list the key files the docs cover.
 
 ---
 
-## Commit
+## Finish
 
-- **Workflow mode:** always commit.
-- **Standalone mode:** ask the user whether to commit. If no, leave the files in the working
-  tree and tell the user the docs are ready to review.
-
-Before committing, match the project's conventions:
-
-1. Run `git log --oneline -5` to detect the message pattern.
-2. Check for commit hooks: `.lefthook.yml`, `lefthook.yml`, `.husky/pre-commit`,
-   `.pre-commit-config.yaml`, `commitlint.config.*`, `.commitlintrc*`.
-3. If commit messages include a Jira/ticket ID, extract it from the branch name: run
-   `git branch --show-current` and look for a pattern like `ABC-123` (uppercase letters, dash,
-   digits). Include the ticket ID in the message.
-
-Commit with the project's convention. If conventional commits are used, `docs:` is the type:
-
-```bash
-git add docs/<feature>/
-git commit -m "docs: update docs/<feature> documentation"
-```
-
-If multiple feature folders were written:
-
-```bash
-git commit -m "docs: update feature documentation"
-```
-
-**If the commit fails** (pre-commit hook, commitlint, etc.): read the error, fix it (rewrite
-the message, run the formatter, fix lint), re-stage, and retry. Max 3 attempts — if it still
-fails, report the error to the user. Never use `--no-verify`.
+**Never commit automatically.** In both modes, leave the written docs in the working tree and
+tell the user the docs are ready to review (list the files/folders written). The user decides
+whether and when to commit.
 
 ## Key Rules
 

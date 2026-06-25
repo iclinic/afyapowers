@@ -1,19 +1,19 @@
-# {{feature_name}} — Architecture
+# {{feature_name}} — Arquitetura
 
 ## Tech Stack
-<!-- Languages, frameworks, and key libraries used by this feature -->
+<!-- Linguagens, frameworks e principais libraries usadas por esta feature -->
 
-## Components
-<!-- Modules/services/abstractions, their responsibilities, and where they live (file paths) -->
+## Componentes
+<!-- Módulos/services/abstrações, suas responsabilidades e onde ficam (file paths) -->
 
-## Patterns & Abstractions
-<!-- Design patterns, base classes, shared utilities this feature relies on -->
+## Padrões & Abstrações
+<!-- Design patterns, base classes, utilitários compartilhados que esta feature usa -->
 
-## Integrations
-<!-- External services, APIs, events, queues, workers, cron jobs -->
+## Integrações
+<!-- Serviços externos, APIs, events, queues, workers, cron jobs -->
 
-## Data Flow
-<!-- How a request/event moves through the components -->
+## Fluxo de Dados
+<!-- Como um request/event percorre os componentes -->
 
-## Key Files
-<!-- `path/to/file` — purpose -->
+## Arquivos Principais
+<!-- `path/to/file` — propósito -->
