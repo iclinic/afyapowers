@@ -21,9 +21,9 @@ Otherwise (direct invocation):
 
 ## Required Sub-Skills
 
-**REQUIRED:** Invoke `afyapowers:auto-documentation` via the Skill tool after executing the user's completion choice (Step 3).
+**REQUIRED:** Invoke `afyapowers:autodoc` via the Skill tool after executing the user's completion choice (Step 3).
 
-- Announce: "Using auto-documentation to update project documentation."
+- Announce: "Using autodoc to update project documentation."
 - Invoke the skill. Follow its instructions completely.
 - After it completes, resume the parent flow (Step 4: produce completion artifact).
 
@@ -60,11 +60,11 @@ Execute the user's chosen option:
 
 ### Step 3.5: Update Documentation
 
-**REQUIRED SUB-SKILL:** Invoke `afyapowers:auto-documentation` via the Skill tool.
+**REQUIRED SUB-SKILL:** Invoke `afyapowers:autodoc` via the Skill tool.
 
-Announce: "Using auto-documentation to update project documentation."
+Announce: "Using autodoc to update project documentation."
 
-The auto-documentation skill will use the following context from the current feature:
+The autodoc skill will use the following context from the current feature:
 - Feature name from `.afyapowers/features/active`
 - Artifacts: design.md, plan.md, review.md (in `.afyapowers/features/<feature>/artifacts/`)
 - Git diff from the feature branch
