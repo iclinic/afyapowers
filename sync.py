@@ -14,7 +14,6 @@ from typing import Optional
 
 TOP_LEVEL_KEY_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_-]*:$")
 SKILL_REF_RE = re.compile(r"\{\{skill:([a-zA-Z0-9_-]+)\}\}")
-NAME_FIELD_RE = re.compile(r"^name:\s*[\"']?(.+?)[\"']?\s*$", re.MULTILINE)
 
 
 @dataclass
@@ -22,6 +21,7 @@ class AgentConfig:
     agent: str
     output_dir: Path
     skills_dir_prefix: str
+    skills_ref_prefix: str
     agents_file_prefix: str
     templates: bool
     hooks: bool
@@ -41,10 +41,17 @@ def parse_agent_config(config_path: Path, repo_root: Path) -> AgentConfig:
             print(f"ERROR: Required field '{key}' missing in config: {config_path}")
             sys.exit(1)
 
+    # How this agent invokes one skill from another's body. The plugin prefix
+    # always applies; the separator is ":" for most agents but "-" for Cursor.
+    # Defaults to "<prefix>:" so only Cursor needs an explicit override.
+    skills = data.get("skills", {})
+    default_ref_prefix = f"{data.get('prefix', 'afyapowers')}:"
+
     return AgentConfig(
         agent=data["agent"],
         output_dir=repo_root / data["outputDir"],
-        skills_dir_prefix=data.get("skills", {}).get("dirPrefix", ""),
+        skills_dir_prefix=skills.get("dirPrefix", ""),
+        skills_ref_prefix=skills.get("refPrefix", default_ref_prefix),
         agents_file_prefix=data.get("agents", {}).get("filePrefix", ""),
         templates=bool(data.get("templates", False)),
         hooks=bool(data.get("hooks", False)),
@@ -121,32 +128,14 @@ def render_frontmatter(yaml_str: str) -> str:
     return f"---\n{yaml_str}\n---\n"
 
 
-def resolve_skill_name(skills_src: Path, skill_dir: str, agent_name: str) -> str:
-    """Return the per-agent invocation name for a referenced skill.
+def substitute_skill_refs(body: str, ref_prefix: str) -> str:
+    """Replace every `{{skill:NAME}}` token with the agent-correct invocation name.
 
-    Reads the referenced skill's SKILL.md frontmatter and returns the `name`
-    field from the given agent's section (single source of truth). Falls back to
-    the bare skill directory name when the skill or the agent's section is absent
-    (e.g. Gemini, which has no frontmatter).
+    The invocation name is `<ref_prefix><NAME>` (e.g. `afyapowers:autodoc` for
+    Claude/Copilot/Gemini, `afyapowers-autodoc` for Cursor). Source bodies use the
+    placeholder so a single shared body resolves correctly for every agent.
     """
-    skill_file = skills_src / skill_dir / "SKILL.md"
-    if skill_file.is_file():
-        agent_sections, _ = parse_embedded_frontmatter(
-            skill_file.read_text(encoding="utf-8")
-        )
-        agent_yaml = agent_sections.get(agent_name)
-        if agent_yaml:
-            match = NAME_FIELD_RE.search(agent_yaml)
-            if match:
-                return match.group(1)
-    return skill_dir
-
-
-def substitute_skill_refs(body: str, skills_src: Path, agent_name: str) -> str:
-    """Replace every `{{skill:NAME}}` token with the agent-correct skill name."""
-    return SKILL_REF_RE.sub(
-        lambda m: resolve_skill_name(skills_src, m.group(1), agent_name), body
-    )
+    return SKILL_REF_RE.sub(lambda m: f"{ref_prefix}{m.group(1)}", body)
 
 
 # ---------------------------------------------------------------------------
@@ -210,7 +199,7 @@ def process_skills(
             if skill_file.is_file():
                 file_text = skill_file.read_text(encoding="utf-8")
                 agent_sections, body = parse_embedded_frontmatter(file_text)
-                body = substitute_skill_refs(body, skills_src, config.agent)
+                body = substitute_skill_refs(body, config.skills_ref_prefix)
                 agent_yaml = agent_sections.get(config.agent)
                 if agent_yaml:
                     (out_skill_dir / "SKILL.md").write_text(

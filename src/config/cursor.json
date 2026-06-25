@@ -3,7 +3,8 @@
   "outputDir": "dist/cursor",
   "prefix": "afyapowers",
   "skills": {
-    "dirPrefix": "afyapowers-"
+    "dirPrefix": "afyapowers-",
+    "refPrefix": "afyapowers-"
   },
   "agents": {
     "filePrefix": "afyapowers-"
