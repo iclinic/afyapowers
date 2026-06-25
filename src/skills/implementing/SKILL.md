@@ -40,7 +40,7 @@ Otherwise (direct invocation):
 
 ## Required Sub-Skills
 
-**REQUIRED:** Invoke `afyapowers:subagent-driven-development` via the Skill tool to execute all plan tasks.
+**REQUIRED:** Invoke `{{skill:subagent-driven-development}}` via the Skill tool to execute all plan tasks.
 
 - Announce: "Using subagent-driven-development to execute implementation tasks."
 - Invoke the skill. Follow its instructions completely.

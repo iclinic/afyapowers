@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Optional
 
 TOP_LEVEL_KEY_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_-]*:$")
+SKILL_REF_RE = re.compile(r"\{\{skill:([a-zA-Z0-9_-]+)\}\}")
 
 
 @dataclass
@@ -20,6 +21,7 @@ class AgentConfig:
     agent: str
     output_dir: Path
     skills_dir_prefix: str
+    skills_ref_prefix: str
     agents_file_prefix: str
     templates: bool
     hooks: bool
@@ -39,10 +41,17 @@ def parse_agent_config(config_path: Path, repo_root: Path) -> AgentConfig:
             print(f"ERROR: Required field '{key}' missing in config: {config_path}")
             sys.exit(1)
 
+    # How this agent invokes one skill from another's body. The plugin prefix
+    # always applies; the separator is ":" for most agents but "-" for Cursor.
+    # Defaults to "<prefix>:" so only Cursor needs an explicit override.
+    skills = data.get("skills", {})
+    default_ref_prefix = f"{data.get('prefix', 'afyapowers')}:"
+
     return AgentConfig(
         agent=data["agent"],
         output_dir=repo_root / data["outputDir"],
-        skills_dir_prefix=data.get("skills", {}).get("dirPrefix", ""),
+        skills_dir_prefix=skills.get("dirPrefix", ""),
+        skills_ref_prefix=skills.get("refPrefix", default_ref_prefix),
         agents_file_prefix=data.get("agents", {}).get("filePrefix", ""),
         templates=bool(data.get("templates", False)),
         hooks=bool(data.get("hooks", False)),
@@ -119,6 +128,16 @@ def render_frontmatter(yaml_str: str) -> str:
     return f"---\n{yaml_str}\n---\n"
 
 
+def substitute_skill_refs(body: str, ref_prefix: str) -> str:
+    """Replace every `{{skill:NAME}}` token with the agent-correct invocation name.
+
+    The invocation name is `<ref_prefix><NAME>` (e.g. `afyapowers:autodoc` for
+    Claude/Copilot/Gemini, `afyapowers-autodoc` for Cursor). Source bodies use the
+    placeholder so a single shared body resolves correctly for every agent.
+    """
+    return SKILL_REF_RE.sub(lambda m: f"{ref_prefix}{m.group(1)}", body)
+
+
 # ---------------------------------------------------------------------------
 # Processors
 # ---------------------------------------------------------------------------
@@ -180,6 +199,7 @@ def process_skills(
             if skill_file.is_file():
                 file_text = skill_file.read_text(encoding="utf-8")
                 agent_sections, body = parse_embedded_frontmatter(file_text)
+                body = substitute_skill_refs(body, config.skills_ref_prefix)
                 agent_yaml = agent_sections.get(config.agent)
                 if agent_yaml:
                     (out_skill_dir / "SKILL.md").write_text(
