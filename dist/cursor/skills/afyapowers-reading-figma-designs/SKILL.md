@@ -173,11 +173,15 @@ Use the structure from `templates/design.md`. Include:
   - Omit the `[<category>]` tag if no Figma category, and the `— pins:` clause if no pinned properties.
   - If `annotatedNodeCount` is 0, write `(none)` and omit the subsection.
 
-  These annotations are requirements, not notes — the design phase confirms each with the user and
-  reflects them in the design doc (business rules in the requirements).
+  These annotations are requirements **inputs to be critically analyzed, not facts to transcribe**.
+  Extract them verbatim here, but the design phase must feed them to the requirements-interrogator to
+  surface contradictions among annotations and the gaps they leave (e.g. an annotation says "disabled
+  until valid" but gives no validation rules; "single scroll on overflow" assumes a bounded-height
+  host). Confirmed business rules then flow into the design's requirements.
 
 ## Step 5 — Hand back to the design phase
 
-Return the assembled `## Figma Resources` section to the design phase. The design phase folds the
-annotations into its confirmation-style clarifying questions so the user validates intent before
-the design is written.
+Return the assembled `## Figma Resources` section to the design phase. The design phase challenges
+the annotations — feeding them (with JIRA and the user request) to the requirements-interrogator and
+looping with the user — so contradictions, gaps, and assumptions are resolved before the design is
+written.

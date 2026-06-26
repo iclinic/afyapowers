@@ -13,6 +13,10 @@ Do NOT invoke any implementation skill, write any code, scaffold any project, or
 Do NOT read project files, docs, or git history before requirements are gathered (JIRA + Figma + clarifying questions). Exploring existing code first anchors the design on what already exists and biases it toward reusing whatever you happen to find — the exact failure mode where a design reuses a component that doesn't match the actual requirement. Gather the requirement first; explore the codebase only afterward, and evaluate any reuse candidate **against** the requirement, never as the starting point. You may rely on what the user's request, JIRA, and Figma tell you to frame questions — but no codebase reads until the dedicated exploration step.
 </REQUIREMENTS-BEFORE-CODE>
 
+<REQUIREMENTS-GATE>
+Requirements are inputs to be challenged, not facts to transcribe. JIRA tickets, Figma annotations, and acceptance criteria are incomplete by default — they describe the happy path and omit states, rules, and edge cases. You MUST interrogate them (Requirements Interrogation step) until contradictions are resolved, edge cases are mapped, business rules are confirmed by the user, and risky assumptions are surfaced. Do NOT write the design doc while any **BLOCKING** interrogation item is unresolved — the user must answer or explicitly defer each one first. Confirming what the inputs already say is not enough; you must actively probe for what they leave out.
+</REQUIREMENTS-GATE>
+
 ## Phase Gate
 
 1. Read `.afyapowers/features/active` to get the active feature
@@ -29,13 +33,14 @@ You MUST complete these items in order. **Requirements first (1-3), code explora
 
 1. **JIRA discovery (offer-based)** — offer the user the chance to provide a JIRA issue key; if provided, fetch and summarize the issue (see below)
 2. **Figma discovery (trigger-based)** — check user request against trigger keywords (see below); if match, ask about Figma and run discovery
-3. **Ask clarifying questions** — if JIRA and/or Figma data is available, use confirmation-style questions (see below); otherwise, standard one-at-a-time clarifying questions
-4. **Explore the codebase** — ONLY now, with the requirement locked. Read files, docs, recent commits. Identify reuse candidates and evaluate each against the requirement/Figma — never let existing code become the starting point (see REQUIREMENTS-BEFORE-CODE). Apply the **Component Reuse Gate**: ask the user before reusing any candidate unless it is an exact match (name + layout + behavior)
-5. **Propose 2-3 approaches** — with trade-offs and your recommendation
-6. **Present design** — in sections scaled to their complexity, get user approval after each section
-7. **Write design doc** — save to `.afyapowers/features/<feature>/artifacts/design.md`
-8. **Design review loop** — dispatch @"design-reviewer (agent)"; fix issues and re-dispatch until approved (max 5 iterations, then surface to human)
-9. **User reviews written spec** — ask user to review the spec file before proceeding
+3. **Ask clarifying questions** — confirm **and challenge** the inputs (see below); one question at a time
+4. **Interrogate requirements (REQUIRED)** — dispatch @"requirements-interrogator (agent)" on the gathered inputs, then drive a question loop with the user until every BLOCKING contradiction / gap / edge case / ambiguity / risky assumption is resolved or explicitly deferred (see REQUIREMENTS-GATE)
+5. **Explore the codebase** — ONLY now, with the requirement locked. Read files, docs, recent commits. Identify reuse candidates and evaluate each against the requirement/Figma — never let existing code become the starting point (see REQUIREMENTS-BEFORE-CODE). Apply the **Component Reuse Gate**: ask the user before reusing any candidate unless it is an exact match (name + layout + behavior)
+6. **Propose 2-3 approaches** — with trade-offs and your recommendation
+7. **Present design** — in sections scaled to their complexity, get user approval after each section
+8. **Write design doc** — save to `.afyapowers/features/<feature>/artifacts/design.md` (only once no BLOCKING interrogation item remains open)
+9. **Design review loop** — dispatch @"design-reviewer (agent)"; fix issues and re-dispatch until approved (max 5 iterations, then surface to human)
+10. **User reviews written spec** — ask user to review the spec file before proceeding
 
 ## Process Flow
 
@@ -47,8 +52,10 @@ digraph design {
     "Trigger keywords match?" [shape=diamond];
     "Ask Figma question" [shape=box];
     "Figma discovery" [shape=box];
-    "Confirmation-style questions" [shape=box];
+    "Confirm + challenge questions" [shape=box];
     "Standard clarifying questions" [shape=box];
+    "Interrogate requirements (agent + user loop)" [shape=box];
+    "BLOCKING items resolved?" [shape=diamond];
     "Explore codebase (requirement locked)" [shape=box];
     "Propose 2-3 approaches" [shape=box];
     "Present design sections" [shape=box];
@@ -67,9 +74,12 @@ digraph design {
     "Trigger keywords match?" -> "Standard clarifying questions" [label="no"];
     "Ask Figma question" -> "Figma discovery" [label="user provides URLs"];
     "Ask Figma question" -> "Standard clarifying questions" [label="no Figma designs"];
-    "Figma discovery" -> "Confirmation-style questions";
-    "Confirmation-style questions" -> "Explore codebase (requirement locked)";
-    "Standard clarifying questions" -> "Explore codebase (requirement locked)";
+    "Figma discovery" -> "Confirm + challenge questions";
+    "Confirm + challenge questions" -> "Interrogate requirements (agent + user loop)";
+    "Standard clarifying questions" -> "Interrogate requirements (agent + user loop)";
+    "Interrogate requirements (agent + user loop)" -> "BLOCKING items resolved?";
+    "BLOCKING items resolved?" -> "Interrogate requirements (agent + user loop)" [label="no — ask user, re-run"];
+    "BLOCKING items resolved?" -> "Explore codebase (requirement locked)" [label="yes / deferred"];
     "Explore codebase (requirement locked)" -> "Propose 2-3 approaches";
     "Propose 2-3 approaches" -> "Present design sections";
     "Present design sections" -> "User approves design?";
@@ -183,22 +193,30 @@ Exact match on all three → reuse silently. **Anything else — a different nam
 
 Record every reuse in the `## Component Reuse Decisions` section of the design doc (template: `templates/design.md`): mark it either **exact match** (no approval needed) or the user's explicit decision. *"If it's different, it's wrong"* unless the user has explicitly accepted the divergence.
 
-**Clarifying questions (JIRA and/or Figma-informed):**
+**Clarifying questions — confirm AND challenge (JIRA and/or Figma-informed):**
 
-When JIRA data and/or Figma data was gathered in previous steps, replace open-ended clarifying questions with confirmation-style:
+When JIRA and/or Figma data was gathered, do NOT just play it back for confirmation. Confirmation establishes a baseline; your real job is to **challenge** the inputs. Inputs are incomplete by default — they describe the happy path and omit states, rules, and edge cases.
 
-- If JIRA data is available: present the ticket's requirements, acceptance criteria, and scope, and ask the user to confirm, correct, or extend
-- If Figma data is available: present what the design shows (structure, breakpoints, component hierarchy) and ask the user to confirm or correct. If the design carries data annotations, surface them explicitly — they encode business rules, behavior, animations, accessibility, and development instructions the user should validate (e.g. "The Figma annotations specify: CTA disabled until the form is valid; cards collapse to a single column < 768px; error summary receives focus on submit. Confirm these?")
-- If both are available: confirm JIRA requirements first, then Figma structural details
-- Then only ask about things not covered by either source: technical constraints, architecture preferences, performance requirements, edge cases
+- **Confirm the baseline:** present the ticket's requirements/AC/scope and what the design shows (structure, breakpoints, hierarchy, annotations) and ask the user to confirm, correct, or extend. Surface annotations explicitly — they encode business rules, behavior, animations, accessibility, dev instructions the user must validate.
+- **Then challenge every input.** For each requirement, acceptance criterion, and annotation, actively probe: Does it conflict with another source? What states does it not mention (empty, loading, error, zero/one/many, unauthorized)? What business rule is implied but unstated? What term is vague? What is it quietly assuming (API shape, data presence, layout host)? Confirming "yes that's what it says" is not enough — find what it leaves out.
+- Ask about things no source covers: technical constraints, architecture preferences, performance, security/permissions.
+- One question at a time. Prefer multiple choice when possible.
 
-Examples:
-- **Open-ended (without JIRA/Figma):** "What problem are we solving?"
-- **With JIRA:** "The JIRA ticket PROJ-123 describes: '[summary]'. The acceptance criteria include [X, Y, Z]. Does this capture the full scope, or are there additions?"
-- **With Figma:** "The Figma design shows a hero section, a 3-column feature grid, and a CTA footer across 3 breakpoints (mobile/tablet/desktop). Does this match what you want, or do you need changes?"
-- **With JIRA + Figma:** "JIRA describes [requirements]. The Figma design shows [structure]. Do these align with what you want to build?"
+Examples (challenge, not just confirm):
+- **With JIRA:** "PROJ-123 says '[summary]'. The AC cover [X, Y] but say nothing about what happens when the list is empty or the request fails — what should those show?"
+- **With Figma:** "The Figma annotation says 'disabled until valid', but no validation rules are given. What exactly makes the form valid?"
+- **Contradiction:** "JIRA says results are paginated; the Figma annotation describes infinite scroll. Which is correct?"
 
-When neither JIRA nor Figma data is available, use the standard approach: ask questions one at a time to understand purpose, constraints, and success criteria.
+When neither JIRA nor Figma is available, ask questions one at a time to understand purpose, constraints, and success criteria — and still probe for edge cases, states, and assumptions.
+
+**Requirements Interrogation (REQUIRED):**
+
+After the baseline confirm+challenge pass, run a dedicated adversarial analysis before writing anything. This is a hard gate (see REQUIREMENTS-GATE) — the design doc may not be written while any BLOCKING item is open.
+
+1. **Dispatch @"requirements-interrogator (agent)".** Announce: "Using requirements-interrogator to stress-test the requirements." Paste the raw inputs only (NO codebase — exploration comes later): the user's request, the JIRA context, the Figma Node Map + verbatim annotations, and the user answers gathered so far. It returns findings across five lenses (contradictions, gaps/business rules, edge cases, ambiguities, risky assumptions), each tagged BLOCKING or non-blocking, plus a `BLOCKING items: N` count.
+2. **Drive the loop with the user.** Ask the BLOCKING questions one at a time (non-blocking ones too where cheap). Record each answer.
+3. **Re-dispatch to catch second-order gaps.** Feed the new answers back to the interrogator; it reports only new findings the answers expose and anything still unresolved. Repeat until it returns `BLOCKING items: 0` (loop-until-dry).
+4. **Resolve or defer.** Every BLOCKING item must end resolved (user answered) or explicitly deferred (user chose to). Only then proceed. Reflect confirmed business rules into Requirements, and record the outcomes in the design doc's `## Edge Cases & States`, `## Assumptions & Risks`, and `## Open Questions` sections (Status: resolved / deferred).
 
 **Explore the codebase (only after the requirement is locked):**
 
@@ -221,7 +239,7 @@ Now — and only now — read the project: files, docs, recent commits, existing
 - Start with requirements and constraints, then move into architecture and technical details
 - Scale each section to its complexity: a few sentences if straightforward, up to 200-300 words if nuanced
 - Ask after each section whether it looks right so far
-- Cover all sections from the design template: problem statement, requirements, constraints, chosen approach, architecture, data flow, interfaces, error handling, testing strategy, dependencies
+- Cover all sections from the design template: problem statement, requirements, constraints, chosen approach, architecture, data flow, interfaces, error handling, testing strategy, dependencies, and the interrogation outputs — `## Edge Cases & States`, `## Assumptions & Risks`, and `## Open Questions` (with Status)
 - If JIRA discovery was performed, include the `## JIRA Context` section with issue key, summary, acceptance criteria, and linked issues
 - If Figma discovery was performed, include the `## Figma Resources` section with file info, breakpoints, node map, and the `### Design Annotations` list. Reflect the annotations in the relevant design sections too — business rules in Requirements, the rest wherever they fit (Constraints, Architecture, Error Handling, Testing Strategy) — not just the annotations list.
 - If the design reuses any existing codebase/DS component, include the `## Component Reuse Decisions` section recording each reuse, its name/layout/behavior parity verdict, and whether it was an exact match or carries the user's explicit approval (per the Component Reuse Gate above).
@@ -241,6 +259,8 @@ Now — and only now — read the project: files, docs, recent commits, existing
 - Don't propose unrelated refactoring. Stay focused on what serves the current goal.
 
 ## Required Sub-Skills
+
+**REQUIRED:** Dispatch @"requirements-interrogator (agent)" during the Requirements Interrogation step (before exploring the codebase or writing the design) and loop until `BLOCKING items: 0`. See the Requirements Interrogation section above.
 
 **REQUIRED:** Dispatch @"design-reviewer (agent)" after writing the design artifact.
 
