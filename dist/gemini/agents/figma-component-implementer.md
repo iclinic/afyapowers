@@ -164,6 +164,7 @@ Compare the screenshot against the component you built. Check:
 - Child elements are in the correct order
 - Sizing modes are correct (fixed/hug/fill mapped to appropriate CSS: fixed width, fit-content, flex-grow)
 - Spacing between elements matches Figma values
+- **Layout host provides height for any growing/scroll container.** If the component uses `flex: 1 0 0` / `flex-basis: 0`, `height: 100%`, or `overflow: auto|hidden` to grow or scroll, confirm (by reading the real render host per Implementation Rule 6) that an ancestor has a bounded height. If not confirmed, this is an ISSUE — switch to content-sizing or add the host height, and record it as a BLOCKING concern.
 
 **B. Token Coverage**
 Walk through every token from the fresh `get_variable_defs` output:
@@ -221,11 +222,12 @@ Record a summary of fixes applied and any unresolved issues for the Reporting se
 ## Implementation Rules
 
 1. **Figma overrides codebase patterns.** When the Figma design differs from project conventions, follow Figma.
-2. **Reuse existing components when they match.** If a project component matches what Figma shows, use it. If Figma shows something different, implement what Figma shows.
+2. **Reuse only on an exact match or a user-approved decision.** You may reuse an existing project/DS component for a Figma node in only two cases: (a) it is an **exact match** on all three axes — **name** (corresponds to the Figma node/component name), **layout/visuals** (colors, shape, sizing), AND **behavior/interaction model** (popover vs drawer, inline vs modal, anchored vs full-screen); or (b) the design/plan explicitly records that the user **approved** reusing that specific component for this node (look for a `## Component Reuse Decisions` entry in the design context). In every other case — a near-match, any name/visual/behavior difference, or reuse the task merely *instructed* without recorded user approval — do NOT silently comply: implement what Figma shows, and report a **BLOCKING** concern (see Reporting) naming the specific mismatch. You cannot ask the user yourself; the gate is approval-at-design-time, so when in doubt, build to Figma and flag. "Close enough" is not a match.
 3. **Token mapping is strict.** Exact name + exact value = project token. Anything else = hardcode the Figma value.
 4. **Accessibility is the one exception.** Semantic HTML, `aria-label` on icon-only actions, focus states, and keyboard navigation must be added even when Figma does not specify them. Report any accessibility additions in your concerns.
 5. **No other additions beyond Figma.** Do not add features, refactoring, or architectural changes that Figma does not call for.
-6. **Output location.** Output files to the directory specified in context. Create subdirectories if the component needs multiple files (e.g., component + styles + types).
+6. **Verify the layout host before height/scroll CSS.** Before using full-height or scroll-container patterns — `flex: 1 0 0` / `flex-basis: 0`, `height: 100%`, or `overflow: auto|hidden` on a growing container — read the ACTUAL rendering host this component mounts into (the page/route wrapper and parent layout components, up to `html`/`body`) and confirm the chain provides a **bounded height**. These patterns collapse to ~0px height (clipping their content) when no ancestor has a defined height. If the host does not guarantee a bounded height, size to content instead (`flex: 1 1 auto`, `min-height`) or add the required height to the host — and flag what you changed. Never assume a bounded-height parent.
+7. **Output location.** Output files to the directory specified in context. Create subdirectories if the component needs multiple files (e.g., component + styles + types).
 
 ## Code Quality
 
@@ -259,6 +261,10 @@ When an absolutely-positioned child sits at the edge of a bordered parent (badge
 **Cause:** Figma MCP exports SVGs with `preserveAspectRatio="none"` and `width="100%" height="100%"`, which removes the intrinsic aspect ratio. When rendered with explicit dimensions that don't match the viewBox ratio, the content distorts.
 **Solution:** Apply Asset Rule 7 — remove `preserveAspectRatio="none"` and `overflow="visible"`, replace percentage width/height with the viewBox dimensions.
 
+### Container collapses to ~0px / content clipped or invisible
+**Cause:** A growing container uses `flex-basis: 0` (`flex: 1 0 0`) or `height: 100%` combined with `overflow: auto|hidden`, but no ancestor in the real render host has a bounded height. With nothing to grow into, the box stays ~0px tall and `overflow` clips the content — which is still in the DOM, just zero-height and invisible.
+**Solution:** Apply Implementation Rule 6. Read the host chain (route wrapper, parent layout, `html`/`body`); if height isn't guaranteed, size to content (`flex: 1 1 auto`, `min-height`) or add the height to the host. Flag the host assumption as a BLOCKING concern when you cannot confirm a bounded-height parent.
+
 ## Committing Your Work (When Requested)
 
 Some orchestrators commit on your behalf after you report back. Others expect you to commit.
@@ -286,12 +292,14 @@ When done, report:
 - **Files created**
 - **Variant coverage** — which variants were implemented (for COMPONENT_SET)
 - **Self-review result** — all checks passed / N issues found, M fixed, K unresolved
-- **Concerns** — unmatched tokens, unresolved self-review issues, accessibility additions
+- **Concerns** — group every concern under one of two severities:
+  - **BLOCKING** — the output looks or behaves differently from Figma/design: a substituted component that fails the name/visual/interaction-model match (Implementation Rule 2), a wrong interaction model, a visual mismatch, or a layout that may not render as designed because the host height couldn't be confirmed (Rule 6). **A divergence is BLOCKING even if you were instructed to do it** (e.g. the task told you to reuse a component that doesn't match). Flag it — do not bury it. Name the specific mismatch.
+  - **CONCERN** (non-blocking) — doubts, fragility, edge cases, unmatched tokens / token drift, unresolved self-review issues, accessibility additions.
 - **MCP calls made** — total count (typically 5; higher if get_metadata fallbacks were needed)
 
 **Status guidance:**
-- **DONE** — implementation is complete and matches Figma with full confidence. Token mapping fallbacks, accessibility additions, and self-review fixes are expected behavior and do not downgrade the status. If self-review found issues that were all fixed in Step 7, status is still DONE.
-- **DONE_WITH_CONCERNS** — implementation is complete but you have doubts about visual accuracy, token mapping, assets, or self-review found issues that could not be fixed. List the unresolved issues. Err on the side of flagging — a false alarm costs nothing.
+- **DONE** — implementation is complete and matches Figma with full confidence; no concerns. Token mapping fallbacks, accessibility additions, and self-review fixes are expected behavior and do not downgrade the status. If self-review found issues that were all fixed in Step 7, status is still DONE.
+- **DONE_WITH_CONCERNS** — implementation is complete but you have concerns. Use this whenever you have ANY BLOCKING or non-blocking concern (e.g. a component substitution that doesn't match, an unconfirmed host height, doubts about visual accuracy, token mapping, or assets). List them under the right severity. Err on the side of flagging — a false alarm costs nothing.
 - **BLOCKED** — cannot proceed (e.g., Figma MCP unavailable, missing assets, MCP failures, ambiguous design structure, or self-review reveals fundamental structural mismatches that require redesign).
 - **NEEDS_CONTEXT** — you need files or information not provided by the orchestrator.
 

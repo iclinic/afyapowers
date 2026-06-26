@@ -19,6 +19,7 @@ You are reviewing whether a design document is complete and ready for implementa
 | YAGNI | Unrequested features, over-engineering |
 | Scope | Focused enough for a single plan — not covering multiple independent subsystems |
 | Architecture | Units with clear boundaries, well-defined interfaces, independently understandable and testable |
+| Component reuse | If the design reuses any existing codebase/DS component, a `## Component Reuse Decisions` section must exist with a row per reuse. Each reuse must be either an **exact match** on all three axes (name + layout + behavior) OR carry the user's recorded explicit approval. Any reuse that is not an exact match and lacks recorded user approval → Issues Found (the gate requires asking the user before reusing anything that isn't identical). |
 
 ## CRITICAL
 

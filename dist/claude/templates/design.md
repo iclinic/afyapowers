@@ -41,6 +41,18 @@
 ## Architecture
 <!-- Components, how they interact -->
 
+## Component Reuse Decisions
+<!-- Filled whenever the design reuses an existing codebase/DS component. One row per reuse. A
+     component may be reused silently ONLY if it is an exact match on all three axes (Name + Layout +
+     Behavior). Anything else requires the user's explicit approval before adopting it.
+     Decision = "Exact match (auto)" or "Approved by user" or "Build custom (rejected)".
+     Remove this section if no component is reused. -->
+
+| Target (Figma node / requirement) | Candidate component | Name | Layout | Behavior | Decision |
+|-----------------------------------|---------------------|------|--------|----------|----------|
+<!-- e.g. | Specialty Chip (2:5471) | DropdownPicker (DS) | ✗ | ✗ | ✗ drawer vs popover | Build custom (rejected) | -->
+<!-- e.g. | Submit Button (3:120)   | PrimaryButton (DS)  | ✓ | ✓ | ✓                   | Exact match (auto)     | -->
+
 ## Data Flow
 <!-- How data moves through the system -->
 

@@ -44,5 +44,7 @@ Otherwise (direct invocation):
 1. Verify all plan checkboxes are marked complete (`- [x]`)
 2. If any remain unchecked, report which tasks are incomplete and ask the user how to proceed
 3. Update `state.yaml` to reflect progress
-4. If `.afyapowers/features/<feature>/artifacts/implementation-concerns.md` exists, mention it to the user: "Implementation concerns were collected — they will be prioritized during the review phase."
-5. Tell the user: "Implement phase complete. Run `/afyapowers:next` to proceed to **review**."
+4. If `.afyapowers/features/<feature>/artifacts/implementation-concerns.md` exists, read it and handle the two severities differently:
+   - **Blocking Concerns** (output diverges from the design/Figma in look or behavior): do **NOT** smoothly advance. Present each blocking concern to the user and require an explicit decision per concern — **fix now** (loop back into implementation to resolve it) or **explicitly accept the divergence** (record the acceptance). Only once every blocking concern is resolved or accepted may you suggest `/afyapowers:next`.
+   - **Non-Blocking Concerns:** mention them — "Non-blocking concerns were collected — they will be prioritized during the review phase." These do not gate advancement.
+5. Tell the user: "Implement phase complete. Run `/afyapowers:next` to proceed to **review**." (Only after all blocking concerns are resolved or explicitly accepted.)

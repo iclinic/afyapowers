@@ -145,13 +145,16 @@ When done, report:
 - What you tested and test results
 - **Files changed** — the exact list of files you created or modified. The orchestrator stages and commits these, so be precise and complete.
 - Self-review findings (if any)
-- Any issues or concerns
+- **Concerns** — group every concern under one of two severities:
+  - **BLOCKING** — the implementation diverges from the design/spec in behavior or output (solves the requirement a different way than specified, deviates from a documented contract, or changes user-visible behavior vs the design). **A divergence is BLOCKING even if you were instructed to do it.** Flag it — do not bury it. Name what diverges.
+  - **CONCERN** (non-blocking) — doubts about correctness, fragility, edge cases, or anything uncertain.
 
-Use DONE_WITH_CONCERNS if you completed the work but have doubts about correctness.
+Use DONE_WITH_CONCERNS if you completed the work but have any BLOCKING or non-blocking concern.
 Use BLOCKED if you cannot complete the task. Use NEEDS_CONTEXT if you need
 information that wasn't provided. Never silently produce work you're unsure about.
 
 Be thorough with DONE_WITH_CONCERNS — this is your primary channel for flagging
-issues to the review phase. If anything feels uncertain, incomplete, or fragile,
-flag it. The review phase will prioritize your concerns. Err on the side of
-flagging — a false alarm costs nothing, a missed concern costs a review cycle.
+issues. Non-blocking concerns are prioritized during the review phase; BLOCKING
+concerns force a user decision before the phase can advance. If anything feels
+uncertain, incomplete, fragile, or different from the design, flag it. Err on the
+side of flagging — a false alarm costs nothing, a missed concern costs a review cycle.

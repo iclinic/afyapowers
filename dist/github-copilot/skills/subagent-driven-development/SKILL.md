@@ -182,9 +182,10 @@ Each agent gets:
 
 All Agent calls return together. For each result:
 - **DONE**: mark task `completed`, update plan checkbox to `- [x]`
-- **DONE_WITH_CONCERNS**: read concerns. Store in concerns list and mark `completed`. If the concern indicates the task is fundamentally broken, treat as `BLOCKED` instead.
+- **DONE_WITH_CONCERNS**: read concerns and sort each by the severity the implementer tagged it with (**BLOCKING** vs non-blocking **CONCERN**). Mark the task `completed` and commit its work (Step 6.5) so it isn't lost — but track BLOCKING and non-blocking concerns in **separate** lists. If a concern indicates the task is fundamentally broken, treat as `BLOCKED` instead.
+  - **BLOCKING concern examples (collect as blocking, do not bury):** "I reused `DropdownPicker` as instructed but its drawer+search interaction model doesn't match the Figma chip+popover", "this component assumes a bounded-height parent the host doesn't provide", "output behaves differently from the design". These do not stop the wave, but the implement phase cannot cleanly advance until the user resolves or explicitly accepts them (enforced by the `implementing` skill).
   - **Treat as BLOCKED examples:** "I couldn't get tests to pass", "Tests fail and I can't figure out why", "Core dependency is missing and I had to stub the entire integration"
-  - **Store-and-continue examples:** "I'm not sure this edge case is handled correctly", "The API response format might differ in production", "This works but the approach feels fragile"
+  - **Non-blocking (store-and-continue) examples:** "I'm not sure this edge case is handled correctly", "The API response format might differ in production", "This works but the approach feels fragile"
 - **NEEDS_CONTEXT**: surface question to user. Mark task `needs-retry`. Continue with other tasks — do NOT pause the entire execution
 - **BLOCKED**: assess blocker per standard SDD rules (more context, more capable model, break into pieces, or escalate). Mark task `needs-retry`
 
@@ -300,7 +301,7 @@ Implementer subagents report one of four statuses:
 
 **DONE:** Mark task `completed`, update plan checkbox. No review dispatch.
 
-**DONE_WITH_CONCERNS:** Read concerns. Store in concerns list and mark `completed`. If the concern indicates the task is fundamentally broken (e.g., "I couldn't get tests to pass", "Core dependency is missing and I had to stub the entire integration"), treat as `BLOCKED` instead. Examples of store-and-continue concerns: "I'm not sure this edge case is handled correctly", "The API response format might differ in production", "This works but the approach feels fragile."
+**DONE_WITH_CONCERNS:** Read concerns and sort by severity (**BLOCKING** vs non-blocking **CONCERN**). Store them in separate lists and mark `completed`. If the concern indicates the task is fundamentally broken (e.g., "I couldn't get tests to pass", "Core dependency is missing and I had to stub the entire integration"), treat as `BLOCKED` instead. BLOCKING concerns (e.g. a component substitution that doesn't match Figma, an unconfirmed host-height assumption, behavior that differs from the design) are collected separately and gate the phase via the `implementing` skill. Examples of non-blocking concerns: "I'm not sure this edge case is handled correctly", "The API response format might differ in production", "This works but the approach feels fragile."
 
 **NEEDS_CONTEXT:** Provide missing context and re-dispatch.
 
@@ -351,18 +352,28 @@ Implementer subagents report one of four statuses:
 
 ## Concerns Collection
 
-After all tasks complete, if any `DONE_WITH_CONCERNS` notes were collected during execution, write them to `.afyapowers/features/<feature>/artifacts/implementation-concerns.md`:
+After all tasks complete, if any `DONE_WITH_CONCERNS` notes were collected during execution, write them to `.afyapowers/features/<feature>/artifacts/implementation-concerns.md`, split into two severity sections:
 
 ```markdown
 # Implementation Concerns
 
-Collected during implementation phase. Priority areas for the review phase.
+Collected during implementation phase.
 
-## Task N: [task name verbatim from plan heading]
-- [concern text from implementer report]
+## Blocking Concerns
+<!-- Output diverges from the design/Figma in look or behavior. Must be resolved or explicitly
+     accepted by the user before the phase advances. Omit this section if there are none. -->
 
-## Task M: [task name verbatim from plan heading]
+### Task N: [task name verbatim from plan heading]
+- [blocking concern text from implementer report]
+
+## Non-Blocking Concerns
+<!-- Doubts, fragility, edge cases, token drift, a11y additions. Priority areas for the review
+     phase. Omit this section if there are none. -->
+
+### Task M: [task name verbatim from plan heading]
 - [concern text from implementer report]
 ```
+
+Always keep blocking concerns under `## Blocking Concerns` and the rest under `## Non-Blocking Concerns`, each grouped by task. Omit a section entirely if it has no entries.
 
 If the implementation phase is re-run (e.g., after fixing a blocked task), overwrite `implementation-concerns.md` with fresh data from the current run — do not append to stale concerns from a previous run. If no concerns were collected, do not create the file.
