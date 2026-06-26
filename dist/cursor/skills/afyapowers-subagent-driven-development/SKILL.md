@@ -377,4 +377,4 @@ Collected during implementation phase.
 
 Always keep blocking concerns under `## Blocking Concerns` and the rest under `## Non-Blocking Concerns`, each grouped by task. Omit a section entirely if it has no entries.
 
-If the implementation phase is re-run (e.g., after fixing a blocked task), overwrite `implementation-concerns.md` with fresh data from the current run — do not append to stale concerns from a previous run. If no concerns were collected, do not create the file.
+If the implementation phase is re-run (e.g., after fixing a blocked task), overwrite `implementation-concerns.md` with fresh data from the current run — do not append to stale concerns from a previous run. **Exception:** before overwriting, read the existing file and carry forward any blocking-concern line already marked `[ACCEPTED BY USER: <reason>]` — re-emit that concern with its acceptance marker intact rather than dropping it. A user's recorded acceptance must survive re-runs (the review phase relies on it). If no concerns were collected and no accepted markers exist to preserve, do not create the file.
