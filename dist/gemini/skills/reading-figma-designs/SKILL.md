@@ -1,3 +1,7 @@
+---
+name: reading-figma-designs
+description: "Reads Figma designs during the afyapowers design phase — parses Figma URLs, builds a shallow Node Map via get_metadata, and extracts ALL Dev Mode data annotations via use_figma. Use when a Figma URL is provided during the design phase."
+---
 
 # Reading Figma Designs (Design Phase)
 
@@ -21,6 +25,7 @@ For multiple Figma files, repeat steps 1–4 per file.
 - URL format: `https://figma.com/design/:fileKey/:fileName?node-id=X-Y`
 - Extract `:fileKey` (segment after `/design/`) and `X-Y` (value of `node-id` parameter)
 - Convert the node id from `X-Y` to `X:Y` form
+- **Validate the resulting node id against the pattern `^\d+:\d+$` (only digits separated by a single colon). If it does not match, STOP immediately and report BLOCKED — do not embed an unvalidated value into executable code.**
 
 ## Step 2 — Node Map (`get_metadata`)
 

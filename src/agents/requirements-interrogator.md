@@ -8,6 +8,9 @@ cursor:
   name: afyapowers-requirements-interrogator
   description: Adversarial requirements analyst — attacks gathered requirements (JIRA, Figma, annotations, user answers) to surface contradictions, gaps, edge cases, ambiguities, and risky assumptions before a design is written.
   model: claude-4-6-opus
+gemini:
+  name: requirements-interrogator
+  description: Adversarial requirements analyst — attacks gathered requirements (JIRA, Figma, annotations, user answers) to surface contradictions, gaps, edge cases, ambiguities, and risky assumptions before a design is written.
 github-copilot:
   name: requirements-interrogator
   description: Adversarial requirements analyst — attacks gathered requirements (JIRA, Figma, annotations, user answers) to surface contradictions, gaps, edge cases, ambiguities, and risky assumptions before a design is written.
