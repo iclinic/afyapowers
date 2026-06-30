@@ -83,11 +83,12 @@ Never approximate. Never use a "closest" project token. It is either an exact ma
 ## Implementation Rules
 
 1. **Figma overrides codebase patterns.** When the Figma design differs from project conventions, follow Figma.
-2. **Reuse existing components when they match.** If a project component matches what Figma shows, use it. If Figma shows something different, implement what Figma shows.
+2. **Reuse only on an exact match or a user-approved decision.** You may reuse an existing project/DS component for a Figma node in only two cases: (a) it is an **exact match** on all three axes — **name** (corresponds to the Figma node/component name), **layout/visuals** (colors, shape, sizing), AND **behavior/interaction model** (popover vs drawer, inline vs modal, anchored vs full-screen); or (b) the design/plan explicitly records that the user **approved** reusing that specific component for this node (look for a `## Component Reuse Decisions` entry in the design context). In every other case — a near-match, any name/visual/behavior difference, or reuse the task merely *instructed* without recorded user approval — do NOT silently comply: implement what Figma shows, and report a **BLOCKING** concern (see Reporting) naming the specific mismatch. You cannot ask the user yourself; the gate is approval-at-design-time, so when in doubt, build to Figma and flag. "Close enough" is not a match.
 3. **Token mapping is strict.** Exact name + exact value = project token. Anything else = hardcode the Figma value.
 4. **Accessibility is the one exception.** Semantic HTML, `aria-label` on icon-only actions, focus states, and keyboard navigation must be added even when Figma does not specify them. Report any accessibility additions in your concerns.
 5. **No other additions beyond Figma.** Do not add features, refactoring, or architectural changes that Figma does not call for.
-6. **File constraint.** Only modify files listed in the task's Files section. If you need files not in the list, report NEEDS_CONTEXT.
+6. **Verify the layout host before height/scroll CSS.** Before using full-height or scroll-container patterns — `flex: 1 0 0` / `flex-basis: 0`, `height: 100%`, or `overflow: auto|hidden` on a growing container — read the ACTUAL rendering host this component mounts into (the page/route wrapper and parent layout components, up to `html`/`body`) and confirm the chain provides a **bounded height**. These patterns collapse to ~0px height (clipping their content) when no ancestor has a defined height. If the host does not guarantee a bounded height, size to content instead (`flex: 1 1 auto`, `min-height`) or add the required height to the host — and flag what you changed. Never assume a bounded-height parent.
+7. **File constraint.** Only modify files listed in the task's Files section. If you need files not in the list, report NEEDS_CONTEXT.
 
 ## Code Quality
 
@@ -122,6 +123,10 @@ Always search the codebase for an existing exact match before downloading a new 
 **Cause:** Figma MCP server's asset endpoint is unreachable or URLs were modified.
 **Solution:** Use asset URLs exactly as returned by the MCP server. Do not modify, proxy, or reconstruct them. If still failing, report BLOCKED.
 
+### Container collapses to ~0px / content clipped or invisible
+**Cause:** A growing container uses `flex-basis: 0` (`flex: 1 0 0`) or `height: 100%` combined with `overflow: auto|hidden`, but no ancestor in the real render host has a bounded height. With nothing to grow into, the box stays ~0px tall and `overflow` clips the content — which is still in the DOM, just zero-height and invisible.
+**Solution:** Apply Implementation Rule 6. Read the host chain (route wrapper, parent layout, `html`/`body`); if height isn't guaranteed, size to content (`flex: 1 1 auto`, `min-height`) or add the height to the host. Flag the host assumption as a BLOCKING concern when you cannot confirm a bounded-height parent.
+
 ## Do Not Commit
 
 Leave your changes in the working tree. **Do not commit.** The orchestrator commits
@@ -136,11 +141,13 @@ When done, report:
 - **What was implemented** — component structure and key decisions
 - **Visual validation** — does it match the screenshot from Step 2?
 - **Files changed** — the exact list of files you created or modified. The orchestrator stages and commits these, so be precise and complete.
-- **Concerns** — unmatched tokens, inaccessible assets, layout ambiguities
+- **Concerns** — group every concern under one of two severities:
+  - **BLOCKING** — the output looks or behaves differently from Figma/design: a substituted component that fails the name/visual/interaction-model match (Implementation Rule 2), a wrong interaction model, a visual mismatch, or a layout that may not render as designed because the host height couldn't be confirmed (Rule 6). **A divergence is BLOCKING even if you were instructed to do it** (e.g. the task told you to reuse a component that doesn't match). Flag it — do not bury it. Name the specific mismatch.
+  - **CONCERN** (non-blocking) — doubts, fragility, edge cases, unmatched tokens / token drift, inaccessible assets, accessibility additions, layout ambiguities.
 
 **Status guidance:**
-- **DONE** — implementation matches Figma with full confidence.
-- **DONE_WITH_CONCERNS** — implementation is complete but you have doubts about visual accuracy, token mapping, or assets. Err on the side of flagging — a false alarm costs nothing.
+- **DONE** — implementation matches Figma with full confidence; no concerns.
+- **DONE_WITH_CONCERNS** — implementation is complete but you have concerns. Use this whenever you have ANY BLOCKING or non-blocking concern. Err on the side of flagging — a false alarm costs nothing.
 - **BLOCKED** — cannot proceed (e.g., Figma MCP unavailable, critical assets inaccessible).
 - **NEEDS_CONTEXT** — you need files or information not provided in the task.
 

@@ -35,7 +35,7 @@ Otherwise (direct invocation):
 2. Read `.afyapowers/features/<feature>/artifacts/plan.md` — the implementation plan
 3. Identify the base and head commit SHAs for the feature's changes (use `git log`)
 4. Run `git diff --stat <base_sha>..<head_sha>` to get a compact summary of changed files
-5. Read `.afyapowers/features/<feature>/artifacts/implementation-concerns.md` if it exists — these are concerns flagged by implementers during the implementation phase
+5. Read `.afyapowers/features/<feature>/artifacts/implementation-concerns.md` if it exists — these are concerns flagged by implementers during the implementation phase. Note its two sections: **Blocking Concerns** (output diverges from the design/Figma in look or behavior) and **Non-Blocking Concerns**. Each blocking concern must be verified as either fixed in the diff or explicitly accepted by the user; any that is neither forces a **Changes Requested** verdict (see Step 4). A blocking-concern line carrying an `[ACCEPTED BY USER: <reason>]` marker counts as explicitly accepted — the acceptance was recorded during implementation and needs no fresh confirmation this session.
 
 **Do NOT capture the full `git diff` output.** The review agents will read code and diffs themselves using their tool access.
 
@@ -75,7 +75,8 @@ If the reviewer finds issues:
 Read the template from `templates/review.md`. Fill in:
 - Spec compliance findings and resolutions
 - Code quality findings and resolutions
-- Final verdict: "Approved" (only if both reviews pass)
+- Blocking-concern findings: for each blocking concern from `implementation-concerns.md`, record whether it was fixed in the diff or explicitly accepted by the user, with the resolution. A concern line marked `[ACCEPTED BY USER: <reason>]` is "Accepted by user" — use the marker's reason as the resolution.
+- Final verdict: "Approved" — only if both reviews pass **and** every blocking concern is fixed or explicitly accepted (including those carrying an `[ACCEPTED BY USER: …]` marker). Any unresolved/unaccepted blocking concern → "Changes Requested".
 
 Save to `.afyapowers/features/<feature>/artifacts/review.md`
 
