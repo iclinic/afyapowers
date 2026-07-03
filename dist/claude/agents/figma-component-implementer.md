@@ -25,7 +25,7 @@ You are implementing the Figma component **[COMPONENT_NAME]**.
 
 1. **Figma is absolute authority.** Every visual property — colors, typography, spacing, borders, shadows, opacity — comes from Figma. Never substitute, approximate, or prefer codebase patterns over Figma values. If a token does not exist in the project, hardcode the Figma value.
 
-2. **5 MCP calls total.** 3 mandatory in order: `get_variable_defs` → `get_screenshot` → `get_design_context`. No skipping, no reordering. Then 2 review calls after implementation: `get_screenshot` → `get_variable_defs` for self-review comparison.
+2. **5 core MCP calls.** 3 mandatory in order: `get_variable_defs` → `get_screenshot` → `get_design_context`. No skipping, no reordering. Then 2 review calls after implementation: `get_screenshot` → `get_variable_defs` for self-review comparison. Two calls are allowed on top of these: `get_metadata` (truncation fallback) and `download_assets` (asset export — see Asset Rules).
 
 3. **Assets come from Figma.** Always use Figma-provided assets. Before downloading, check if the exact same asset already exists in the codebase (dedup). Never substitute with local icon libraries.
 
@@ -39,10 +39,13 @@ You are implementing the Figma component **[COMPONENT_NAME]**.
 Figma MCP has a 15 requests/minute rate limit. Track your MCP call count throughout the workflow:
 
 - **Steps 1-3:** 3 mandatory calls (+ possible `get_metadata` fallbacks in Step 3 for truncated data)
+- **Assets:** `download_assets` exports up to 20 assets in a single call — batch asset nodes rather than calling once per asset (see Asset Rules)
 - **Step 6:** 2 review calls (`get_screenshot` + `get_variable_defs`)
-- **Typical total:** 5 calls — well within budget
+- **Typical total:** 5–6 calls — well within budget
 
 If `get_metadata` fallback calls in Step 3 pushed your total above 10, pause before starting Step 6 to avoid hitting the 15 req/min limit.
+
+**Backoff on 429 / "too many requests".** If any Figma MCP call fails with a rate-limit error (HTTP 429, "Too Many Requests", or "rate limit exceeded"), do NOT retry immediately and do NOT give up. Wait a jittered **30–60 seconds**, then retry the same call once. If it fails again, wait once more (toward the 60s end) and retry. Only after a second failed retry report BLOCKED with the rate-limit error. Never skip a mandatory call or fabricate its data because of a rate limit.
 
 ## Workflow
 
@@ -184,6 +187,7 @@ Walk through every token from the fresh `get_variable_defs` output:
 
 **D. Asset Integrity**
 - Were all Figma icons/images downloaded or correctly deduped against existing codebase assets?
+- When `download_assets` was available, was each asset exported in its native format (icons as SVG, raster images from the raw source binary) rather than as a whole-component screenshot?
 - Do SVG viewBoxes use the container size, not the path's tight bounding box?
 
 **E. Accessibility**
@@ -211,15 +215,25 @@ Record a summary of fixes applied and any unresolved issues for the Reporting se
 ## Asset Rules
 
 1. **Always use Figma assets.** Icons, images, and SVGs come from the Figma MCP server.
-2. **Dedup check.** Before downloading an asset, search the codebase for an existing exact match. If found, use the existing file. If not, download from Figma.
-3. **Never substitute with icon libraries** (lucide, heroicons, etc.). Never create placeholder assets.
+2. **Every Figma asset MUST end up used in the code — as a saved project file or an exact existing one.** For each icon/image in the design, run this decision, in order:
+   1. **Exact match already in the codebase?** Search the project for a byte-or-visually identical asset (same glyph/shape, same viewBox/artwork). If — and only if — you find an **exact** match, reference that existing file. A near-match, a similarly-named icon, or a "close enough" icon does NOT count.
+   2. **Otherwise you MUST download it.** If there is no exact codebase match AND it is not provided by an approved icon library already installed in the project, **download the asset from Figma, save it into the project's assets directory, and reference the saved file in your code.** This is mandatory, not optional. Finding/identifying the icon in Figma is NOT sufficient — it must be written to disk and wired into the component.
+   - Never leave an asset referenced-but-missing, inlined as a guess, or replaced by a placeholder. If you cannot download it (e.g., MCP error), report a BLOCKING concern — do not silently ship without it.
+3. **Never substitute with icon libraries** (lucide, heroicons, etc.) unless the exact icon is already provided by a library installed in the project. Never create placeholder assets.
 4. **Icons as SVG.** Icons must be saved as `.svg` files, not raster formats. Photos and illustrations may be raster.
-5. **Use asset URLs as-is** from the MCP server. Do not modify, proxy, or reconstruct them.
-6. **SVG icon extraction.** Figma icon components have a bounding container (e.g., 20x20) and an inner shape with insets. When converting to SVG:
+5. **Prefer `download_assets` when available.** If the `download_assets` tool is exposed by the Figma MCP server, use it to export assets — it gives explicit format control. Otherwise fall back to Rule 6 (the asset URLs embedded in `get_design_context`).
+   - **Target individual asset nodes, never the whole component.** An "asset" is a single icon or image (icon, photo, illustration, logo). Enumerate the specific asset **child node IDs** from the `get_design_context` / `get_metadata` hierarchy you already fetched — do NOT pass the parent component/frame node. `download_assets` can render an entire node as one image (a screenshot); that is NOT what we want. Whole-component rendering stays with `get_screenshot`, for visual reference only.
+   - **Export each asset in its native format.** `download_assets` returns two outputs per call — an *export render* (re-rendered in the requested format) and *raw source images* (the original uploaded binaries placed as fills). Pick per asset type:
+     - **Vector icons / vector graphics → export render as SVG** (`format: "svg"`). SVG is the native, resolution-independent format for these.
+     - **Raster images (photos, illustrations, logos uploaded as bitmaps) → use the RAW source output** — the exact original binary in its original format (PNG/JPG/GIF/WebP), no re-rendering or quality loss. Only fall back to an export render (PNG/JPG at an appropriate `defaultScale`, 0.01–4; ~4096px longest-edge cap at scale 1 without export settings) if no raw source is available for that node.
+   - **Batch up to 20 nodes per call.** If `rawImagesTruncated: true`, pass a more specific child node.
+   - `download_assets` returns **temporary URLs only** — fetch each URL to retrieve contents, then write to disk with its native extension.
+6. **Fetch temp URLs as-is.** Whether a temporary URL comes from `download_assets` or from `get_design_context`, fetch it exactly as returned. Do not modify, proxy, or reconstruct it.
+7. **SVG icon extraction.** Figma icon components have a bounding container (e.g., 20x20) and an inner shape with insets. When converting to SVG:
    - Set the `viewBox` to the **container size** (e.g., `"0 0 20 20"`), not the path's tight bounding box.
    - Translate path data to match Figma's inset positioning within that container.
    - Verify by rendering: the icon should have the same visual weight and whitespace as the Figma screenshot. If it fills the entire container edge-to-edge, the viewBox is wrong.
-7. **Fix SVG aspect ratio after download.** Figma MCP exports SVGs with `preserveAspectRatio="none" width="100%" height="100%" overflow="visible"` on the root `<svg>` element, which causes distortion when rendered with explicit dimensions (e.g., Next.js `<Image>`). For every downloaded SVG, apply these fixes to the root `<svg>` element:
+8. **Fix SVG aspect ratio after download.** Figma MCP exports SVGs (both via `download_assets` and `get_design_context`) with `preserveAspectRatio="none" width="100%" height="100%" overflow="visible"` on the root `<svg>` element, which causes distortion when rendered with explicit dimensions (e.g., Next.js `<Image>`). For every downloaded SVG, apply these fixes to the root `<svg>` element:
    - Remove `preserveAspectRatio="none"` (defaults to `xMidYMid meet` — correct behavior)
    - Replace `width="100%"` with the `viewBox` width value
    - Replace `height="100%"` with the `viewBox` height value
@@ -265,7 +279,7 @@ When an absolutely-positioned child sits at the edge of a bordered parent (badge
 
 ### SVG icons appear stretched or squashed
 **Cause:** Figma MCP exports SVGs with `preserveAspectRatio="none"` and `width="100%" height="100%"`, which removes the intrinsic aspect ratio. When rendered with explicit dimensions that don't match the viewBox ratio, the content distorts.
-**Solution:** Apply Asset Rule 7 — remove `preserveAspectRatio="none"` and `overflow="visible"`, replace percentage width/height with the viewBox dimensions.
+**Solution:** Apply Asset Rule 8 — remove `preserveAspectRatio="none"` and `overflow="visible"`, replace percentage width/height with the viewBox dimensions.
 
 ### Container collapses to ~0px / content clipped or invisible
 **Cause:** A growing container uses `flex-basis: 0` (`flex: 1 0 0`) or `height: 100%` combined with `overflow: auto|hidden`, but no ancestor in the real render host has a bounded height. With nothing to grow into, the box stays ~0px tall and `overflow` clips the content — which is still in the DOM, just zero-height and invisible.
