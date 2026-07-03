@@ -207,6 +207,7 @@ Use this format for tasks that implement UI components with Figma designs. The d
 **Files:**
 - Create: `exact/path/to/component`
 - Create: `exact/path/to/styles` (if applicable)
+**Assets:** `<project assets dir>/` — implementer may download & create icon/image files here as needed (exact files unknown at plan time)
 **Depends on:** none | Task X, Task Y
 
 **Figma:**
@@ -221,6 +222,7 @@ Use this format for tasks that implement UI components with Figma designs. The d
 - **File Key:** Copy from the design doc's `## Figma Resources` section
 - **Node ID:** The single node ID for this task's component from the Node Map
 - **Breakpoints:** Include only the breakpoints relevant to this task's component (not all breakpoints in the design)
+- **Assets:** Set `<project assets dir>` to the codebase's existing asset convention when you can tell it from the design doc or project layout (e.g. `src/assets`, `public/`); otherwise leave the generic note — the implementer auto-detects and falls back to a sensible default. Never enumerate individual asset files here: which icons/images a design needs is only knowable at implement time (no Figma MCP calls at plan time). The `**Assets:**` line is a *grant + hint* that assets may be created outside the `**Files:**` list — omitting it does not block the implementer, it just loses the hint.
 
 **Mixed plans:** Figma and non-Figma tasks coexist in the same plan with standard dependency handling. A feature might have Tasks 1-2 as data models (standard TDD), Tasks 3-5 as UI components (Figma), and Task 6 as integration (standard TDD).
 
@@ -230,6 +232,7 @@ Use this format for tasks that implement UI components with Figma designs. The d
 - Exact commands with expected output
 - DRY, YAGNI, TDD-inspired (standard tasks), frequent commits
 - Figma tasks: no TDD, no code snippets, single workflow step — the subagent prompt owns the how
+- Figma tasks: include the `**Assets:**` grant line (project assets dir); never enumerate individual asset files — they're only knowable at implement time
 - When Figma resources exist: always split design (Figma task) and logic (standard task) into separate tasks. Design first, logic depends on it
 - Any task touching styling (CSS, Tailwind, layout, disposition) MUST be a Figma task when Figma resources are available
 

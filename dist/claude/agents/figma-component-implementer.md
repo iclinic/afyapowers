@@ -217,8 +217,9 @@ Record a summary of fixes applied and any unresolved issues for the Reporting se
 1. **Always use Figma assets.** Icons, images, and SVGs come from the Figma MCP server.
 2. **Every Figma asset MUST end up used in the code — as a saved project file or an exact existing one.** For each icon/image in the design, run this decision, in order:
    1. **Exact match already in the codebase?** Search the project for a byte-or-visually identical asset (same glyph/shape, same viewBox/artwork). If — and only if — you find an **exact** match, reference that existing file. A near-match, a similarly-named icon, or a "close enough" icon does NOT count.
-   2. **Otherwise you MUST download it.** If there is no exact codebase match AND it is not provided by an approved icon library already installed in the project, **download the asset from Figma, save it into the project's assets directory, and reference the saved file in your code.** This is mandatory, not optional. Finding/identifying the icon in Figma is NOT sufficient — it must be written to disk and wired into the component.
+   2. **Otherwise you MUST download it.** If there is no exact codebase match AND it is not provided by an approved icon library already installed in the project, **download the asset from Figma, save it into the project's assets directory (see "Assets directory" below), and reference the saved file in your code.** This is mandatory, not optional. Finding/identifying the icon in Figma is NOT sufficient — it must be written to disk and wired into the component.
    - Never leave an asset referenced-but-missing, inlined as a guess, or replaced by a placeholder. If you cannot download it (e.g., MCP error), report a BLOCKING concern — do not silently ship without it.
+   - **Assets directory.** Determine where to save, in this order: (a) an existing assets convention in the codebase (e.g. `src/assets`, `public/`, `app/assets`, or an existing `icons/` folder); (b) an assets directory named in your task context; (c) if none exists, a sensible default alongside `[OUTPUT_DIRECTORY]` or matching project conventions (e.g. `src/assets/icons/`). Saving asset files is always permitted (see Implementation Rule 7); note the directory you chose in your report.
 3. **Never substitute with icon libraries** (lucide, heroicons, etc.) unless the exact icon is already provided by a library installed in the project. Never create placeholder assets.
 4. **Icons as SVG.** Icons must be saved as `.svg` files, not raster formats. Photos and illustrations may be raster.
 5. **Prefer `download_assets` when available.** If the `download_assets` tool is exposed by the Figma MCP server, use it to export assets — it gives explicit format control. Otherwise fall back to Rule 6 (the asset URLs embedded in `get_design_context`).
@@ -247,7 +248,7 @@ Record a summary of fixes applied and any unresolved issues for the Reporting se
 4. **Accessibility is the one exception.** Semantic HTML, `aria-label` on icon-only actions, focus states, and keyboard navigation must be added even when Figma does not specify them. Report any accessibility additions in your concerns.
 5. **No other additions beyond Figma.** Do not add features, refactoring, or architectural changes that Figma does not call for.
 6. **Verify the layout host before height/scroll CSS.** Before using full-height or scroll-container patterns — `flex: 1 0 0` / `flex-basis: 0`, `height: 100%`, or `overflow: auto|hidden` on a growing container — read the ACTUAL rendering host this component mounts into (the page/route wrapper and parent layout components, up to `html`/`body`) and confirm the chain provides a **bounded height**. These patterns collapse to ~0px height (clipping their content) when no ancestor has a defined height. If the host does not guarantee a bounded height, size to content instead (`flex: 1 1 auto`, `min-height`) or add the required height to the host — and flag what you changed. Never assume a bounded-height parent.
-7. **Output location.** Output files to the directory specified in context. Create subdirectories if the component needs multiple files (e.g., component + styles + types).
+7. **Output location.** Output component/source files to the directory specified in context (`[OUTPUT_DIRECTORY]`). Create subdirectories if the component needs multiple files (e.g., component + styles + types). **Asset files (icons/images) are always allowed** — save them to the project's assets directory (Asset Rule 2 → "Assets directory"), even if not otherwise listed; they are additive and dedup-checked. Report every asset file you create.
 
 ## Code Quality
 
@@ -310,6 +311,7 @@ When done, report:
 - **What was implemented** — component structure and key decisions
 - **Visual validation** — does it match the screenshot from Step 2?
 - **Files created**
+- **Assets created** — full paths of every asset file (icon/image) downloaded and saved, plus the assets directory chosen. "none" if you created no asset files.
 - **Variant coverage** — which variants were implemented (for COMPONENT_SET)
 - **Self-review result** — all checks passed / N issues found, M fixed, K unresolved
 - **Concerns** — group every concern under one of two severities:
