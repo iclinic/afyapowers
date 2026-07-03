@@ -47,7 +47,7 @@ You are implementing the Figma component **[COMPONENT_NAME]**.
 Figma MCP has a 15 requests/minute rate limit. Track your MCP call count throughout the workflow:
 
 - **Steps 1-3:** 3 mandatory calls (+ possible `get_metadata` fallbacks in Step 3 for truncated data)
-- **Assets:** `download_assets` exports up to 20 assets in a single call — batch asset nodes rather than calling once per asset (see Asset Rules)
+- **Assets:** `download_assets` accepts up to 20 node IDs per call (and returns up to 20 raw source images per node's subtree) — batch asset nodes rather than calling once per asset (see Asset Rules)
 - **Step 6:** 2 review calls (`get_screenshot` + `get_variable_defs`)
 - **Typical total:** 5–6 calls — well within budget
 
@@ -227,7 +227,7 @@ Record a summary of fixes applied and any unresolved issues for the Reporting se
    1. **Exact match already in the codebase?** Search the project for a byte-or-visually identical asset (same glyph/shape, same viewBox/artwork). If — and only if — you find an **exact** match, reference that existing file. A near-match, a similarly-named icon, or a "close enough" icon does NOT count.
    2. **Otherwise you MUST download it.** If there is no exact codebase match AND it is not provided by an approved icon library already installed in the project, **download the asset from Figma, save it into the project's assets directory (see "Assets directory" below), and reference the saved file in your code.** This is mandatory, not optional. Finding/identifying the icon in Figma is NOT sufficient — it must be written to disk and wired into the component.
    - Never leave an asset referenced-but-missing, inlined as a guess, or replaced by a placeholder. If you cannot download it (e.g., MCP error), report a BLOCKING concern — do not silently ship without it.
-   - **Assets directory.** Determine where to save, in this order: (a) an existing assets convention in the codebase (e.g. `src/assets`, `public/`, `app/assets`, or an existing `icons/` folder); (b) an assets directory named in your task context; (c) if none exists, a sensible default alongside `[OUTPUT_DIRECTORY]` or matching project conventions (e.g. `src/assets/icons/`). Saving asset files is always permitted (see Implementation Rule 7); note the directory you chose in your report.
+   - **Assets directory.** Determine where to save, in this order: (a) an existing assets convention in the codebase (e.g. `src/assets`, `public/`, `app/assets`, or an existing `icons/` folder); (b) an `**Assets:**` directory declared in the task; (c) if none exists, a sensible default alongside `[OUTPUT_DIRECTORY]` or matching project conventions (e.g. `src/assets/icons/`). Saving asset files is always permitted (see Implementation Rule 7); note the directory you chose in your report.
 3. **Never substitute with icon libraries** (lucide, heroicons, etc.) unless the exact icon is already provided by a library installed in the project. Never create placeholder assets.
 4. **Icons as SVG.** Icons must be saved as `.svg` files, not raster formats. Photos and illustrations may be raster.
 5. **Prefer `download_assets` when available.** If the `download_assets` tool is exposed by the Figma MCP server, use it to export assets — it gives explicit format control. Otherwise fall back to Rule 6 (the asset URLs embedded in `get_design_context`).
@@ -235,7 +235,7 @@ Record a summary of fixes applied and any unresolved issues for the Reporting se
    - **Export each asset in its native format.** `download_assets` returns two outputs per call — an *export render* (re-rendered in the requested format) and *raw source images* (the original uploaded binaries placed as fills). Pick per asset type:
      - **Vector icons / vector graphics → export render as SVG** (`format: "svg"`). SVG is the native, resolution-independent format for these.
      - **Raster images (photos, illustrations, logos uploaded as bitmaps) → use the RAW source output** — the exact original binary in its original format (PNG/JPG/GIF/WebP), no re-rendering or quality loss. Only fall back to an export render (PNG/JPG at an appropriate `defaultScale`, 0.01–4; ~4096px longest-edge cap at scale 1 without export settings) if no raw source is available for that node.
-   - **Batch up to 20 nodes per call.** If `rawImagesTruncated: true`, pass a more specific child node.
+   - **Batch up to 20 nodes per call.** Raw source images are capped at 20 per call; if `rawImagesTruncated: true`, pass a more specific child node.
    - `download_assets` returns **temporary URLs only** — fetch each URL to retrieve contents, then write to disk with its native extension.
 6. **Fetch temp URLs as-is.** Whether a temporary URL comes from `download_assets` or from `get_design_context`, fetch it exactly as returned. Do not modify, proxy, or reconstruct it.
 7. **SVG icon extraction.** Figma icon components have a bounding container (e.g., 20x20) and an inner shape with insets. When converting to SVG:
