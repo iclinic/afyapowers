@@ -148,6 +148,8 @@ Waiting: [5]     (dep 3 not completed)
 
 Check every pair of tasks in the ready set. If two tasks share any file path in their file lists, remove one from the ready set (move it back to waiting). It will be picked up in the next cycle.
 
+Overlap validation covers `**Files:**` (source) paths only. **Asset files are excluded** — they are additive, dedup-checked before writing, and idempotent, so they don't need serialization. If two parallel Figma tasks download the same icon, they produce functionally identical files (same node → same export + same fixes). Exports may not be byte-identical across calls (e.g., non-deterministic SVG attribute ordering), but the sequential commits in Step 6.5 ensure only the last version persists — no data corruption. No locking needed.
+
 ### Step 5: Dispatch
 
 **Figma-aware concurrency:** After file overlap validation, classify each task in the ready set:
@@ -169,8 +171,8 @@ Dispatch the combined set (all non-Figma + up to 4 Figma) as parallel Subagent c
 Each agent gets:
 - Full task text (steps, file list, code/Figma metadata) — paste directly, don't make agent read files
 - Design spec content for context
-- File constraint: "You may ONLY modify these files: [list from task's Files: section]"
-- Return format: status (DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED) + summary, **including the exact list of files changed**
+- File constraint: "You may ONLY modify these files: [list from task's Files: section]". **For Figma tasks, append:** "— plus you MAY create asset files (icons/images) under the project's assets directory as needed; list every asset file you create in your report."
+- Return format: status (DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED) + summary, **including the exact list of files changed**. For Figma tasks, the report must **separately list any asset files created** (the "Assets created" line) — these are usually not in the Files: section and the orchestrator needs them to stage the assets.
 
 **Subagents do NOT commit.** They implement, test, self-review, and report. Do not paste the commit conventions block into subagent prompts — you commit each completed task yourself in Step 6.5.
 
@@ -194,8 +196,8 @@ index-lock races and cross-task contamination that parallel committing causes.
 
 For each completed task, in order:
 
-1. **Stage only that task's files** — `git add -- <files from the task's **Files:** section>`. Never `git add .` or `git add -A`; that would sweep in other tasks' changes.
-2. **Verify staging** — run `git diff --cached --name-only` and confirm only this task's files are staged. If unexpected files appear (e.g. an agent edited outside its constraint), stop and surface it to the user instead of committing.
+1. **Stage only that task's files** — `git add -- <files from the task's **Files:** section> <asset files from the task's "Assets created" report line>`. Never `git add .` or `git add -A`; that would sweep in other tasks' changes. For Figma tasks, the reported asset files are a legitimate, expected part of the task's output — stage them alongside the source files.
+2. **Verify staging** — run `git diff --cached --name-only` and confirm only this task's files are staged. The task's Files: entries **and** its reported "Assets created" paths are expected. If any *other* file appears (outside the Files list AND not a reported asset — e.g. an agent edited outside its constraint), stop and surface it to the user instead of committing.
 3. **Commit** — write a message following the `## Commit Conventions` block from Step 0, with the subject derived from the task name (`### Task N:` heading).
 4. **Handle hook failures** (safe to retry now, since commits are sequential):
    - Commitlint rejection → rewrite the message to match the format, retry.

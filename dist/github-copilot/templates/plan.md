@@ -31,6 +31,8 @@
 **Files:**
 - Create: `exact/path/to/component`
 
+**Assets:** `<project assets dir>/` — implementer may download & create icon/image files here as needed (exact files unknown at plan time)
+
 **Depends on:** none | Task X
 
 **Figma:**
