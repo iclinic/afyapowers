@@ -10,12 +10,24 @@
         ]
       }
     ],
-    "UserPromptExpansion": [
+    "PreToolUse": [
       {
+        "matcher": "Skill",
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/lang-directive"
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/lang-directive claude"
+          }
+        ]
+      }
+    ],
+    "UserPromptExpansion": [
+      {
+        "matcher": "afyapowers:.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/lang-directive claude"
           }
         ]
       }

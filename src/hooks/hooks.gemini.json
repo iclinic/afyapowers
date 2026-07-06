@@ -5,17 +5,18 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-start"
+            "command": "$GEMINI_PROJECT_DIR/hooks/session-start"
           }
         ]
       }
     ],
-    "UserPromptExpansion": [
+    "BeforeTool": [
       {
+        "matcher": "activate_skill",
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/lang-directive"
+            "command": "$GEMINI_PROJECT_DIR/hooks/lang-directive gemini"
           }
         ]
       }
@@ -25,7 +26,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/render-history gemini"
+            "command": "$GEMINI_PROJECT_DIR/hooks/render-history gemini"
           }
         ]
       }

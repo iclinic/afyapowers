@@ -1,33 +1,22 @@
 {
+  "version": 1,
   "hooks": {
-    "SessionStart": [
+    "sessionStart": [
       {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-start"
-          }
-        ]
+        "type": "command",
+        "bash": "./hooks/session-start",
+        "powershell": "bash ./hooks/session-start",
+        "cwd": ".",
+        "timeoutSec": 10
       }
     ],
-    "UserPromptExpansion": [
+    "sessionEnd": [
       {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/lang-directive"
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/render-history github-copilot"
-          }
-        ]
+        "type": "command",
+        "bash": "./hooks/render-history github-copilot",
+        "powershell": "bash ./hooks/render-history github-copilot",
+        "cwd": ".",
+        "timeoutSec": 30
       }
     ]
   }
