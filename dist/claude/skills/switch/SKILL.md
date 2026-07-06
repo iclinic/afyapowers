@@ -19,7 +19,7 @@ Switch the active feature context. This command accepts an optional argument: th
 ### Once a feature is selected (by argument or user choice):
 
 1. Find the matching feature directory under `.afyapowers/features/` (match by slug or feature name)
-2. Verify the feature is not aborted. If it is, tell the user: "Feature '<name>' is aborted and cannot be switched to. Run `/afyapowers:new` to start a new feature."
+2. Verify the feature is not aborted. If it is, tell the user: "A feature '<name>' está abortada e não pode ser selecionada. Rode `/afyapowers:new` para começar uma nova feature."
 3. Write the feature's directory name to `.afyapowers/features/active`
 4. Read the feature's `state.yaml`
 5. Display its status (same format as `/afyapowers:status`)

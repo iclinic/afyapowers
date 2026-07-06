@@ -7,7 +7,7 @@ description: "Use when the current afyapowers phase is implement — orchestrate
 
 Orchestrate plan execution by delegating to subagent-driven-development.
 
-**Announce at start:** "I'm using the implementing skill to execute the plan."
+**Announce at start:** "Estou usando a skill implementing para executar o plano."
 
 ## Phase Gate
 
@@ -32,7 +32,7 @@ Otherwise (direct invocation):
 
 **REQUIRED:** Invoke `afyapowers:subagent-driven-development` via the Skill tool to execute all plan tasks.
 
-- Announce: "Using subagent-driven-development to execute implementation tasks."
+- Announce: "Usando o subagent-driven-development para executar as tarefas de implementação."
 - Invoke the skill. Follow its instructions completely.
 - The plan content and design are already in the conversation context — SDD will use them directly.
 - After SDD completes, resume the parent flow below.
@@ -43,6 +43,6 @@ Otherwise (direct invocation):
 2. If any remain unchecked, report which tasks are incomplete and ask the user how to proceed
 3. Update `state.yaml` to reflect progress
 4. If `.afyapowers/features/<feature>/artifacts/implementation-concerns.md` exists, read it and handle the two severities differently:
-   - **Blocking Concerns** (output diverges from the design/Figma in look or behavior): do **NOT** smoothly advance. Present each blocking concern to the user and require an explicit decision per concern — **fix now** (loop back into implementation to resolve it) or **explicitly accept the divergence** (record the acceptance by appending `[ACCEPTED BY USER: <reason>]` to that concern's line in `implementation-concerns.md`). Only once every blocking concern is resolved or accepted may you suggest `/afyapowers:next`.
-   - **Non-Blocking Concerns:** mention them — "Non-blocking concerns were collected — they will be prioritized during the review phase." These do not gate advancement.
-5. Tell the user: "Implement phase complete. Run `/afyapowers:next` to proceed to **review**." (Only after all blocking concerns are resolved or explicitly accepted.)
+   - **Impedimentos** (output diverges from the design/Figma in look or behavior): do **NOT** smoothly advance. Present each blocking concern to the user and require an explicit decision per concern — **fix now** (loop back into implementation to resolve it) or **explicitly accept the divergence** (record the acceptance by appending `[ACCEPTED BY USER: <reason>]` to that concern's line in `implementation-concerns.md`). Only once every blocking concern is resolved or accepted may you suggest `/afyapowers:next`.
+   - **Ressalvas:** mention them — "Ressalvas foram coletadas — serão priorizadas durante a fase de review." These do not gate advancement.
+5. Tell the user: "Fase implement concluída. Rode `/afyapowers:next` para avançar para **review**." (Only after all blocking concerns are resolved or explicitly accepted.)

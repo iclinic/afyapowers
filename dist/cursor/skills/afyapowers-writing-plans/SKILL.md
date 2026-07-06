@@ -12,7 +12,7 @@ Write comprehensive implementation plans assuming the engineer has zero context 
 
 Assume they are a skilled developer, but know almost nothing about our toolset or problem domain. Assume they don't know good test design very well.
 
-**Announce at start:** "I'm using the writing-plans skill to create the implementation plan."
+**Announce at start:** "Estou usando a skill writing-plans para criar o plano de implementação."
 
 ## Phase Gate
 
@@ -34,27 +34,27 @@ If the spec covers multiple independent subsystems, it should have been broken i
 
 ## Figma Task Layer Inference
 
-Before defining Figma tasks, check if the design doc contains a `## Figma Resources` section with a `### Node Map`.
+Before defining Figma tasks, check if the design doc contains a `## Recursos do Figma` section with a `### Node Map`.
 
 **If Figma Resources are present**, read the Node Map and infer task layers directly — no Figma MCP calls at planning time:
 
-1. **Layer 1 — Reusable components:** Each entry in the Node Map's **Reusable Components** subsection becomes a Layer 1 task with its single node ID. No dependencies. INSTANCE nodes with `×N` count only become Layer 1 tasks when their COMPONENT definition is NOT present in the same file (external component) — otherwise the COMPONENT node itself is the Layer 1 task and the INSTANCEs are usages handled by their parent section's Layer 2 task. If **Reusable Components** is empty or says "(none)", there are no Layer 1 tasks.
+1. **Layer 1 — Reusable components:** Each entry in the Node Map's **Componentes Reutilizáveis** subsection becomes a Layer 1 task with its single node ID. No dependencies. INSTANCE nodes with `×N` count only become Layer 1 tasks when their COMPONENT definition is NOT present in the same file (external component) — otherwise the COMPONENT node itself is the Layer 1 task and the INSTANCEs are usages handled by their parent section's Layer 2 task. If **Componentes Reutilizáveis** is empty or says "(nenhum)", there are no Layer 1 tasks.
 
-2. **Layer 2 — Screens:** Each entry in the Node Map's **Screens** subsection becomes a Layer 2 task with its single node ID. Depends on any Layer 1 tasks whose components were originally children of that frame (either as COMPONENT/COMPONENT_SET nodes extracted to Reusable Components, or as INSTANCE nodes referencing a Reusable Component).
+2. **Layer 2 — Screens:** Each entry in the Node Map's **Telas** subsection becomes a Layer 2 task with its single node ID. Depends on any Layer 1 tasks whose components were originally children of that frame (either as COMPONENT/COMPONENT_SET nodes extracted to Reusable Components, or as INSTANCE nodes referencing a Reusable Component).
 
 **Granularity rule:** If a node is typed COMPONENT/COMPONENT_SET, it MUST be its own Layer 1 task. Do not merge it into a parent section's task.
 
-Each Figma task uses the Figma Task Structure format (see below) with a single node ID and breakpoints from the design doc's `## Figma Resources` section.
+Each Figma task uses the Figma Task Structure format (see below) with a single node ID and breakpoints from the design doc's `## Recursos do Figma` section.
 
 #### Example
 
 Given this Node Map from the design doc:
 ```
-**Reusable Components:**
+**Componentes Reutilizáveis:**
 - CTA Button (node `1:4`, COMPONENT)
 - Pricing Tier (node `2:10`, COMPONENT_SET)
 
-**Screens:**
+**Telas:**
 - **Hero Section** (node `1:2`, FRAME, 1440x800)
   - Card (node `1:5`, INSTANCE, componentId: `2:10`) ×3
   - Hero Title (node `1:3`, TEXT)
@@ -78,15 +78,15 @@ Task 2: Pricing Section (Figma)    — merges Pricing Tier into screen task
 ```
 ↑ Components must be their own Layer 1 tasks. Never merge them into screen tasks.
 
-When **Reusable Components** is empty:
+When **Componentes Reutilizáveis** is empty:
 ```
 Task 1: Hero Section (Figma)       — Layer 2, node `1:2`, depends on: none
 Task 2: Pricing Section (Figma)    — Layer 2, node `2:1`, depends on: none
 ```
 
 **Figma task validation (run before finalizing the plan):**
-1. Every entry in **Reusable Components** has a corresponding Layer 1 task with its node ID (trivially passes if Reusable Components is empty)
-2. Every entry in **Screens** has a corresponding Layer 2 task with its node ID
+1. Every entry in **Componentes Reutilizáveis** has a corresponding Layer 1 task with its node ID (trivially passes if Reusable Components is empty)
+2. Every entry in **Telas** has a corresponding Layer 2 task with its node ID
 3. No Layer 2 task includes implementation work for a component that has its own Layer 1 task
 4. Layer 2 tasks depend on Layer 1 tasks whose components were originally children of that frame (extracted COMPONENT/COMPONENT_SET or INSTANCE references)
 
@@ -124,11 +124,11 @@ Do **not** add a commit step to tasks — the orchestrator commits each task seq
 
 ## Dependency Declaration
 
-Every task MUST have a `**Depends on:**` line immediately after the `**Files:**` block.
+Every task MUST have a `**Depende de:**` line immediately after the `**Arquivos:**` block.
 
 - Use `none` if the task has no dependencies
 - Use `Task N` or `Task N, Task M` (comma-separated) to declare dependencies on other tasks
-- Dependencies are by task number, matching the `### Task N:` heading
+- Dependencies are by task number, matching the `### Tarefa N:` heading
 
 **What counts as a dependency:**
 - Task B modifies a file that Task A creates → Task B depends on Task A
@@ -137,7 +137,7 @@ Every task MUST have a `**Depends on:**` line immediately after the `**Files:**`
 - Task B and Task A are completely independent → no dependency needed
 
 **Plan-time file overlap validation:**
-After declaring dependencies, check that tasks which could run in parallel (no mutual dependency) don't share files in their `**Files:**` lists. If two parallel-eligible tasks touch the same file, add a dependency between them to force sequential execution.
+After declaring dependencies, check that tasks which could run in parallel (no mutual dependency) don't share files in their `**Arquivos:**` lists. If two parallel-eligible tasks touch the same file, add a dependency between them to force sequential execution.
 
 File overlap validation is a safety net, not a substitute for thinking about task ordering. Always declare logical dependencies (imports, shared interfaces) explicitly.
 
@@ -162,53 +162,53 @@ File overlap validation is a safety net, not a substitute for thinking about tas
 ## Task Structure
 
 ````markdown
-### Task N: [Component Name]
+### Tarefa N: [Nome do Componente]
 
-**Files:**
-- Create: `exact/path/to/file.py`
-- Modify: `exact/path/to/existing.py:123-145`
-- Test: `tests/exact/path/to/test.py`
-**Depends on:** none | Task X, Task Y
+**Arquivos:**
+- Criar: `caminho/exato/do/arquivo.py`
+- Modificar: `caminho/exato/do/arquivo/existente.py:123-145`
+- Teste: `tests/caminho/exato/do/teste.py`
+**Depende de:** nenhuma | Tarefa X, Tarefa Y
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Passo 1: Escrever o teste que falha**
 
   Describe what behaviors to test: valid inputs, invalid inputs, edge cases.
   Explain expected outcomes for each scenario. Specify which file to write
   the test in and what module/function is being tested.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Passo 2: Run test to verify it fails**
 
   Specify the exact command to run and the expected failure reason.
 
-- [ ] **Step 3: Implement the minimal code to pass the test**
+- [ ] **Passo 3: Implement the minimal code to pass the test**
 
   Describe what the implementation should do, key decisions (which pattern
   to follow, which existing utility to reuse), and edge cases to handle.
   Specify which file to modify.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **Passo 4: Run test to verify it passes**
 
   Specify the exact command to run.
 ````
 
 ## Figma Task Structure
 
-Use this format for tasks that implement UI components with Figma designs. The design doc's `## Figma Resources` section provides the source data for the Figma block.
+Use this format for tasks that implement UI components with Figma designs. The design doc's `## Recursos do Figma` section provides the source data for the Figma block.
 
-**How to identify Figma tasks:** If the component being implemented has corresponding nodes in the design doc's `## Figma Resources` Node Map, it is a Figma task. Backend tasks, API routes, data models, business logic, and other non-UI tasks use the standard task structure above.
+**How to identify Figma tasks:** If the component being implemented has corresponding nodes in the design doc's `## Recursos do Figma` Node Map, it is a Figma task. Backend tasks, API routes, data models, business logic, and other non-UI tasks use the standard task structure above.
 
 **Design/logic split:** When Figma resources exist, tasks that involve any styling (CSS, Tailwind, layout, disposition) must be Figma tasks, even if they also have logic. Always create separate tasks: a Figma task for the visual design, then a standard task for the behavior/logic that depends on the Figma task. Example: "Contact Form Layout (Figma)" → "Contact Form Logic" (depends on layout task).
 
 **No TDD, no code snippets.** Figma tasks describe what to achieve — the implementer subagent uses the Figma MCP tools and the Figma implementer workflow to determine how.
 
 ```markdown
-### Task N: [UI Component Name] (Figma)
+### Tarefa N: [Nome do Componente de UI] (Figma)
 
-**Files:**
-- Create: `exact/path/to/component`
-- Create: `exact/path/to/styles` (if applicable)
-**Assets:** `<project assets dir>/` — implementer may download & create icon/image files here as needed (exact files unknown at plan time)
-**Depends on:** none | Task X, Task Y
+**Arquivos:**
+- Criar: `caminho/exato/do/componente`
+- Criar: `caminho/exato/dos/estilos` (se aplicável)
+**Assets:** `<diretório de assets do projeto>/` — implementer may download & create icon/image files here as needed (exact files unknown at plan time)
+**Depende de:** nenhuma | Tarefa X, Tarefa Y
 
 **Figma:**
 - **File Key:** `<file_key>`
@@ -219,10 +219,10 @@ Use this format for tasks that implement UI components with Figma designs. The d
 ```
 
 **Building the Figma block:**
-- **File Key:** Copy from the design doc's `## Figma Resources` section
+- **File Key:** Copy from the design doc's `## Recursos do Figma` section
 - **Node ID:** The single node ID for this task's component from the Node Map
 - **Breakpoints:** Include only the breakpoints relevant to this task's component (not all breakpoints in the design)
-- **Assets:** Set `<project assets dir>` to the codebase's existing asset convention when you can tell it from the design doc or project layout (e.g. `src/assets`, `public/`); otherwise leave the generic note — the implementer auto-detects and falls back to a sensible default. Never enumerate individual asset files here: which icons/images a design needs is only knowable at implement time (no Figma MCP calls at plan time). The `**Assets:**` line is a *grant + hint* that assets may be created outside the `**Files:**` list — omitting it does not block the implementer, it just loses the hint.
+- **Assets:** Set `<project assets dir>` to the codebase's existing asset convention when you can tell it from the design doc or project layout (e.g. `src/assets`, `public/`); otherwise leave the generic note — the implementer auto-detects and falls back to a sensible default. Never enumerate individual asset files here: which icons/images a design needs is only knowable at implement time (no Figma MCP calls at plan time). The `**Assets:**` line is a *grant + hint* that assets may be created outside the `**Arquivos:**` list — omitting it does not block the implementer, it just loses the hint.
 
 **Mixed plans:** Figma and non-Figma tasks coexist in the same plan with standard dependency handling. A feature might have Tasks 1-2 as data models (standard TDD), Tasks 3-5 as UI components (Figma), and Task 6 as integration (standard TDD).
 
@@ -240,7 +240,7 @@ Use this format for tasks that implement UI components with Figma designs. The d
 
 **REQUIRED:** Dispatch @"plan-reviewer (agent)" after writing each plan chunk.
 
-- Announce: "Using plan-reviewer to validate the plan."
+- Announce: "Usando o plan-reviewer para validar o plano."
 - Dispatch @"plan-reviewer (agent)":
   - Provide the plan chunk content and the spec file path
 - If issues found: fix and re-dispatch (max 5 iterations, then surface to human)
@@ -271,4 +271,4 @@ After saving the plan:
 
 1. Update `state.yaml` to add `plan.md` to the plan phase's artifacts list
 2. Append `artifact_created` event to `history.yaml`
-3. Tell the user: "Plan phase complete. Run `/afyapowers:next` to proceed to **implement**."
+3. Tell the user: "Fase plan concluída. Rode `/afyapowers:next` para avançar para **implement**."

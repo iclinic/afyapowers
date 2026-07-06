@@ -6,8 +6,8 @@ description: "Reads Figma designs during the afyapowers design phase — parses 
 # Reading Figma Designs (Design Phase)
 
 Read Figma designs during the design phase: parse the URL, build a shallow Node Map, and extract
-**all** Dev Mode data annotations. Produces the `## Figma Resources` section (including
-`### Design Annotations`) for the design doc, then hands control back to the design phase so the
+**all** Dev Mode data annotations. Produces the `## Recursos do Figma` section (including
+`### Anotações de Design`) for the design doc, then hands control back to the design phase so the
 annotations can inform clarifying questions.
 
 This skill runs in the **design phase only**. It makes exactly **2 MCP calls per Figma file**
@@ -41,9 +41,9 @@ names and dimensions (e.g., "Desktop" at 1440px, "Mobile" at 375px).
 
 Build the Node Map with two subsections:
 
-a. **Reusable Components:** all depth-2 nodes typed COMPONENT or COMPONENT_SET. List each with its
-   node ID and type. If none exist, write `(none — all components are external or pre-existing)`.
-b. **Screens:** each depth-1 FRAME with its node ID, type, and dimensions. Under each frame, list
+a. **Componentes Reutilizáveis:** all depth-2 nodes typed COMPONENT or COMPONENT_SET. List each with its
+   node ID and type. If none exist, write `(nenhum — todos os componentes são externos ou pré-existentes)`.
+b. **Telas:** each depth-1 FRAME with its node ID, type, and dimensions. Under each frame, list
    its depth-2 children (excluding COMPONENT/COMPONENT_SET nodes already listed above). Collapse
    repeated INSTANCE nodes sharing the same `componentId` with a `×N` count.
 
@@ -68,11 +68,11 @@ Correct Node Map output:
 ```
 #### Page: Landing Page
 
-**Reusable Components:**
+**Componentes Reutilizáveis:**
 - CTA Button (node `1:4`, COMPONENT)
 - Pricing Tier (node `2:10`, COMPONENT_SET)
 
-**Screens:**
+**Telas:**
 - **Hero Section** (node `1:2`, FRAME, 1440x800)
   - Card (node `1:5`, INSTANCE, componentId: `2:10`) ×3
   - Hero Title (node `1:3`, TEXT)
@@ -82,11 +82,11 @@ Correct Node Map output:
 ```
 
 **Node Map validation (run before finalizing the section):**
-1. Every COMPONENT/COMPONENT_SET node from the metadata has an entry with `node \`<id>\`` and its type in **Reusable Components**
+1. Every COMPONENT/COMPONENT_SET node from the metadata has an entry with `node \`<id>\`` and its type in **Componentes Reutilizáveis**
 2. No COMPONENT/COMPONENT_SET node was omitted or merged into a screen's children
-3. INSTANCE nodes with the same componentId are collapsed with ×N count under their parent screen in **Screens**
-4. Every depth-1 FRAME has its node ID and dimensions in **Screens**
-5. If no COMPONENT/COMPONENT_SET nodes exist, **Reusable Components** says `(none — all components are external or pre-existing)`
+3. INSTANCE nodes with the same componentId are collapsed with ×N count under their parent screen in **Telas**
+4. Every depth-1 FRAME has its node ID and dimensions in **Telas**
+5. If no COMPONENT/COMPONENT_SET nodes exist, **Componentes Reutilizáveis** says `(nenhum — todos os componentes são externos ou pré-existentes)`
 
 ## Step 3 — Extract ALL data annotations (`use_figma`)
 
@@ -154,7 +154,7 @@ The script returns only annotation data — no code-gen bloat. If it errors, **S
 error, fix, and retry (see the figma-use skill's error-recovery rules). Do not fall back to
 `get_design_context`.
 
-## Step 4 — Build the `## Figma Resources` section
+## Step 4 — Build the `## Recursos do Figma` section
 
 Use the structure from `templates/design.md`. Include:
 
@@ -165,7 +165,7 @@ Use the structure from `templates/design.md`. Include:
   `node \`id\``. Format:
 
   ```
-  ### Design Annotations
+  ### Anotações de Design
   - node `<id>` (<name>) [<category>]: "<label or labelMarkdown text>" — pins: <property types>
   ```
 
@@ -188,7 +188,7 @@ Use the structure from `templates/design.md`. Include:
 
 ## Step 5 — Hand back to the design phase
 
-Return the assembled `## Figma Resources` section to the design phase. The design phase challenges
+Return the assembled `## Recursos do Figma` section to the design phase. The design phase challenges
 the annotations — feeding them (with JIRA and the user request) to the requirements-interrogator and
 looping with the user — so contradictions, gaps, and assumptions are resolved before the design is
 written.

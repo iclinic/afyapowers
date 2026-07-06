@@ -10,7 +10,7 @@ Display the full event timeline for the active feature.
 ## Steps
 
 1. Read `.afyapowers/features/active` to get the active feature slug
-2. If no active feature, tell the user: "No active feature. Run `/afyapowers:switch` to select one."
+2. If no active feature, tell the user: "Nenhuma feature ativa. Rode `/afyapowers:switch` para selecionar uma."
 3. Read `.afyapowers/features/<slug>/history.yaml`
 4. Display the events in chronological order:
 

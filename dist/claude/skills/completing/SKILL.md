@@ -23,7 +23,7 @@ Otherwise (direct invocation):
 
 **REQUIRED:** Invoke `afyapowers:autodoc` via the Skill tool after executing the user's completion choice (Step 3).
 
-- Announce: "Using autodoc to update project documentation."
+- Announce: "Usando o autodoc para atualizar a documentação do projeto."
 - Invoke the skill. Follow its instructions completely.
 - After it completes, resume the parent flow (Step 4: produce completion artifact).
 
@@ -35,7 +35,7 @@ This is the formal declaration. The actual invocation point is Step 3.5 below.
 
 1. Run the project's test suite — all tests must pass
 2. Verify no uncommitted changes remain
-3. Read `.afyapowers/features/<feature>/artifacts/review.md` — confirm verdict is "Approved"
+3. Read `.afyapowers/features/<feature>/artifacts/review.md` — confirm verdict is **Aprovado**
 
 If anything fails, report to the user and work to resolve before proceeding.
 
@@ -62,7 +62,7 @@ Execute the user's chosen option:
 
 **REQUIRED SUB-SKILL:** Invoke `afyapowers:autodoc` via the Skill tool.
 
-Announce: "Using autodoc to update project documentation."
+Announce: "Usando o autodoc para atualizar a documentação do projeto."
 
 The autodoc skill will use the following context from the current feature:
 - Feature name from `.afyapowers/features/active`
@@ -86,6 +86,6 @@ Save to `.afyapowers/features/<feature>/artifacts/completion.md`
 Update `state.yaml` to add `completion.md` to the complete phase's artifacts list.
 Append `artifact_created` event to `history.yaml`.
 
-Tell the user: "Complete phase done. Run `/afyapowers:next` to finalize the feature."
+Tell the user: "Fase complete concluída. Rode `/afyapowers:next` para finalizar a feature."
 
 When the user runs `/afyapowers:next`, the command will mark the feature as `completed`.

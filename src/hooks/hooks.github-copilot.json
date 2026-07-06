@@ -10,6 +10,16 @@
         ]
       }
     ],
+    "UserPromptExpansion": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/lang-directive"
+          }
+        ]
+      }
+    ],
     "SessionEnd": [
       {
         "hooks": [

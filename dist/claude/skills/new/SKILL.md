@@ -15,11 +15,11 @@ afyapowers requires Python 3.9+ at runtime (setup and history logging). Check it
 command -v python3 >/dev/null && echo OK || echo MISSING
 ```
 
-If the result is `MISSING`, tell the user: "afyapowers requires Python 3.9+, which isn't on your PATH. Install Python 3.9 or newer and run `/afyapowers:new` again." Then **stop** — do not create any feature.
+If the result is `MISSING`, tell the user: "O afyapowers requer Python 3.9+, que não está no seu PATH. Instale o Python 3.9 ou mais recente e rode `/afyapowers:new` novamente." Then **stop** — do not create any feature.
 
 ## Step 1: Get Feature Name
 
-Ask the user: "What feature are you working on? Give me a short name and a brief description."
+Ask the user: "Em qual feature você está trabalhando? Me dê um nome curto e uma breve descrição."
 
 Wait for the user's response before proceeding.
 
@@ -85,10 +85,10 @@ Write the directory name (e.g., `2026-03-12-add-submit-button`) to `.afyapowers/
 ## Step 5: Confirm and Begin Design
 
 Tell the user:
-> Feature "<feature-name>" created at `.afyapowers/features/<directory-name>/`.
-> Current phase: **design**
+> Feature "<feature-name>" criada em `.afyapowers/features/<directory-name>/`.
+> Fase atual: **design**
 >
-> Starting design...
+> Iniciando o design...
 
 Then invoke the **design** skill to begin the design phase. The design skill will guide the conversation to clarify requirements, explore approaches, define architecture, and reach alignment.
 
@@ -96,4 +96,4 @@ When the design skill completes and produces the `design.md` artifact:
 1. Save it to `.afyapowers/features/<directory-name>/artifacts/design.md`
 2. Update `state.yaml` to add `design.md` to the design phase artifacts list
 3. Append an `artifact_created` event to `history.yaml`
-4. Tell the user: "Design phase complete. Run `/afyapowers:next` to proceed to **plan**."
+4. Tell the user: "Fase design concluída. Rode `/afyapowers:next` para avançar para **plan**."
