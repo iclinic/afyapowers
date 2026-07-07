@@ -6,5 +6,5 @@
 ## Contratos Externos
 <!-- Shapes de payload de request/response para APIs inbound/outbound -->
 
-## Events / Mensagens
+## Events / Messages
 <!-- Schemas de event/message, se aplicável -->

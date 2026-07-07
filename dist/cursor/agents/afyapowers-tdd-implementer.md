@@ -15,7 +15,7 @@ You are implementing Task N: [task name]
 
 ## File Constraint
 
-You may ONLY modify the files listed in your task's **Arquivos:** section:
+You may ONLY modify the files listed in your task's **Files:** section:
 [LIST OF FILES FROM TASK]
 
 Do NOT create, modify, or delete any other files. If you believe you need to

@@ -119,11 +119,11 @@ Do **not** add a commit step to tasks — the orchestrator commits each task seq
 
 ## Dependency Declaration
 
-Every task MUST have a `**Depende de:**` line immediately after the `**Arquivos:**` block.
+Every task MUST have a `**Depends on:**` line immediately after the `**Files:**` block.
 
 - Use `none` if the task has no dependencies
 - Use `Task N` or `Task N, Task M` (comma-separated) to declare dependencies on other tasks
-- Dependencies are by task number, matching the `### Tarefa N:` heading
+- Dependencies are by task number, matching the `### Task N:` heading
 
 **What counts as a dependency:**
 - Task B modifies a file that Task A creates → Task B depends on Task A
@@ -132,7 +132,7 @@ Every task MUST have a `**Depende de:**` line immediately after the `**Arquivos:
 - Task B and Task A are completely independent → no dependency needed
 
 **Plan-time file overlap validation:**
-After declaring dependencies, check that tasks which could run in parallel (no mutual dependency) don't share files in their `**Arquivos:**` lists. If two parallel-eligible tasks touch the same file, add a dependency between them to force sequential execution.
+After declaring dependencies, check that tasks which could run in parallel (no mutual dependency) don't share files in their `**Files:**` lists. If two parallel-eligible tasks touch the same file, add a dependency between them to force sequential execution.
 
 File overlap validation is a safety net, not a substitute for thinking about task ordering. Always declare logical dependencies (imports, shared interfaces) explicitly.
 
@@ -157,13 +157,13 @@ File overlap validation is a safety net, not a substitute for thinking about tas
 ## Task Structure
 
 ````markdown
-### Tarefa N: [Nome do Componente]
+### Task N: [Nome do Componente]
 
-**Arquivos:**
-- Criar: `caminho/exato/do/arquivo.py`
-- Modificar: `caminho/exato/do/arquivo/existente.py:123-145`
-- Teste: `tests/caminho/exato/do/teste.py`
-**Depende de:** nenhuma | Tarefa X, Tarefa Y
+**Files:**
+- Create: `caminho/exato/do/arquivo.py`
+- Modify: `caminho/exato/do/arquivo/existente.py:123-145`
+- Test: `tests/caminho/exato/do/teste.py`
+**Depends on:** none | Task X, Task Y
 
 - [ ] **Passo 1: Escrever o teste que falha**
 
@@ -171,17 +171,17 @@ File overlap validation is a safety net, not a substitute for thinking about tas
   Explain expected outcomes for each scenario. Specify which file to write
   the test in and what module/function is being tested.
 
-- [ ] **Passo 2: Run test to verify it fails**
+- [ ] **Passo 2: Rodar o teste e verificar que ele falha**
 
   Specify the exact command to run and the expected failure reason.
 
-- [ ] **Passo 3: Implement the minimal code to pass the test**
+- [ ] **Passo 3: Implementar o código mínimo para fazer o teste passar**
 
   Describe what the implementation should do, key decisions (which pattern
   to follow, which existing utility to reuse), and edge cases to handle.
   Specify which file to modify.
 
-- [ ] **Passo 4: Run test to verify it passes**
+- [ ] **Passo 4: Rodar o teste e verificar que ele passa**
 
   Specify the exact command to run.
 ````
@@ -197,13 +197,13 @@ Use this format for tasks that implement UI components with Figma designs. The d
 **No TDD, no code snippets.** Figma tasks describe what to achieve — the implementer subagent uses the Figma MCP tools and the Figma implementer workflow to determine how.
 
 ```markdown
-### Tarefa N: [Nome do Componente de UI] (Figma)
+### Task N: [Nome do Componente de UI] (Figma)
 
-**Arquivos:**
-- Criar: `caminho/exato/do/componente`
-- Criar: `caminho/exato/dos/estilos` (se aplicável)
+**Files:**
+- Create: `caminho/exato/do/componente`
+- Create: `caminho/exato/dos/estilos` (se aplicável)
 **Assets:** `<diretório de assets do projeto>/` — implementer may download & create icon/image files here as needed (exact files unknown at plan time)
-**Depende de:** nenhuma | Tarefa X, Tarefa Y
+**Depends on:** none | Task X, Task Y
 
 **Figma:**
 - **File Key:** `<file_key>`
@@ -217,7 +217,7 @@ Use this format for tasks that implement UI components with Figma designs. The d
 - **File Key:** Copy from the design doc's `## Recursos do Figma` section
 - **Node ID:** The single node ID for this task's component from the Node Map
 - **Breakpoints:** Include only the breakpoints relevant to this task's component (not all breakpoints in the design)
-- **Assets:** Set `<project assets dir>` to the codebase's existing asset convention when you can tell it from the design doc or project layout (e.g. `src/assets`, `public/`); otherwise leave the generic note — the implementer auto-detects and falls back to a sensible default. Never enumerate individual asset files here: which icons/images a design needs is only knowable at implement time (no Figma MCP calls at plan time). The `**Assets:**` line is a *grant + hint* that assets may be created outside the `**Arquivos:**` list — omitting it does not block the implementer, it just loses the hint.
+- **Assets:** Set `<project assets dir>` to the codebase's existing asset convention when you can tell it from the design doc or project layout (e.g. `src/assets`, `public/`); otherwise leave the generic note — the implementer auto-detects and falls back to a sensible default. Never enumerate individual asset files here: which icons/images a design needs is only knowable at implement time (no Figma MCP calls at plan time). The `**Assets:**` line is a *grant + hint* that assets may be created outside the `**Files:**` list — omitting it does not block the implementer, it just loses the hint.
 
 **Mixed plans:** Figma and non-Figma tasks coexist in the same plan with standard dependency handling. A feature might have Tasks 1-2 as data models (standard TDD), Tasks 3-5 as UI components (Figma), and Task 6 as integration (standard TDD).
 

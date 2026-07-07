@@ -38,7 +38,7 @@ Look especially hard for:
 - Files planned to hold multiple responsibilities or likely to grow unwieldy
 - Tasks missing a `**Depende de:**` line
 - Dependency references to non-existent task numbers
-- Parallel-eligible tasks (no mutual dependency) that share files in their `**Arquivos:**` lists
+- Parallel-eligible tasks (no mutual dependency) that share files in their `**Files:**` lists
 - Figma tasks not split into component-level (Layer 1) and screen-level (Layer 2)
 - Layer 2 (screen) Figma tasks appearing before Layer 1 (component) Figma tasks
 - Component tasks merged into screen tasks instead of being separate Layer 1 tasks

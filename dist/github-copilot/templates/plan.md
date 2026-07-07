@@ -10,14 +10,14 @@
 
 ---
 
-### Tarefa 1: [Nome do Componente]
+### Task 1: [Nome do Componente]
 
-**Arquivos:**
-- Criar: `caminho/exato/do/arquivo`
-- Modificar: `caminho/exato/do/arquivo/existente:linhas`
-- Teste: `tests/caminho/exato/do/teste`
+**Files:**
+- Create: `caminho/exato/do/arquivo`
+- Modify: `caminho/exato/do/arquivo/existente:linhas`
+- Test: `tests/caminho/exato/do/teste`
 
-**Depende de:** nenhuma
+**Depends on:** none
 
 - [ ] Passo 1: Escrever o teste que falha — descreva os comportamentos a testar e os resultados esperados
 - [ ] Passo 2: Rodar o teste e confirmar que ele falha
@@ -26,14 +26,14 @@
 
 > O commit é feito pelo orquestrador após a conclusão da tarefa — não adicione um passo de commit.
 
-### Tarefa N: [Nome do Componente de UI] (Figma)
+### Task N: [Nome do Componente de UI] (Figma)
 
-**Arquivos:**
-- Criar: `caminho/exato/do/componente`
+**Files:**
+- Create: `caminho/exato/do/componente`
 
 **Assets:** `<diretório de assets do projeto>/` — o implementador pode baixar & criar arquivos de ícone/imagem aqui conforme necessário (arquivos exatos desconhecidos no momento do plano)
 
-**Depende de:** nenhuma | Tarefa X
+**Depends on:** none | Task X
 
 **Figma:**
 - **File Key:** `<file_key>`

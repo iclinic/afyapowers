@@ -21,7 +21,7 @@ Abandon the active feature. This is irreversible — aborted features cannot be 
 1. Read `.afyapowers/features/active` to get the active feature slug
 2. If no active feature, tell the user: "Nenhuma feature ativa para abortar."
 3. Read `.afyapowers/features/<slug>/state.yaml`
-4. Confirm with the user: "Are you sure you want to abort feature '<feature-name>'? This cannot be undone."
+4. Confirm with the user: "Tem certeza que deseja abortar a feature '<feature-name>'? Esta ação não pode ser desfeita."
 5. Wait for confirmation.
 
 ### On confirmation:

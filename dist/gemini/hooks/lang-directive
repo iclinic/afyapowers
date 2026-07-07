@@ -85,7 +85,7 @@ def main():
             return
         # User-typed slash command (UserPromptExpansion).
         if command_name and str(command_name).startswith("afyapowers:"):
-            print(DIRECTIVE)
+            emit_context("UserPromptExpansion")
             return
         return
 

@@ -119,9 +119,9 @@ Store this block — you will use it when committing completed tasks in Step 6.5
 ### Step 1: Parse Tasks
 
 Read the plan and extract all tasks. For each task, record:
-- Task number (from `### Tarefa N:` heading)
-- Dependencies (from `**Depende de:**` line — parse as list of task numbers, or empty if `nenhuma`)
-- File list (from `**Arquivos:**` section — all file paths mentioned)
+- Task number (from `### Task N:` or `### Tarefa N:` heading)
+- Dependencies (from `**Depends on:**` or `**Depende de:**` line — parse as list of task numbers, or empty if `none` / `nenhuma`)
+- File list (from `**Files:**` section — all file paths mentioned)
 - Status: pending, in-flight, completed, or needs-retry
 
 Example:
@@ -153,7 +153,7 @@ Waiting: [5]     (dep 3 not completed)
 
 Check every pair of tasks in the ready set. If two tasks share any file path in their file lists, remove one from the ready set (move it back to waiting). It will be picked up in the next cycle.
 
-Overlap validation covers `**Arquivos:**` (source) paths only. **Asset files are excluded** — they are additive, dedup-checked before writing, and idempotent, so they don't need serialization. If two parallel Figma tasks download the same icon, they produce functionally identical files (same node → same export + same fixes). Exports may not be byte-identical across calls (e.g., non-deterministic SVG attribute ordering), but the sequential commits in Step 6.5 ensure only the last version persists — no data corruption. No locking needed.
+Overlap validation covers `**Files:**` (source) paths only. **Asset files are excluded** — they are additive, dedup-checked before writing, and idempotent, so they don't need serialization. If two parallel Figma tasks download the same icon, they produce functionally identical files (same node → same export + same fixes). Exports may not be byte-identical across calls (e.g., non-deterministic SVG attribute ordering), but the sequential commits in Step 6.5 ensure only the last version persists — no data corruption. No locking needed.
 
 ### Step 5: Dispatch
 
@@ -201,9 +201,9 @@ index-lock races and cross-task contamination that parallel committing causes.
 
 For each completed task, in order:
 
-1. **Stage only that task's files** — `git add -- <files from the task's **Arquivos:** section (Criar/Modificar/Teste)> <asset files from the task's "Assets created" report line>`. Never `git add .` or `git add -A`; that would sweep in other tasks' changes. For Figma tasks, the reported asset files are a legitimate, expected part of the task's output — stage them alongside the source files.
+1. **Stage only that task's files** — `git add -- <files from the task's **Files:** section (Create/Modify/Test)> <asset files from the task's "Assets created" report line>`. Never `git add .` or `git add -A`; that would sweep in other tasks' changes. For Figma tasks, the reported asset files are a legitimate, expected part of the task's output — stage them alongside the source files.
 2. **Verify staging** — run `git diff --cached --name-only` and confirm only this task's files are staged. The task's Files: entries **and** its reported "Assets created" paths are expected. If any *other* file appears (outside the Files list AND not a reported asset — e.g. an agent edited outside its constraint), stop and surface it to the user instead of committing.
-3. **Commit** — write a message following the `## Commit Conventions` block from Step 0, with the subject derived from the task name (`### Tarefa N:` heading).
+3. **Commit** — write a message following the `## Commit Conventions` block from Step 0, with the subject derived from the task name (`### Task N:` heading).
 4. **Handle hook failures** (safe to retry now, since commits are sequential):
    - Commitlint rejection → rewrite the message to match the format, retry.
    - Lint/format failure → fix the reported issues or run the formatter, re-stage **only this task's files** (`git add -- <files>`), retry.
@@ -261,7 +261,7 @@ Ready: [1(std), 2(std), 3(figma), 4(figma), 5(std), 6(figma)]
 
 ### Fallback to Sequential
 
-If the plan has no `**Depende de:**` lines on any task, warn: "Plan is missing dependency declarations. Falling back to sequential execution." Then execute tasks one at a time in order, identical to pre-parallel SDD behavior.
+If the plan has no `**Depends on:**` or `**Depende de:**` lines on any task, warn: "Plan is missing dependency declarations. Falling back to sequential execution." Then execute tasks one at a time in order, identical to pre-parallel SDD behavior.
 
 If a plan has all tasks depending on the previous one (linear chain), the wave executor naturally dispatches one task at a time — no special case needed.
 
@@ -366,14 +366,14 @@ Collected during implementation phase.
 <!-- Output diverges from the design/Figma in look or behavior. Must be resolved or explicitly
      accepted by the user before the phase advances. Omit this section if there are none. -->
 
-### Tarefa N: [task name verbatim from plan heading]
+### Task N: [task name verbatim from plan heading]
 - [blocking concern text from implementer report]
 
 ## Ressalvas
 <!-- Doubts, fragility, edge cases, token drift, a11y additions. Priority areas for the review
      phase. Omit this section if there are none. -->
 
-### Tarefa M: [task name verbatim from plan heading]
+### Task M: [task name verbatim from plan heading]
 - [concern text from implementer report]
 ```
 
