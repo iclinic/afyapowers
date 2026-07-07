@@ -1,13 +1,13 @@
-# Completion: {{feature_name}}
+# Conclusão: {{feature_name}}
 
-## Summary
-<!-- What was delivered -->
+## Resumo
+<!-- O que foi entregue -->
 
-## Changes Made
-<!-- Key files and components changed -->
+## Alterações Realizadas
+<!-- Principais arquivos e componentes alterados -->
 
-## How to Test
-<!-- Steps to verify the feature works -->
+## Como Testar
+<!-- Passos para verificar que a feature funciona -->
 
-## PR / Merge Info
-<!-- Link to PR, branch name, merge details -->
+## Informações de PR / Merge
+<!-- Link do PR, nome da branch, detalhes do merge -->

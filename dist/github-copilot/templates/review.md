@@ -1,29 +1,29 @@
-# Code Review: {{feature_name}}
+# Revisão de Código: {{feature_name}}
 
-## Spec Compliance Review
-<!-- Does implementation match design spec? -->
+## Revisão de Conformidade com a Spec
+<!-- A implementação corresponde à spec de design? -->
 
-### Findings
+### Constatações
 
-| Severity | Finding | Resolution |
-|----------|---------|------------|
+| Severidade | Constatação | Resolução |
+|------------|-------------|-----------|
 
-## Code Quality Review
-<!-- Code standards, patterns, edge cases -->
+## Revisão de Qualidade de Código
+<!-- Padrões de código, patterns, casos de borda -->
 
-### Findings
+### Constatações
 
-| Severity | Finding | Resolution |
-|----------|---------|------------|
+| Severidade | Constatação | Resolução |
+|------------|-------------|-----------|
 
-## Blocking Concerns
-<!-- One row per blocking concern from implementation-concerns.md. Resolution = "Fixed in <commit/file>"
-     or "Accepted by user" (sourced from an `[ACCEPTED BY USER: <reason>]` marker on the concern's line
-     in implementation-concerns.md, if present). Every row must be Fixed or Accepted for the verdict to
-     be Approved. Omit this section if no blocking concerns were flagged. -->
+## Impedimentos
+<!-- Uma linha por impedimento vindo de implementation-concerns.md. Resolução = "Corrigido em <commit/arquivo>"
+     ou "Aceito pelo usuário" (a partir de um marcador `[ACCEPTED BY USER: <motivo>]` na linha do impedimento
+     em implementation-concerns.md, se presente). Toda linha deve estar Corrigida ou Aceita para o veredito ser
+     Aprovado. Omita esta seção se nenhum impedimento foi apontado. -->
 
-| Concern | Resolution |
-|---------|------------|
+| Impedimento | Resolução |
+|-------------|-----------|
 
-## Verdict
-<!-- Approved / Changes Requested. Approved requires both reviews to pass AND every blocking concern Fixed or Accepted. -->
+## Veredito
+<!-- Aprovado / Alterações Solicitadas. Aprovado exige que ambas as revisões passem E que todo impedimento esteja Corrigido ou Aceito. -->

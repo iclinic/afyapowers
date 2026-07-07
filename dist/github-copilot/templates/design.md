@@ -1,130 +1,130 @@
 # Design: {{feature_name}}
 
-## JIRA Context
-<!-- Only included when feature has a backing JIRA issue. Remove this section if not applicable. -->
+## Contexto do JIRA
+<!-- Incluído apenas quando a feature tem uma issue do JIRA associada. Remova esta seção se não se aplicar. -->
 
 **Issue:** [PROJ-123](https://your-site.atlassian.net/browse/PROJ-123)
 **Type:** Story | Bug | Task | Epic
-**Summary:** <!-- One-line summary from JIRA -->
+**Summary:** <!-- Resumo em uma linha vindo do JIRA -->
 
-### Requirements from JIRA
-<!-- Key requirements extracted from the JIRA description and acceptance criteria -->
+### Requisitos do JIRA
+<!-- Principais requisitos extraídos da descrição do JIRA e dos critérios de aceite -->
 - ...
 
-### Acceptance Criteria
-<!-- Acceptance criteria from the JIRA issue, verbatim or lightly reformatted -->
+### Critérios de Aceite
+<!-- Critérios de aceite da issue do JIRA, verbatim ou levemente reformatados -->
 - [ ] ...
 
-### Linked Issues
-<!-- Related JIRA issues: blockers, dependencies, related work -->
+### Issues Vinculadas
+<!-- Issues do JIRA relacionadas: bloqueios, dependências, trabalhos relacionados -->
 - Blocked by: PROJ-100 — ...
 - Related to: PROJ-150 — ...
 
-## Problem Statement
-<!-- What problem are we solving and why -->
+## Declaração do Problema
+<!-- Qual problema estamos resolvendo e por quê -->
 
-## Requirements
-<!-- Key requirements discovered during design -->
+## Requisitos
+<!-- Principais requisitos descobertos durante o design -->
 
-## Constraints
-<!-- Technical, business, or time constraints -->
+## Restrições
+<!-- Restrições técnicas, de negócio ou de tempo -->
 
-## Approaches Considered
-<!-- 2-3 approaches with trade-offs -->
+## Abordagens Consideradas
+<!-- 2-3 abordagens com trade-offs -->
 
-### Approach 1: ...
-### Approach 2: ...
+### Abordagem 1: ...
+### Abordagem 2: ...
 
-## Chosen Approach
-<!-- Which approach and why -->
+## Abordagem Escolhida
+<!-- Qual abordagem e por quê -->
 
-## Architecture
-<!-- Components, how they interact -->
+## Arquitetura
+<!-- Componentes, como interagem -->
 
-## Component Reuse Decisions
-<!-- Filled whenever the design reuses an existing codebase/DS component. One row per reuse. A
-     component may be reused silently ONLY if it is an exact match on all three axes (Name + Layout +
-     Behavior). Anything else requires the user's explicit approval before adopting it.
-     Decision = "Exact match (auto)" or "Approved by user" or "Build custom (rejected)".
-     Remove this section if no component is reused. -->
+## Decisões de Reúso de Componentes
+<!-- Preenchida sempre que o design reutiliza um componente existente do codebase/DS. Uma linha por reúso. Um
+     componente só pode ser reutilizado silenciosamente SE for uma correspondência exata nos três eixos (Name +
+     Layout + Behavior). Qualquer outra coisa exige aprovação explícita do usuário antes de adotá-lo.
+     Decision = "Exact match (auto)" ou "Approved by user" ou "Build custom (rejected)".
+     Remova esta seção se nenhum componente for reutilizado. -->
 
-| Target (Figma node / requirement) | Candidate component | Name | Layout | Behavior | Decision |
-|-----------------------------------|---------------------|------|--------|----------|----------|
-<!-- e.g. | Specialty Chip (2:5471) | DropdownPicker (DS) | ✗ | ✗ | ✗ drawer vs popover | Build custom (rejected) | -->
-<!-- e.g. | Submit Button (3:120)   | PrimaryButton (DS)  | ✓ | ✓ | ✓                   | Exact match (auto)     | -->
+| Target (Figma node / requisito) | Componente candidato | Name | Layout | Behavior | Decision |
+|---------------------------------|----------------------|------|--------|----------|----------|
+<!-- ex.: | Specialty Chip (2:5471) | DropdownPicker (DS) | ✗ | ✗ | ✗ drawer vs popover | Build custom (rejected) | -->
+<!-- ex.: | Submit Button (3:120)   | PrimaryButton (DS)  | ✓ | ✓ | ✓                   | Exact match (auto)     | -->
 
-## Data Flow
-<!-- How data moves through the system -->
+## Fluxo de Dados
+<!-- Como os dados transitam pelo sistema -->
 
-## API / Interface Changes
-<!-- New or modified interfaces -->
+## Mudanças de API / Interface
+<!-- Interfaces novas ou modificadas -->
 
-## Error Handling
-<!-- Failure modes and how they're handled -->
+## Tratamento de Erros
+<!-- Modos de falha e como são tratados -->
 
-## Edge Cases & States
-<!-- Output of the Requirements Interrogation. One row per state/condition the feature must handle —
-     empty, loading, error, zero/one/many, very-large, unauthorized, offline, boundary values, long
-     text, etc. Confirmed with the user. Required for any stateful/UI feature. -->
+## Casos de Borda & Estados
+<!-- Saída da Interrogação de Requisitos. Uma linha por estado/condição que a feature deve tratar —
+     vazio, carregando, erro, zero/um/muitos, muito-grande, não-autorizado, offline, valores de borda, texto
+     longo, etc. Confirmado com o usuário. Obrigatório para qualquer feature com estado/UI. -->
 
-| State / condition | Expected behavior |
-|-------------------|-------------------|
-<!-- e.g. | Empty list | Show "No quizzes yet" placeholder, hide filter | -->
-<!-- e.g. | Request fails | Show retry banner; keep last good data if any | -->
+| Estado / condição | Comportamento esperado |
+|-------------------|------------------------|
+<!-- ex.: | Lista vazia | Mostrar placeholder "Nenhum quiz ainda", ocultar filtro | -->
+<!-- ex.: | Requisição falha | Mostrar banner de retry; manter últimos dados válidos se houver | -->
 
-## Assumptions & Risks
-<!-- Output of the Requirements Interrogation. Every assumption the design depends on, with how it
-     was confirmed. An unconfirmed BLOCKING assumption must be resolved before the design is written. -->
+## Premissas & Riscos
+<!-- Saída da Interrogação de Requisitos. Toda premissa da qual o design depende, com como foi
+     confirmada. Uma premissa BLOQUEANTE não confirmada deve ser resolvida antes de o design ser escrito. -->
 
-| Assumption | Confirmation | Risk if wrong |
-|------------|--------------|---------------|
-<!-- e.g. | GET /quiz/{id} returns {context, question, options[]} | Confirmed against homolog endpoint | Adapter + mocks wrong | -->
+| Premissa | Confirmação | Risco se estiver errada |
+|----------|-------------|-------------------------|
+<!-- ex.: | GET /quiz/{id} retorna {context, question, options[]} | Confirmado contra endpoint de homolog | Adapter + mocks errados | -->
 
-## Testing Strategy
-<!-- What to test and how -->
+## Estratégia de Testes
+<!-- O que testar e como -->
 
-## Dependencies
-<!-- External dependencies or prerequisites -->
+## Dependências
+<!-- Dependências externas ou pré-requisitos -->
 
-## Open Questions
-<!-- Output of the Requirements Interrogation. Every item raised must end resolved or explicitly
-     deferred — no BLOCKING row may be "open" when the design is written (REQUIREMENTS-GATE). -->
+## Questões em Aberto
+<!-- Saída da Interrogação de Requisitos. Todo item levantado deve terminar resolvido ou explicitamente
+     adiado — nenhuma linha BLOQUEANTE pode estar "aberta" quando o design é escrito (REQUIREMENTS-GATE). -->
 
-| Question | Severity | Status | Resolution |
-|----------|----------|--------|------------|
-<!-- e.g. | What makes the form valid? | blocking | resolved | All fields non-empty + email format | -->
-<!-- e.g. | i18n for error copy? | non-blocking | deferred | Out of scope this iteration | -->
+| Questão | Severidade | Status | Resolução |
+|---------|------------|--------|-----------|
+<!-- ex.: | O que torna o formulário válido? | bloqueante | resolvida | Todos os campos não-vazios + formato de email | -->
+<!-- ex.: | i18n para textos de erro? | não-bloqueante | adiada | Fora de escopo nesta iteração | -->
 
-## Figma Resources
-<!-- Only included when feature has Figma designs. Remove this section if not applicable. -->
-<!-- If the feature spans multiple Figma files, repeat the File/File Key/Node Map structure for each file. -->
+## Recursos do Figma
+<!-- Incluído apenas quando a feature tem designs no Figma. Remova esta seção se não se aplicar. -->
+<!-- Se a feature abrange múltiplos arquivos do Figma, repita a estrutura File/File Key/Node Map para cada arquivo. -->
 
 **File:** `<figma_url>`
 **File Key:** `<file_key>`
 
 ### Breakpoints
-<!-- Inferred from top-level frame names and dimensions in the get_metadata response -->
+<!-- Inferidos a partir dos nomes e dimensões dos frames de topo na resposta do get_metadata -->
 - <breakpoint_name>: <width>px (Frame "<frame_name>", node `<node_id>`)
 
 ### Node Map
-<!-- Single get_metadata call at depth 2. Separated into Reusable Components and Screens subsections. -->
-<!-- COMPONENT/COMPONENT_SET nodes go in Reusable Components. Everything else stays under Screens. -->
+<!-- Uma única chamada get_metadata em depth 2. Separado em subseções Reusable Components e Screens. -->
+<!-- Nós COMPONENT/COMPONENT_SET vão em Reusable Components. Todo o resto fica em Screens. -->
 
 #### Page: <page_name>
 
-**Reusable Components:**
-<!-- List all COMPONENT/COMPONENT_SET nodes with node IDs. If none, write: (none — all components are external or pre-existing) -->
+**Componentes Reutilizáveis:**
+<!-- Liste todos os nós COMPONENT/COMPONENT_SET com node IDs. Se nenhum, escreva: (nenhum — todos os componentes são externos ou pré-existentes) -->
 - <component_name> (node `<node_id>`, COMPONENT)
 - <component_set_name> (node `<node_id>`, COMPONENT_SET)
 
-**Screens:**
-<!-- List each top-level FRAME with children (excluding COMPONENT/COMPONENT_SET already listed above). Collapse repeated INSTANCE nodes with ×N count. -->
+**Telas:**
+<!-- Liste cada FRAME de topo com filhos (excluindo COMPONENT/COMPONENT_SET já listados acima). Colapse nós INSTANCE repetidos com contagem ×N. -->
 - **<screen_name>** (node `<node_id>`, FRAME, <width>x<height>)
   - <element_name> (node `<node_id>`, INSTANCE, componentId: `<component_id>`) ×N
   - <leaf_name> (node `<node_id>`, TEXT)
 
-### Design Annotations
-<!-- All Dev Mode annotations extracted via use_figma. One entry per annotated node, verbatim. Omit this subsection if none. -->
-<!-- Annotations are requirements (business rules, behavior, animations, accessibility, dev instructions). Reflect them in the sections above too — business rules in Requirements. -->
-<!-- Drop [<category>] if no Figma category; drop the "— pins:" clause if no pinned properties. -->
+### Anotações de Design
+<!-- Todas as anotações do Dev Mode extraídas via use_figma. Uma entrada por nó anotado, verbatim. Omita esta subseção se nenhuma. -->
+<!-- Anotações são requisitos (regras de negócio, comportamento, animações, acessibilidade, instruções de dev). Reflita-as também nas seções acima — regras de negócio em Requisitos. -->
+<!-- Remova [<category>] se não houver categoria do Figma; remova a cláusula "— pins:" se não houver propriedades fixadas. -->
 - node `<node_id>` (<node_name>) [<category>]: "<annotation label / note text>" — pins: <property types>

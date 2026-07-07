@@ -19,7 +19,7 @@ Display the current state of the active feature.
 ## Steps
 
 1. Read `.afyapowers/features/active` to get the active feature slug
-2. If no active feature, tell the user: "No active feature. Run `/afyapowers:new` to start one, or `/afyapowers:switch` to select an existing feature."
+2. If no active feature, tell the user: "Nenhuma feature ativa. Rode `/afyapowers:new` para começar uma, ou `/afyapowers:switch` para selecionar uma existente."
 3. Read `.afyapowers/features/<slug>/state.yaml`
 4. Display the status in this format:
 

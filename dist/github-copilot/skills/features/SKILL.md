@@ -23,4 +23,4 @@ List all features and their current states.
 
 4. Indicate which feature is currently active (from `.afyapowers/features/active`) with a marker like `→` or `(active)`.
 
-If no `.afyapowers/features/` directory exists or it's empty, tell the user: "No features found. Run `/afyapowers:new` to start one."
+If no `.afyapowers/features/` directory exists or it's empty, tell the user: "Nenhuma feature encontrada. Rode `/afyapowers:new` para começar uma."

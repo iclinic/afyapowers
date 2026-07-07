@@ -114,8 +114,8 @@ Store this block — you will use it when committing completed tasks in Step 6.5
 ### Step 1: Parse Tasks
 
 Read the plan and extract all tasks. For each task, record:
-- Task number (from `### Task N:` heading)
-- Dependencies (from `**Depends on:**` line — parse as list of task numbers, or empty if `none`)
+- Task number (from `### Task N:` or `### Tarefa N:` heading)
+- Dependencies (from `**Depends on:**` or `**Depende de:**` line — parse as list of task numbers, or empty if `none` / `nenhuma`)
 - File list (from `**Files:**` section — all file paths mentioned)
 - Status: pending, in-flight, completed, or needs-retry
 
@@ -196,7 +196,7 @@ index-lock races and cross-task contamination that parallel committing causes.
 
 For each completed task, in order:
 
-1. **Stage only that task's files** — `git add -- <files from the task's **Files:** section> <asset files from the task's "Assets created" report line>`. Never `git add .` or `git add -A`; that would sweep in other tasks' changes. For Figma tasks, the reported asset files are a legitimate, expected part of the task's output — stage them alongside the source files.
+1. **Stage only that task's files** — `git add -- <files from the task's **Files:** section (Create/Modify/Test)> <asset files from the task's "Assets created" report line>`. Never `git add .` or `git add -A`; that would sweep in other tasks' changes. For Figma tasks, the reported asset files are a legitimate, expected part of the task's output — stage them alongside the source files.
 2. **Verify staging** — run `git diff --cached --name-only` and confirm only this task's files are staged. The task's Files: entries **and** its reported "Assets created" paths are expected. If any *other* file appears (outside the Files list AND not a reported asset — e.g. an agent edited outside its constraint), stop and surface it to the user instead of committing.
 3. **Commit** — write a message following the `## Commit Conventions` block from Step 0, with the subject derived from the task name (`### Task N:` heading).
 4. **Handle hook failures** (safe to retry now, since commits are sequential):
@@ -256,7 +256,7 @@ Ready: [1(std), 2(std), 3(figma), 4(figma), 5(std), 6(figma)]
 
 ### Fallback to Sequential
 
-If the plan has no `**Depends on:**` lines on any task, warn: "Plan is missing dependency declarations. Falling back to sequential execution." Then execute tasks one at a time in order, identical to pre-parallel SDD behavior.
+If the plan has no `**Depends on:**` or `**Depende de:**` lines on any task, warn: "Plan is missing dependency declarations. Falling back to sequential execution." Then execute tasks one at a time in order, identical to pre-parallel SDD behavior.
 
 If a plan has all tasks depending on the previous one (linear chain), the wave executor naturally dispatches one task at a time — no special case needed.
 
@@ -357,14 +357,14 @@ After all tasks complete, if any `DONE_WITH_CONCERNS` notes were collected durin
 
 Collected during implementation phase.
 
-## Blocking Concerns
+## Impedimentos
 <!-- Output diverges from the design/Figma in look or behavior. Must be resolved or explicitly
      accepted by the user before the phase advances. Omit this section if there are none. -->
 
 ### Task N: [task name verbatim from plan heading]
 - [blocking concern text from implementer report]
 
-## Non-Blocking Concerns
+## Ressalvas
 <!-- Doubts, fragility, edge cases, token drift, a11y additions. Priority areas for the review
      phase. Omit this section if there are none. -->
 
@@ -372,6 +372,6 @@ Collected during implementation phase.
 - [concern text from implementer report]
 ```
 
-Always keep blocking concerns under `## Blocking Concerns` and the rest under `## Non-Blocking Concerns`, each grouped by task. Omit a section entirely if it has no entries.
+Always keep blocking concerns under `## Impedimentos` and the rest under `## Ressalvas`, each grouped by task. Omit a section entirely if it has no entries.
 
-If the implementation phase is re-run (e.g., after fixing a blocked task), overwrite `implementation-concerns.md` with fresh data from the current run — do not append to stale concerns from a previous run. **Exception:** before overwriting, read the existing file and collect every blocking-concern line already marked `[ACCEPTED BY USER: <reason>]`. When writing the fresh blocking concerns, for each concern line in the fresh run: if its text (ignoring the marker) exactly matches an accepted carry-forward line, emit the accepted version (with the marker) instead of the unmarked fresh line — do not emit both. After processing all fresh concerns this way, append any remaining accepted lines whose text did not appear in the fresh run. This guarantees a user's recorded acceptance survives re-runs without producing unmarked duplicates that would force a spurious Changes Requested verdict. If no concerns were collected and no accepted markers exist to preserve, do not create the file.
+If the implementation phase is re-run (e.g., after fixing a blocked task), overwrite `implementation-concerns.md` with fresh data from the current run — do not append to stale concerns from a previous run. **Exception:** before overwriting, read the existing file and collect every blocking-concern line already marked `[ACCEPTED BY USER: <reason>]`. When writing the fresh blocking concerns, for each concern line in the fresh run: if its text (ignoring the marker) exactly matches an accepted carry-forward line, emit the accepted version (with the marker) instead of the unmarked fresh line — do not emit both. After processing all fresh concerns this way, append any remaining accepted lines whose text did not appear in the fresh run. This guarantees a user's recorded acceptance survives re-runs without producing unmarked duplicates that would force a spurious Alterações Solicitadas verdict. If no concerns were collected and no accepted markers exist to preserve, do not create the file.

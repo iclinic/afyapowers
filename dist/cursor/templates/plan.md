@@ -1,37 +1,37 @@
-# Implementation Plan: {{feature_name}}
+# Plano de Implementação: {{feature_name}}
 
-> **For agentic workers:** REQUIRED: Use the afyapowers implementing skill to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Para workers agênticos:** OBRIGATÓRIO: Use a skill de implementação do afyapowers para implementar este plano. Os passos usam sintaxe de checkbox (`- [ ]`) para rastreamento.
 
-**Goal:** [One sentence describing what this builds]
+**Objetivo:** [Uma frase descrevendo o que isto constrói]
 
-**Architecture:** [2-3 sentences about approach]
+**Arquitetura:** [2-3 frases sobre a abordagem]
 
-**Tech Stack:** [Key technologies/libraries]
+**Tech Stack:** [Principais tecnologias/bibliotecas]
 
 ---
 
-### Task 1: [Component Name]
+### Task 1: [Nome do Componente]
 
 **Files:**
-- Create: `exact/path/to/file`
-- Modify: `exact/path/to/existing:lines`
-- Test: `tests/exact/path/to/test`
+- Create: `caminho/exato/do/arquivo`
+- Modify: `caminho/exato/do/arquivo/existente:linhas`
+- Test: `tests/caminho/exato/do/teste`
 
 **Depends on:** none
 
-- [ ] Step 1: Write the failing test — describe behaviors to test and expected outcomes
-- [ ] Step 2: Run the test and confirm it fails
-- [ ] Step 3: Implement — describe what to build and key decisions
-- [ ] Step 4: Run the test and confirm it passes
+- [ ] Passo 1: Escrever o teste que falha — descreva os comportamentos a testar e os resultados esperados
+- [ ] Passo 2: Rodar o teste e confirmar que ele falha
+- [ ] Passo 3: Implementar — descreva o que construir e as decisões-chave
+- [ ] Passo 4: Rodar o teste e confirmar que ele passa
 
-> Committing is handled by the orchestrator after the task completes — do not add a commit step.
+> O commit é feito pelo orquestrador após a conclusão da tarefa — não adicione um passo de commit.
 
-### Task N: [UI Component Name] (Figma)
+### Task N: [Nome do Componente de UI] (Figma)
 
 **Files:**
-- Create: `exact/path/to/component`
+- Create: `caminho/exato/do/componente`
 
-**Assets:** `<project assets dir>/` — implementer may download & create icon/image files here as needed (exact files unknown at plan time)
+**Assets:** `<diretório de assets do projeto>/` — o implementador pode baixar & criar arquivos de ícone/imagem aqui conforme necessário (arquivos exatos desconhecidos no momento do plano)
 
 **Depends on:** none | Task X
 
@@ -40,4 +40,4 @@
 - **Node ID:** `<id>`
 - **Breakpoints:** <breakpoint_name> (<width>px), ...
 
-- [ ] Implement using the Figma implementer workflow
+- [ ] Implementar usando o workflow do implementador Figma

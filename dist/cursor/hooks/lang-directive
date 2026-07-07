@@ -1,0 +1,107 @@
+#!/usr/bin/env python3
+"""afyapowers language directive re-injector.
+
+Re-injects the pt-BR language directive whenever an afyapowers skill is invoked,
+complementing the once-per-session injection done by `session-start`. This keeps
+pt-BR enforcement close to the action when a skill (which may carry English message
+templates) runs, without the per-turn token cost of firing on every prompt.
+
+Agent-aware: the host agent name is passed as argv[1] (same pattern as
+`render-history`). Different agents surface a "skill invocation" through different
+hook events, and expect different stdout shapes, so this script branches on the
+agent + payload:
+
+  - claude, PreToolUse: fires on the `Skill` tool. Matches when
+    `tool_input.skill` starts with `afyapowers:` (model-invoked workflow skills).
+  - claude, UserPromptExpansion: fires on slash-command expansion. Matches when
+    `command_name` starts with `afyapowers:` (user-typed `/afyapowers:...`).
+  - gemini, BeforeTool: fires on the `activate_skill` tool, which the agent calls
+    for every skill. The directive is idempotent, so we inject on any activation.
+
+Copilot and Cursor have no hook that can observe a skill invocation (skills
+auto-load with no matchable tool call), so they rely on `session-start` only and
+never wire this script.
+
+Contract: observability/augmentation only. Must NEVER block. On no-match, bad
+input, or any error -> exit 0 with no output.
+"""
+
+import sys
+import json
+
+# Single source of truth for the directive text. Kept in sync with the (shorter)
+# SessionStart variant in `session-start`. Technical/product terms and workflow
+# phase identifiers stay in English; code/identifiers/paths are never translated.
+DIRECTIVE = (
+    "Idioma / Language: Fale com o usuário em português do Brasil (pt-BR) por padrão. "
+    "Se o usuário escrever em outro idioma, espelhe o idioma dele na conversa. "
+    "Ao executar qualquer skill do afyapowers (new, next, design, plan, implement, "
+    "review, complete, status, switch, etc.), TRADUZA para pt-BR toda mensagem "
+    "destinada ao usuário antes de exibi-la — os templates de mensagem em inglês "
+    "dentro das skills são apenas guias de conteúdo, não o texto final. TODOS os "
+    "artefatos do afyapowers (design.md, plan.md, review.md, completion.md, "
+    "implementation-concerns.md e docs) DEVEM ser escritos SEMPRE em português do "
+    "Brasil, seguindo estritamente os templates. Mantenha em inglês os termos "
+    "técnicos/de produto convencionalmente em inglês (ex.: Tech Stack, endpoint, "
+    "deploy, payload, breakpoint, Node Map, PR, merge, changelog) e os "
+    "identificadores de fase do workflow (design, plan, implement, review, "
+    "complete); nunca traduza código, identificadores ou caminhos de arquivo."
+)
+
+
+def emit_context(event_name):
+    """Emit the directive as structured additional context for a tool-use event."""
+    print(json.dumps({
+        "hookSpecificOutput": {
+            "hookEventName": event_name,
+            "additionalContext": DIRECTIVE,
+        }
+    }))
+
+
+def main():
+    agent = sys.argv[1].strip() if len(sys.argv) > 1 and sys.argv[1].strip() else ""
+
+    raw = sys.stdin.read()
+    try:
+        data = json.loads(raw) if raw.strip() else {}
+    except Exception:
+        return
+    if not isinstance(data, dict):
+        return
+
+    tool_name = data.get("tool_name")
+    tool_input = data.get("tool_input") or {}
+    if not isinstance(tool_input, dict):
+        tool_input = {}
+    command_name = data.get("command_name")
+
+    if agent == "claude":
+        # Model-invoked skill via the Skill tool (PreToolUse).
+        if tool_name == "Skill":
+            skill = str(tool_input.get("skill", ""))
+            if skill.startswith("afyapowers:"):
+                emit_context("PreToolUse")
+            return
+        # User-typed slash command (UserPromptExpansion).
+        if command_name and str(command_name).startswith("afyapowers:"):
+            emit_context("UserPromptExpansion")
+            return
+        return
+
+    if agent == "gemini":
+        # Every skill the Gemini agent runs goes through the activate_skill tool.
+        if tool_name == "activate_skill":
+            emit_context("BeforeTool")
+        return
+
+    # Unknown / unsupported agent (copilot, cursor): rely on session-start.
+    return
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception:
+        # Never block a session.
+        pass

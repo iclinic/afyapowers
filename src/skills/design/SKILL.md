@@ -176,8 +176,8 @@ If no keywords match, skip Figma discovery and proceed to clarifying questions.
 
 If the user provides Figma URL(s), invoke `{{skill:reading-figma-designs}}`. It parses each URL,
 builds the shallow Node Map via a single `get_metadata` call, and extracts **all** Dev Mode data
-annotations via a read-only `use_figma` call. It returns the complete `## Figma Resources` section
-— file info, breakpoints, Node Map, and a `### Design Annotations` subsection — ready to drop into
+annotations via a read-only `use_figma` call. It returns the complete `## Recursos do Figma` section
+— file info, breakpoints, Node Map, and a `### Anotações de Design` subsection — ready to drop into
 the design doc (template: `templates/design.md`).
 
 Annotations carry semantic intent: business rules, responsive rules, interactive-state behavior,
@@ -205,7 +205,7 @@ The **only** case where you may reuse without asking is an **exact match on all 
 
 Exact match on all three → reuse silently. **Anything else — a different name, any visual difference, any behavior difference, a "close enough" / "good enough" near-match, or any uncertainty — you MUST ask the user before adopting it.** Present the candidate, name every difference, and reuse only on explicit approval (e.g. "Figma shows an inline chip + anchored popover; the DS `DropdownPicker` renders a bottom drawer with a search field — reuse it anyway, or build a custom chip to match Figma?"). When in doubt, ask.
 
-Record every reuse in the `## Component Reuse Decisions` section of the design doc (template: `templates/design.md`): mark it either **exact match** (no approval needed) or the user's explicit decision. *"If it's different, it's wrong"* unless the user has explicitly accepted the divergence.
+Record every reuse in the `## Decisões de Reúso de Componentes` section of the design doc (template: `templates/design.md`): mark it either **exact match** (no approval needed) or the user's explicit decision. *"If it's different, it's wrong"* unless the user has explicitly accepted the divergence.
 
 **Clarifying questions — confirm AND challenge (JIRA and/or Figma-informed):**
 
@@ -227,10 +227,10 @@ When neither JIRA nor Figma is available, ask questions one at a time to underst
 
 After the baseline confirm+challenge pass, run a dedicated adversarial analysis before writing anything. This is a hard gate (see REQUIREMENTS-GATE) — the design doc may not be written while any BLOCKING item is open.
 
-1. **Dispatch @"requirements-interrogator (agent)".** Announce: "Using requirements-interrogator to stress-test the requirements." Paste the raw inputs only (NO codebase — exploration comes later): the user's request, the JIRA context, the Figma Node Map + verbatim annotations, and the user answers gathered so far. It returns findings across five lenses (contradictions, gaps/business rules, edge cases, ambiguities, risky assumptions), each tagged BLOCKING or non-blocking, plus a `BLOCKING items: N` count.
+1. **Dispatch @"requirements-interrogator (agent)".** Announce: "Usando o requirements-interrogator para estressar os requisitos." Paste the raw inputs only (NO codebase — exploration comes later): the user's request, the JIRA context, the Figma Node Map + verbatim annotations, and the user answers gathered so far. It returns findings across five lenses (contradictions, gaps/business rules, edge cases, ambiguities, risky assumptions), each tagged BLOCKING or non-blocking, plus a `BLOCKING items: N` count.
 2. **Drive the loop with the user.** Ask the BLOCKING questions one at a time (non-blocking ones too where cheap). Record each answer.
 3. **Re-dispatch to catch second-order gaps.** Feed the new answers back to the interrogator; it reports only new findings the answers expose and anything still unresolved. Repeat until it returns `BLOCKING items: 0` (loop-until-dry, max 5 re-dispatches). If the loop reaches 5 re-dispatches with BLOCKING items still open, surface all remaining items to the user and ask them to resolve or explicitly defer each one before proceeding — do not keep looping.
-4. **Resolve or defer.** Every BLOCKING item must end resolved (user answered) or explicitly deferred (user chose to). Only then proceed. Reflect confirmed business rules into Requirements, and record the outcomes in the design doc's `## Edge Cases & States`, `## Assumptions & Risks`, and `## Open Questions` sections (Status: resolved / deferred).
+4. **Resolve or defer.** Every BLOCKING item must end resolved (user answered) or explicitly deferred (user chose to). Only then proceed. Reflect confirmed business rules into Requirements, and record the outcomes in the design doc's `## Casos de Borda & Estados`, `## Premissas & Riscos`, and `## Questões em Aberto` sections (Status: resolved / deferred).
 
 **Explore the codebase (only after the requirement is locked):**
 
@@ -253,10 +253,10 @@ Now — and only now — read the project: files, docs, recent commits, existing
 - Start with requirements and constraints, then move into architecture and technical details
 - Scale each section to its complexity: a few sentences if straightforward, up to 200-300 words if nuanced
 - Ask after each section whether it looks right so far
-- Cover all sections from the design template: problem statement, requirements, constraints, chosen approach, architecture, data flow, interfaces, error handling, testing strategy, dependencies, and the interrogation outputs — `## Edge Cases & States`, `## Assumptions & Risks`, and `## Open Questions` (with Status)
-- If JIRA discovery was performed, include the `## JIRA Context` section with issue key, summary, acceptance criteria, and linked issues
-- If Figma discovery was performed, include the `## Figma Resources` section with file info, breakpoints, node map, and the `### Design Annotations` list. Reflect the annotations in the relevant design sections too — business rules in Requirements, the rest wherever they fit (Constraints, Architecture, Error Handling, Testing Strategy) — not just the annotations list.
-- If the design reuses any existing codebase/DS component, include the `## Component Reuse Decisions` section recording each reuse, its name/layout/behavior parity verdict, and whether it was an exact match or carries the user's explicit approval (per the Component Reuse Gate above).
+- Cover all sections from the design template: problem statement, requirements, constraints, chosen approach, architecture, data flow, interfaces, error handling, testing strategy, dependencies, and the interrogation outputs — `## Casos de Borda & Estados`, `## Premissas & Riscos`, and `## Questões em Aberto` (with Status)
+- If JIRA discovery was performed, include the `## Contexto do JIRA` section with issue key, summary, acceptance criteria, and linked issues
+- If Figma discovery was performed, include the `## Recursos do Figma` section with file info, breakpoints, node map, and the `### Anotações de Design` list. Reflect the annotations in the relevant design sections too — business rules in Requirements, the rest wherever they fit (Constraints, Architecture, Error Handling, Testing Strategy) — not just the annotations list.
+- If the design reuses any existing codebase/DS component, include the `## Decisões de Reúso de Componentes` section recording each reuse, its name/layout/behavior parity verdict, and whether it was an exact match or carries the user's explicit approval (per the Component Reuse Gate above).
 - Be ready to go back and clarify if something doesn't make sense
 
 **Design for isolation and clarity:**
@@ -278,7 +278,7 @@ Now — and only now — read the project: files, docs, recent commits, existing
 
 **REQUIRED:** Dispatch @"design-reviewer (agent)" after writing the design artifact.
 
-- Announce: "Using design-reviewer to validate the design."
+- Announce: "Usando o design-reviewer para validar o design."
 - Dispatch @"design-reviewer (agent)":
   - Provide the design document content (the file just written to `.afyapowers/features/<feature>/artifacts/design.md`)
 - If issues found: fix and re-dispatch (max 5 iterations, then surface to human)
@@ -311,7 +311,7 @@ Wait for the user's response. If they request changes, make them and re-run the 
 
 - Update `state.yaml` to add `design.md` to the design phase's artifacts list
 - Append `artifact_created` event to `history.yaml`
-- Tell the user: "Design phase complete. Run `/afyapowers:next` to proceed to **plan**."
+- Tell the user: "Fase design concluída. Rode `/afyapowers:next` para avançar para **plan**."
 
 ## Key Principles
 

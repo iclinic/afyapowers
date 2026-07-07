@@ -47,12 +47,12 @@ def strip_quotes(v):
 
 
 def review_approved(review_text):
-    """Mirror: grep -A5 '## Verdict' | grep -qi '^[[:space:]]*\\*{0,2}Approved'."""
+    """Match both pt-BR and English verdict headers and approval patterns."""
     lines = review_text.splitlines()
-    pat = re.compile(r"^\s*\*{0,2}approved", re.IGNORECASE)
+    pat = re.compile(r"^\s*\*{0,2}(aprovad|approved)", re.IGNORECASE)
     for i, line in enumerate(lines):
-        if "## Verdict" in line:
-            for candidate in lines[i:i + 6]:  # the match line + next 5
+        if "## Veredito" in line or "## Verdict" in line:
+            for candidate in lines[i:i + 6]:
                 if pat.match(candidate):
                     return True
     return False

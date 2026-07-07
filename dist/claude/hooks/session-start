@@ -14,6 +14,11 @@ json_escape() {
 # Compute plugin root (one level up from hooks/)
 PLUGIN_ROOT=$(cd "$(dirname "$0")/.." && pwd)
 
+# Language directive injected into every session. Single-quoted so nothing is
+# interpolated (backticks/accents are literal), then JSON-escaped for embedding.
+LANG_RULE_RAW='Idioma / Language: Fale com o usuário em português do Brasil (pt-BR) por padrão. Se o usuário escrever em outro idioma, espelhe o idioma dele na conversa. Independente do idioma da conversa, TODOS os artefatos do afyapowers (design.md, plan.md, review.md, completion.md, implementation-concerns.md e docs) DEVEM ser escritos SEMPRE em português do Brasil, seguindo estritamente os templates. Mantenha em inglês os termos técnicos/de produto usados convencionalmente em inglês (ex.: Tech Stack, endpoint, deploy, payload, breakpoint, Node Map, PR, merge, changelog); nunca traduza código, identificadores ou caminhos de arquivo.'
+LANG_RULE=$(json_escape "$LANG_RULE_RAW")
+
 # Discover preflight script path (handles agent-specific directory prefixes)
 PREFLIGHT=$(find "$PLUGIN_ROOT/skills" -name "preflight.py" -path "*next*" 2>/dev/null | head -1)
 
@@ -32,7 +37,7 @@ AFYA_DIR=".afyapowers"
 
 # If no .afyapowers directory, still provide plugin root for script access
 if [ ! -d "$AFYA_DIR" ]; then
-  echo "{\"additionalContext\": \"Plugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")\\nSetup script: $(json_escape "$SETUP")${PYWARN}\"}"
+  echo "{\"additionalContext\": \"Plugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")\\nSetup script: $(json_escape "$SETUP")${PYWARN}\\n\\n${LANG_RULE}\"}"
   exit 0
 fi
 
@@ -70,7 +75,7 @@ if [ -z "$ACTIVE_FEATURE" ]; then
     # Multiple in-progress features, list them
     FEATURE_LIST=$(printf ', %s' "${IN_PROGRESS_FEATURES[@]}")
     FEATURE_LIST="${FEATURE_LIST:2}"
-    CONTEXT="Multiple features are in-progress: ${FEATURE_LIST}. Run /afyapowers:switch to select one, or /afyapowers:features to see all.\\nPlugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")\\nSetup script: $(json_escape "$SETUP")${PYWARN}"
+    CONTEXT="Multiple features are in-progress: ${FEATURE_LIST}. Run /afyapowers:switch to select one, or /afyapowers:features to see all.\\nPlugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")\\nSetup script: $(json_escape "$SETUP")${PYWARN}\\n\\n${LANG_RULE}"
     echo "{\"additionalContext\": \"$CONTEXT\"}"
     exit 0
   fi
@@ -78,14 +83,14 @@ fi
 
 # No active feature found
 if [ -z "$ACTIVE_FEATURE" ]; then
-  echo "{\"additionalContext\": \"Plugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")\\nSetup script: $(json_escape "$SETUP")${PYWARN}\"}"
+  echo "{\"additionalContext\": \"Plugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")\\nSetup script: $(json_escape "$SETUP")${PYWARN}\\n\\n${LANG_RULE}\"}"
   exit 0
 fi
 
 # Read state.yaml for the active feature
 STATE_FILE="$AFYA_DIR/features/$ACTIVE_FEATURE/state.yaml"
 if [ ! -f "$STATE_FILE" ]; then
-  echo "{\"additionalContext\": \"Plugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")\\nSetup script: $(json_escape "$SETUP")${PYWARN}\"}"
+  echo "{\"additionalContext\": \"Plugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")\\nSetup script: $(json_escape "$SETUP")${PYWARN}\\n\\n${LANG_RULE}\"}"
   exit 0
 fi
 
@@ -114,6 +119,6 @@ if [ "$CURRENT_PHASE" = "implement" ] && [ -f "$PLAN_FILE" ]; then
 fi
 
 # Build context message
-CONTEXT="You have an active feature: \\\"$(json_escape "$FEATURE_NAME")\\\" (started ${CREATED_AT%T*})\\nCurrent phase: $(json_escape "$CURRENT_PHASE")${TASK_INFO}\\nArtifacts: $(json_escape "${ARTIFACTS:-none}")\\nPlugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")\\nSetup script: $(json_escape "$SETUP")${PYWARN}\\n\\nRun /afyapowers:status for details, or continue working on the current phase.\\n\\nIMPORTANT: You are operating within the afyapowers deterministic workflow. Do NOT advance phases autonomously. When the current phase is complete, suggest the user run /afyapowers:next."
+CONTEXT="You have an active feature: \\\"$(json_escape "$FEATURE_NAME")\\\" (started ${CREATED_AT%T*})\\nCurrent phase: $(json_escape "$CURRENT_PHASE")${TASK_INFO}\\nArtifacts: $(json_escape "${ARTIFACTS:-none}")\\nPlugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")\\nSetup script: $(json_escape "$SETUP")${PYWARN}\\n\\nRun /afyapowers:status for details, or continue working on the current phase.\\n\\nIMPORTANT: You are operating within the afyapowers deterministic workflow. Do NOT advance phases autonomously. When the current phase is complete, suggest the user run /afyapowers:next.\\n\\n${LANG_RULE}"
 
 echo "{\"additionalContext\": \"$CONTEXT\"}"
