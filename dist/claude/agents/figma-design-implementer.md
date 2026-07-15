@@ -173,7 +173,7 @@ Always search the codebase for an existing exact match before downloading a new 
 
 ## Self-Check Before Reporting (Visual Verification / Autoconferência)
 
-After implementing and **before** reporting any status, run the `visual-verification` skill (`{{skill:visual-verification}}`) — this is your autoconferência (self-check) — at the breakpoint specified for this task, using the hard data (the seeded scenario) injected by the orchestration, comparing your implementation against the actual Figma node.
+After implementing and **before** reporting any status, run the `visual-verification` skill (`afyapowers:visual-verification`) — this is your autoconferência (self-check) — at the breakpoint specified for this task, using the hard data (the seeded scenario) injected by the orchestration, comparing your implementation against the actual Figma node.
 
 - **Evidence before any "done" claim.** Gather the skill's PASS/FAIL result, its measured numbers, and its saved evidence paths, and present them in your report **before** asserting the implementation is complete. Never assert "done" first and back-fill evidence afterward.
 - **If the self-check FAILS and there is no accepted override:** report **DONE_WITH_CONCERNS** with a **BLOCKING** concern — the code was implemented but diverges from Figma — citing the specific measured numbers the skill returned (e.g. "Gaps: expected 24px ±1px, measured 31px"). Do not report DONE.

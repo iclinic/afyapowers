@@ -58,11 +58,11 @@ If the reviewer finds issues:
 
 ### Step 4: Visual Fidelity Review
 
-Only run this step if `artifacts/design.md` marks `verificacao_visual: aplicável` for at least one task. If every task in `artifacts/design.md` is `verificacao_visual: não-aplicável`, skip this step entirely — do not dispatch the agent, and omit the "Revisão de Fidelidade Visual" section from the review artifact in Step 5.
+Only run this step if `artifacts/design.md`'s `## Contrato de Verificação` has the flag `verificacao_visual: aplicável`. This flag is a single, feature-wide value (set once during the design phase), not a per-task marker. If it is `não-aplicável` — or the contract is absent, as for a non-UI feature — skip this step entirely: do not dispatch the agent, and omit the "Revisão de Fidelidade Visual" section from the review artifact in Step 5.
 
 Dispatch @"visual-fidelity-reviewer (agent)":
 - Provide the Contrato de Verificação and Contrato de Layout from `artifacts/design.md`
-- Provide the list of tasks marked `verificacao_visual: aplicável`
+- Provide the list of UI tasks that require visual verification — read these from `artifacts/plan.md`, where per-task granularity actually lives: the skeleton (Layer 0) task and each UI task carrying a `**Figma:**` block with Medidas de aceite / Cenários. (The `design.md` flag only decides whether this step runs at all; `plan.md` decides which tasks the agent verifies.)
 - Provide the contents of `implementation-concerns.md` so the agent can identify per-task code-only overrides (marker `[ACCEPTED BY USER: <reason>]`). For any task carrying that marker, the agent **skips** the visual verification for that task — this is not a silent PASS; the agent records the skip and the accepted reason instead
 - The agent invokes the `visual-verification` skill itself, per applicable task/breakpoint/state — do not invoke that skill directly from this skill, and do not re-verify visually yourself
 
