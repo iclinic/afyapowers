@@ -79,7 +79,7 @@ If the agent reports FAIL for any task without an accepted override, or reports 
 3. Re-dispatch the visual-fidelity-reviewer (max 3 iterations)
 4. If still failing after 3 iterations, report unresolved findings to the user and ask them to decide how to proceed
 
-**Gate:** The overall review verdict cannot be **Aprovado** unless the visual-fidelity-reviewer reports **Aprovado**, or this step was skipped because no task required visual verification.
+**Gate:** The overall review verdict cannot be **Aprovado** unless the visual-fidelity-reviewer reports **Aprovado**, or this step was skipped because `verificacao_visual` is `não-aplicável` (or absent).
 
 ### Step 5: Produce Review Artifact
 
@@ -87,8 +87,8 @@ Read the template from `templates/review.md`. Fill in:
 - Spec compliance findings and resolutions
 - Code quality findings and resolutions
 - Blocking-concern findings: for each blocking concern from `implementation-concerns.md`, record whether it was fixed in the diff or explicitly accepted by the user, with the resolution. A concern line marked `[ACCEPTED BY USER: <reason>]` is "Accepted by user" — use the marker's reason as the resolution.
-- The `## Revisão de Fidelidade Visual` section, only when Step 4 ran: fill the findings table with any issues/boundary violations reported by the visual-fidelity-reviewer, the evidence table with one row per task/breakpoint/state verified (path under `artifacts/visual-checks/`), listing tasks skipped by an accepted override as PULADAS rather than failed, and the "Veredito da Fidelidade Visual" line with the agent's Aprovado/Alterações Solicitadas verdict. If Step 4 was skipped (no task required visual verification), omit this section entirely.
-- Final verdict (in the `## Veredito` section): write exactly **Aprovado** — only if the spec compliance review passes, the code quality review passes, the visual fidelity review is Aprovado (or was skipped because no task required it), **and** every blocking concern is fixed or explicitly accepted (including those carrying an `[ACCEPTED BY USER: …]` marker). Any of the above failing, or any unresolved/unaccepted blocking concern → **Alterações Solicitadas**.
+- The `## Revisão de Fidelidade Visual` section, only when Step 4 ran: fill the findings table with any issues/boundary violations reported by the visual-fidelity-reviewer, the evidence table with one row per task/breakpoint/state verified (path under `artifacts/visual-checks/`), listing tasks skipped by an accepted override as PULADAS rather than failed, and the "Veredito da Fidelidade Visual" line with the agent's Aprovado/Alterações Solicitadas verdict. If Step 4 was skipped (`verificacao_visual` is `não-aplicável`), omit this section entirely.
+- Final verdict (in the `## Veredito` section): write exactly **Aprovado** — only if the spec compliance review passes, the code quality review passes, the visual fidelity review is Aprovado (or was skipped because `verificacao_visual` is `não-aplicável`), **and** every blocking concern is fixed or explicitly accepted (including those carrying an `[ACCEPTED BY USER: …]` marker). Any of the above failing, or any unresolved/unaccepted blocking concern → **Alterações Solicitadas**.
 
 Save to `.afyapowers/features/<feature>/artifacts/review.md`
 
