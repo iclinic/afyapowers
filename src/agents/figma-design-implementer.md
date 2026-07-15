@@ -78,9 +78,31 @@ This provides:
 
 Never approximate. Never use a "closest" project token. It is either an exact match (name + value) or a hardcoded Figma value.
 
+**Token reconciliation (structural vs. cosmetic) — do this at the start of implementation, over the real node.** This reconciliation runs against the actual node already fetched in Step 1 (via `fileKey` + the task's node ID) — it does not depend on, and bypasses, any manual-selection requirement `get_variable_defs` might otherwise have in the Figma desktop app.
+
+For every token in the "Name match + value mismatch" case above (project token/mixin of the same name as a Figma variable, but the resolved values differ), classify the token and record one explicit decision per token:
+- **Structural token (estrutural)** — width, margin, gap, number of columns, font-size. A structural divergence **blocks**: report a **BLOCKING** concern naming the token, the project value, and the Figma value. Do not hardcode past it as routine drift.
+- **Cosmetic token (cosmético)** — color, letter-spacing, font-weight, shadow, border-radius. A cosmetic divergence is **accepted-with-record**: hardcode the Figma value per the Token Mapping Rule above, and record it as a (non-blocking) CONCERN — token drift, consistent with the "Design token values differ from Figma" guidance in Common Issues.
+
+This reconciliation extends the Token Mapping Rule above — it does not replace it. The Token Mapping Rule still decides *which value to use* (project token vs. hardcoded Figma value); this reconciliation additionally decides *whether the divergence is safe to proceed past* (cosmetic) or *must halt and be flagged* (structural).
+
 **Fallback:** If `get_variable_defs` returned no tokens for a node, use the raw resolved values from `get_design_context` and flag the affected properties as DONE_WITH_CONCERNS.
 
 **Truncation fallback:** If `get_design_context` returns a truncated response (indicated by missing expected child nodes or incomplete data), call `get_metadata` on the child nodes that need more detail. Along with `download_assets` (Asset Rules), this is one of the only calls made beyond the 3 mandatory ones.
+
+### Step 4 — Staleness Check (Figma vs. Layout Contract)
+
+Figma may have changed after the design phase captured `artifacts/design.md`. Before writing any implementation code, check whether the design has gone stale.
+
+The fresh Figma read you just did in Steps 1–3 (screenshot + design context for the task's node) is the current state of the design — call it **T2**. Compare it against the **Layout Contract** in `artifacts/design.md` (the table keyed by `captured-at`, from the design phase — call it **T1**): container max-width, side margins, gaps, number of columns, min/max per piece, per breakpoint.
+
+- **Material divergence** — any of the following counts as material staleness:
+  - Any single value in the Layout Contract has changed since T1 (container max-width, side margins, gaps, min/max per piece).
+  - A dimension differs by **more than 2px** between T1 and T2.
+  - The **number of columns** differs at all (no tolerance here — any change is material).
+- **If a material divergence is found:** stop before implementing further and report a **BLOCKING** concern citing the stale field, its T1 value (from `design.md`), and its T2 value (the fresh Figma read). Do not silently build to the newer Figma state, and do not silently build to the stale contract — the divergence must be surfaced and resolved, not absorbed.
+- **Lightweight "amend contract" flow (emendar contrato):** rather than re-entering the design phase, apply a targeted, point edit to the affected row(s) of the Layout Contract table in `artifacts/design.md` — update the `captured-at` timestamp and the changed value(s) only. This is a point edit, not a redesign.
+- **Re-verify affected prior tasks:** if other, already-completed tasks were implemented against the now-stale contract and touch the same layout facts that changed, name them explicitly in your report so the orchestrator can re-verify them against the amended contract.
 
 ## Asset Rules
 
@@ -117,6 +139,8 @@ Never approximate. Never use a "closest" project token. It is either an exact ma
 7. **File constraint (source files only; assets are exempt).** The task's Files section is the edit allowlist for **source/code** files. If you need a **non-asset** file that isn't listed, report NEEDS_CONTEXT.
    - **EXCEPTION — assets.** You MAY, and per Asset Rule 2 MUST, create asset files (icons/images) in the project's assets directory even when they are not individually listed in Files. Assets are *additive* (new files, not edits to shared source) and *dedup-checked before writing*, so they do not trip the parallel-conflict guard the allowlist protects. Inlining an SVG to avoid creating a file is NEVER acceptable — save the file.
    - **Report every asset file you create** (full paths) under a dedicated "Assets created" line in your report, so the orchestrator stages and commits them.
+8. **Component boundary — never own page-level layout.** Components are **FORBIDDEN** from setting `max-width`, page centering (e.g. a page-level `margin: 0 auto`), or page-level side margins. That responsibility belongs to the skeleton (Layer 0), not to individual components. If the Figma frame shows the component constrained to a max-width or centered on the page, implement the component itself at its natural/fill width and let the skeleton apply the constraint.
+   - **Escape hatch for legitimate full-bleed.** If a component genuinely needs to break out of the skeleton's constraint (e.g. a full-bleed hero/banner), do not fake it by setting page-level `max-width`/margins on the component. Use the skeleton's designated full-bleed hook instead (e.g. a `full-bleed`/`data-full-bleed` prop, wrapper, or layout slot the skeleton exposes) so the skeleton remains the single owner of page-level layout. If no such hook exists in the codebase yet, do not invent page-level layout on the component — report a CONCERN naming the need so the skeleton can add the hook.
 
 ## Code Quality
 
@@ -155,6 +179,15 @@ Always search the codebase for an existing exact match before downloading a new 
 **Cause:** A growing container uses `flex-basis: 0` (`flex: 1 0 0`) or `height: 100%` combined with `overflow: auto|hidden`, but no ancestor in the real render host has a bounded height. With nothing to grow into, the box stays ~0px tall and `overflow` clips the content — which is still in the DOM, just zero-height and invisible.
 **Solution:** Apply Implementation Rule 6. Read the host chain (route wrapper, parent layout, `html`/`body`); if height isn't guaranteed, size to content (`flex: 1 1 auto`, `min-height`) or add the height to the host. Flag the host assumption as a BLOCKING concern when you cannot confirm a bounded-height parent.
 
+## Self-Check Before Reporting (Visual Verification / Autoconferência)
+
+After implementing and **before** reporting any status, run the `visual-verification` skill (`{{skill:visual-verification}}`) — this is your autoconferência (self-check) — at the breakpoint specified for this task, using the hard data (the seeded scenario) injected by the orchestration, comparing your implementation against the actual Figma node.
+
+- **Evidence before any "done" claim.** Gather the skill's PASS/FAIL result, its measured numbers, and its saved evidence paths, and present them in your report **before** asserting the implementation is complete. Never assert "done" first and back-fill evidence afterward.
+- **If the self-check FAILS and there is no accepted override:** report **DONE_WITH_CONCERNS** with a **BLOCKING** concern — the code was implemented but diverges from Figma — citing the specific measured numbers the skill returned (e.g. "Gaps: expected 24px ±1px, measured 31px"). Do not report DONE.
+- **Override.** If a per-task override was explicitly recorded per the skill's fail-closed section (`[ACCEPTED BY USER: <reason>]`), the visual check for that task is skipped — and the skip itself must be recorded in your report, never silently treated as a PASS.
+- If `verificacao_visual` is non-applicable per the design's Verification Contract, this self-check does not apply — there is nothing to visually verify.
+
 ## Do Not Commit
 
 Leave your changes in the working tree. **Do not commit.** The orchestrator commits
@@ -167,12 +200,12 @@ exact files you changed so the orchestrator can stage and commit them precisely.
 When done, report:
 - **Status:** DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT
 - **What was implemented** — component structure and key decisions
-- **Visual validation** — does it match the screenshot from Step 2?
+- **Visual validation** — the PASS/FAIL result, measured numbers, and evidence paths from the Self-Check (`visual-verification` skill) — presented before any "done" claim. If skipped via an accepted override, say so explicitly.
 - **Files changed** — the exact list of source/code files you created or modified. The orchestrator stages and commits these, so be precise and complete.
 - **Assets created** — the exact full paths of every asset file (icon/image) you downloaded and saved, and the assets directory you chose. List these separately from source files: they are usually NOT in the task's Files section, and the orchestrator needs the explicit list to stage and commit them. Write "none" if you created no asset files.
 - **Concerns** — group every concern under one of two severities:
-  - **BLOCKING** — the output looks or behaves differently from Figma/design: a substituted component that fails the name/visual/interaction-model match (Implementation Rule 2), a wrong interaction model, a visual mismatch, or a layout that may not render as designed because the host height couldn't be confirmed (Rule 6). **A divergence is BLOCKING even if you were instructed to do it** (e.g. the task told you to reuse a component that doesn't match). Flag it — do not bury it. Name the specific mismatch.
-  - **CONCERN** (non-blocking) — doubts, fragility, edge cases, unmatched tokens / token drift, inaccessible assets, accessibility additions, layout ambiguities.
+  - **BLOCKING** — the output looks or behaves differently from Figma/design: a substituted component that fails the name/visual/interaction-model match (Implementation Rule 2), a wrong interaction model, a visual mismatch, a layout that may not render as designed because the host height couldn't be confirmed (Rule 6), a failed Self-Check with no accepted override, a structural token divergence (Step 3 reconciliation), or a material staleness divergence between the Layout Contract and the fresh Figma read (Step 4). **A divergence is BLOCKING even if you were instructed to do it** (e.g. the task told you to reuse a component that doesn't match). Flag it — do not bury it. Name the specific mismatch and cite the measured numbers where applicable.
+  - **CONCERN** (non-blocking) — doubts, fragility, edge cases, unmatched tokens / cosmetic token drift, inaccessible assets, accessibility additions, layout ambiguities.
 
 **Status guidance:**
 - **DONE** — implementation matches Figma with full confidence; no concerns.
