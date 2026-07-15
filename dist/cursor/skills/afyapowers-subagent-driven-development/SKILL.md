@@ -167,6 +167,8 @@ Apply concurrency caps:
 
 > **Why 4?** The Figma MCP rate-limits at 15 requests/minute. Each Figma task makes 3 mandatory MCP calls, so 4 concurrent tasks = 12 calls — safely under the limit.
 
+**Dev server serialization is not SDD's concern.** Up to 4 Figma tasks can run concurrently in a wave, and each will independently invoke the `visual-verification` skill for its self-check. That skill — not SDD — is the sole owner of the dev server used for visual verification and of its lifecycle (reference-counted singleton per phase, lock-and-wait for rival invocations; see visual-verification's "Ciclo de vida do dev server"). SDD does not need to, and must not, add virtual dependencies between UI tasks in the plan's dependency graph just to serialize dev-server access — that would duplicate ownership the skill already provides internally (keeps R11/DRY: one owner, no duplicated serialization logic).
+
 Dispatch the combined set (all non-Figma + up to 4 Figma) as parallel Subagent calls in a single message.
 
 **Prompt routing:** Select the correct implementer agent based on the task type:
@@ -179,6 +181,8 @@ Each agent gets:
 - File constraint: "You may ONLY modify these files: [list from task's Files: section]". **For Figma tasks, append:** "— plus you MAY create asset files (icons/images) under the project's assets directory as needed; list every asset file you create in your report."
 - Return format: status (DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED) + summary, **including the exact list of files changed**. For Figma tasks, the report must **separately list any asset files created** (the "Assets created" line) — these are usually not in the Files: section and the orchestrator needs them to stage the assets.
 
+**For Figma tasks, inject the hard-data scenario for the self-check.** The `figma-design-implementer` runs the `visual-verification` skill as its autoconferência before reporting (see that agent's "Self-Check Before Reporting"). That self-check needs real data to render against — not a short, ad-hoc Figma mock the orchestrator improvises. Pull the **cenário de dados difíceis** (pior caso + estados críticos) straight from the design's Contrato de Verificação (`verificacao_visual` → Cenários de Dados Semeados in `artifacts/design.md`) and paste it into the agent's prompt verbatim, alongside the task's breakpoint. If `verificacao_visual` is non-applicable for this task, say so instead of inventing a scenario — the self-check does not apply and the agent should not fabricate one.
+
 **Subagents do NOT commit.** They implement, test, self-review, and report. Do not paste the commit conventions block into subagent prompts — you commit each completed task yourself in Step 6.5.
 
 ### Step 6: Wait and Process Results
@@ -189,6 +193,7 @@ All Agent calls return together. For each result:
   - **BLOCKING concern examples (collect as blocking, do not bury):** "I reused `DropdownPicker` as instructed but its drawer+search interaction model doesn't match the Figma chip+popover", "this component assumes a bounded-height parent the host doesn't provide", "output behaves differently from the design". These do not stop the wave, but the implement phase cannot cleanly advance until the user resolves or explicitly accepts them (enforced by the `implementing` skill).
   - **Treat as BLOCKED examples:** "I couldn't get tests to pass", "Tests fail and I can't figure out why", "Core dependency is missing and I had to stub the entire integration"
   - **Non-blocking (store-and-continue) examples:** "I'm not sure this edge case is handled correctly", "The API response format might differ in production", "This works but the approach feels fragile"
+  - **A concern that defers verification is BLOCKING, never store-and-continue.** If a concern postpones checking the work to a later phase instead of checking it now — e.g. "vou validar isso na review", "will confirm visually later", "didn't run the self-check, someone should verify before shipping" — reclassify it as **BLOCKING** regardless of how the implementer tagged it. Deferred verification is not evidence of correctness; it is the absence of evidence, and it becomes a verification requirement that only closes once the actual evidence (measurements, screenshots, PASS/FAIL) is produced — not once someone promises to look later.
 - **NEEDS_CONTEXT**: surface question to user. Mark task `needs-retry`. Continue with other tasks — do NOT pause the entire execution
 - **BLOCKED**: assess blocker per standard SDD rules (more context, more capable model, break into pieces, or escalate). Mark task `needs-retry`
 
@@ -304,7 +309,7 @@ Implementer subagents report one of four statuses:
 
 **DONE:** Mark task `completed`, update plan checkbox. No review dispatch.
 
-**DONE_WITH_CONCERNS:** Read concerns and sort by severity (**BLOCKING** vs non-blocking **CONCERN**). Store them in separate lists and mark `completed`. If the concern indicates the task is fundamentally broken (e.g., "I couldn't get tests to pass", "Core dependency is missing and I had to stub the entire integration"), treat as `BLOCKED` instead. BLOCKING concerns (e.g. a component substitution that doesn't match Figma, an unconfirmed host-height assumption, behavior that differs from the design) are collected separately and gate the phase via the `implementing` skill. Examples of non-blocking concerns: "I'm not sure this edge case is handled correctly", "The API response format might differ in production", "This works but the approach feels fragile."
+**DONE_WITH_CONCERNS:** Read concerns and sort by severity (**BLOCKING** vs non-blocking **CONCERN**). Store them in separate lists and mark `completed`. If the concern indicates the task is fundamentally broken (e.g., "I couldn't get tests to pass", "Core dependency is missing and I had to stub the entire integration"), treat as `BLOCKED` instead. BLOCKING concerns (e.g. a component substitution that doesn't match Figma, an unconfirmed host-height assumption, behavior that differs from the design) are collected separately and gate the phase via the `implementing` skill. Examples of non-blocking concerns: "I'm not sure this edge case is handled correctly", "The API response format might differ in production", "This works but the approach feels fragile." A concern that **defers verification** to a later phase instead of performing it (e.g. "vou validar isso na review", "will check this visually later") is always **BLOCKING**, never non-blocking — even if the implementer filed it as a routine ressalva — because it is a verification requirement that only closes with actual evidence, not a promise to verify eventually.
 
 **NEEDS_CONTEXT:** Provide missing context and re-dispatch.
 

@@ -26,6 +26,7 @@ You are reviewing whether a design document is complete and ready for implementa
 | Assumptions & risks | `## Premissas & Riscos` must list the assumptions the design depends on with their confirmation status. An unconfirmed BLOCKING assumption (e.g. an API contract derived from Figma, never validated) → Issues Found. |
 | Open questions resolved | `## Questões em Aberto` must have NO BLOCKING row still `open` — every one resolved or explicitly deferred (REQUIREMENTS-GATE). Any open blocking question → Issues Found. |
 | Contradictions | Cross-check JIRA, Figma annotations, and the written design for conflicting requirements. Any unreconciled contradiction → Issues Found. |
+| Verification & Layout contracts | When `verificacao_visual: aplicável`, **both** `## Contrato de Verificação` and `## Contrato de Layout` must be present and complete — empty/placeholder/TBD fields, or a layout table with rows missing measurements, → Issues Found. When `verificacao_visual: não-aplicável`, the contracts may be absent; their absence is **NOT** an issue (no friction — R9). |
 
 ## CRITICAL
 
@@ -34,6 +35,8 @@ Look especially hard for:
 - Sections saying "to be defined later" or "will spec when X is done"
 - Sections noticeably less detailed than others
 - Units that lack clear boundaries or interfaces — can you understand what each unit does without reading its internals?
+- When `verificacao_visual: aplicável`: `## Contrato de Verificação` or `## Contrato de Layout` missing, or present with empty/placeholder/TBD fields, or a layout table missing measurements
+- When `verificacao_visual: não-aplicável`: do NOT flag the absence of `## Contrato de Verificação` / `## Contrato de Layout` as an issue
 
 ## Output Format
 

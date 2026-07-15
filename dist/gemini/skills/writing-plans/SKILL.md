@@ -33,17 +33,23 @@ Before defining Figma tasks, check if the design doc contains a `## Recursos do 
 
 **If Figma Resources are present**, read the Node Map and infer task layers directly — no Figma MCP calls at planning time:
 
-1. **Layer 1 — Reusable components:** Each entry in the Node Map's **Componentes Reutilizáveis** subsection becomes a Layer 1 task with its single node ID. No dependencies. INSTANCE nodes with `×N` count only become Layer 1 tasks when their COMPONENT definition is NOT present in the same file (external component) — otherwise the COMPONENT node itself is the Layer 1 task and the INSTANCEs are usages handled by their parent section's Layer 2 task. If **Componentes Reutilizáveis** is empty or says "(nenhum)", there are no Layer 1 tasks.
+1. **Layer 0 — Esqueleto (container):** Quando o design doc tem uma seção `## Contrato de Layout` E o `## Contrato de Verificação` declara `verificacao_visual: aplicável`, gere uma task de esqueleto por frame raiz de tela no Node Map (uma por entrada de **Telas** que representa uma tela completa). Esta task é a **dona do container**: largura máxima, centralização, margens laterais e o ritmo (gap) entre seções — tudo derivado da geometria do frame nas linhas do Contrato de Layout correspondentes a essa tela. `**Depends on:** none`. Se `## Contrato de Layout` estiver ausente, ou `verificacao_visual` for `não-aplicável`, não gere task de esqueleto — prossiga direto para Layer 1/Layer 2.
 
-2. **Layer 2 — Screens:** Each entry in the Node Map's **Telas** subsection becomes a Layer 2 task with its single node ID. Depends on any Layer 1 tasks whose components were originally children of that frame (either as COMPONENT/COMPONENT_SET nodes extracted to Reusable Components, or as INSTANCE nodes referencing a Reusable Component).
+2. **Layer 1 — Reusable components:** Each entry in the Node Map's **Componentes Reutilizáveis** subsection becomes a Layer 1 task with its single node ID. No dependencies — Layer 1 tasks run **em paralelo** com a task de esqueleto (Layer 0): componentes não são donos da geometria do container, então não precisam esperar o esqueleto existir. INSTANCE nodes with `×N` count only become Layer 1 tasks when their COMPONENT definition is NOT present in the same file (external component) — otherwise the COMPONENT node itself is the Layer 1 task and the INSTANCEs are usages handled by their parent section's Layer 2 task. If **Componentes Reutilizáveis** is empty or says "(nenhum)", there are no Layer 1 tasks.
+
+3. **Layer 2 — Screens:** Each entry in the Node Map's **Telas** subsection becomes a Layer 2 task with its single node ID. Depends on any Layer 1 tasks whose components were originally children of that frame (either as COMPONENT/COMPONENT_SET nodes extracted to Reusable Components, or as INSTANCE nodes referencing a Reusable Component) — **e também** na task de esqueleto (Layer 0) daquela tela, quando existir. O esqueleto é verificado primeiro: seu Passo 1 confere a geometria do container vazio (max-width, centralização, margens, sem conteúdo de seções) antes de qualquer task de tela/montagem rodar sua própria verificação visual.
 
 **Granularity rule:** If a node is typed COMPONENT/COMPONENT_SET, it MUST be its own Layer 1 task. Do not merge it into a parent section's task.
+
+**Regra de fronteira (Layer 1 vs Layer 0):** componentes (Layer 1) são **PROIBIDOS** de setar max-width, centralização ou margens de página — essas medidas pertencem exclusivamente à task de esqueleto (Layer 0). A regra é imposta em runtime pelo implementer do componente/tela e checada pelo revisor visual. Quando um componente precisa de **full-bleed** legítimo (ultrapassar a margem lateral), a task do componente deve usar o hook de escape exposto pelo esqueleto — nunca redefinir max-width/centralização diretamente no componente.
+
+**Medidas de aceite e cenários em tasks de UI:** toda task de UI (Layer 1 e Layer 2) inferida a partir do Node Map deve anexar, no bloco `**Figma:**`, as **Medidas de aceite** (extraídas do `## Contrato de Layout`, apenas para os breakpoints relevantes a essa task/componente) e os **Cenários** (extraídos do `## Contrato de Verificação` → Cenários de Dados Semeados: pior caso + estados críticos aplicáveis a essa task). A task de esqueleto (Layer 0) não carrega esses dois campos — suas medidas já estão descritas no corpo da task (ver Figma Task Structure abaixo).
 
 Each Figma task uses the Figma Task Structure format (see below) with a single node ID and breakpoints from the design doc's `## Recursos do Figma` section.
 
 #### Example
 
-Given this Node Map from the design doc:
+Given this Node Map from the design doc (assumindo que `## Contrato de Layout` está presente e `verificacao_visual: aplicável` para as duas telas):
 ```
 **Componentes Reutilizáveis:**
 - CTA Button (node `1:4`, COMPONENT)
@@ -60,11 +66,14 @@ Given this Node Map from the design doc:
 
 Correct task output:
 ```
-Task 1: CTA Button (Figma)         — Layer 1, node `1:4`, depends on: none
-Task 2: Pricing Tier (Figma)       — Layer 1, node `2:10`, depends on: none
-Task 3: Hero Section (Figma)       — Layer 2, node `1:2`, depends on: Task 1, Task 2
-Task 4: Pricing Section (Figma)    — Layer 2, node `2:1`, depends on: Task 2
+Task 1: Hero Section — Esqueleto (Layer 0) (Figma)     — Layer 0, node `1:2`, depends on: none
+Task 2: Pricing Section — Esqueleto (Layer 0) (Figma)  — Layer 0, node `2:1`, depends on: none
+Task 3: CTA Button (Figma)         — Layer 1, node `1:4`, depends on: none
+Task 4: Pricing Tier (Figma)       — Layer 1, node `2:10`, depends on: none
+Task 5: Hero Section (Figma)       — Layer 2, node `1:2`, depends on: Task 1, Task 3, Task 4
+Task 6: Pricing Section (Figma)    — Layer 2, node `2:1`, depends on: Task 2, Task 4
 ```
+↑ Tasks 1-2 (esqueleto) não têm dependências e rodam em paralelo com Tasks 3-4 (componentes). Tasks 5-6 (telas) DEPENDEM tanto do esqueleto da sua tela quanto dos componentes que contêm.
 
 Wrong output — DO NOT do this:
 ```
@@ -73,7 +82,7 @@ Task 2: Pricing Section (Figma)    — merges Pricing Tier into screen task
 ```
 ↑ Components must be their own Layer 1 tasks. Never merge them into screen tasks.
 
-When **Componentes Reutilizáveis** is empty:
+When **Componentes Reutilizáveis** is empty (e sem `## Contrato de Layout` aplicável neste exemplo):
 ```
 Task 1: Hero Section (Figma)       — Layer 2, node `1:2`, depends on: none
 Task 2: Pricing Section (Figma)    — Layer 2, node `2:1`, depends on: none
@@ -84,6 +93,8 @@ Task 2: Pricing Section (Figma)    — Layer 2, node `2:1`, depends on: none
 2. Every entry in **Telas** has a corresponding Layer 2 task with its node ID
 3. No Layer 2 task includes implementation work for a component that has its own Layer 1 task
 4. Layer 2 tasks depend on Layer 1 tasks whose components were originally children of that frame (extracted COMPONENT/COMPONENT_SET or INSTANCE references)
+5. Se `## Contrato de Layout` está presente e `verificacao_visual: aplicável`, existe uma task de esqueleto (Layer 0) para cada frame raiz de tela, e a task de Layer 2 correspondente depende dela (trivially passes se Contrato de Layout estiver ausente ou verificacao_visual for não-aplicável)
+6. Cada task de UI (Layer 1 e Layer 2) carrega no bloco `**Figma:**` os breakpoints, as **Medidas de aceite** e os **Cenários** (a task de esqueleto Layer 0 é isenta desses dois últimos campos — ver Figma Task Structure)
 
 **If no Figma Resources:** Skip this section entirely. Proceed with standard task generation.
 
@@ -188,13 +199,44 @@ File overlap validation is a safety net, not a substitute for thinking about tas
 
 ## Figma Task Structure
 
-Use this format for tasks that implement UI components with Figma designs. The design doc's `## Recursos do Figma` section provides the source data for the Figma block.
+Use this format for tasks that implement UI components with Figma designs. The design doc's `## Recursos do Figma`, `## Contrato de Layout`, and `## Contrato de Verificação` sections provide the source data for the Figma block.
 
 **How to identify Figma tasks:** If the component being implemented has corresponding nodes in the design doc's `## Recursos do Figma` Node Map, it is a Figma task. Backend tasks, API routes, data models, business logic, and other non-UI tasks use the standard task structure above.
 
 **Design/logic split:** When Figma resources exist, tasks that involve any styling (CSS, Tailwind, layout, disposition) must be Figma tasks, even if they also have logic. Always create separate tasks: a Figma task for the visual design, then a standard task for the behavior/logic that depends on the Figma task. Example: "Contact Form Layout (Figma)" → "Contact Form Logic" (depends on layout task).
 
 **No TDD, no code snippets.** Figma tasks describe what to achieve — the implementer subagent uses the Figma MCP tools and the Figma implementer workflow to determine how.
+
+### Layer 0 — Esqueleto (skeleton) task structure
+
+Gerada apenas quando `## Contrato de Layout` está presente e `## Contrato de Verificação` declara `verificacao_visual: aplicável` (ver Figma Task Layer Inference acima). Uma task por frame raiz de tela.
+
+```markdown
+### Task N: [Nome da Tela] — Esqueleto (Layer 0) (Figma)
+
+**Files:**
+- Create: `caminho/exato/do/esqueleto` (o layout que envolve as seções da tela)
+
+**Depends on:** none
+
+**Figma:**
+- **File Key:** `<file_key>`
+- **Node ID:** `<id>` (frame raiz da tela)
+- **Breakpoints:** <breakpoint_name> (<width>px), ...
+
+> Esta task é a **dona do container**: largura máxima, centralização e margens laterais da página, mais o ritmo (gap) entre seções — tudo derivado da geometria do frame no Figma (ver Contrato de Layout do design). Tasks de tela/montagem (Layer 2) DEPENDEM desta task e não redefinem essas medidas.
+>
+> Componentes (Layer 1) são **PROIBIDOS** de setar max-width, centralização ou margens de página — eles vivem dentro do container que o esqueleto define. Quando um componente precisa de **full-bleed** legítimo (ex: banner que ultrapassa a margem lateral), ele usa o hook de escape exposto por este esqueleto (ex: prop/slot `fullBleed` ou classe utilitária documentada aqui) — nunca sobrescreve max-width/centralização diretamente no componente.
+
+- [ ] Passo 1: Verificar a geometria do container vazio primeiro — sem conteúdo de seções, o esqueleto já deve exibir max-width, centralização e margens laterais corretas em todos os breakpoints
+- [ ] Passo 2: Implementar o container — max-width, centralização, margens laterais e ritmo entre seções, conforme o Contrato de Layout do design
+- [ ] Passo 3: Expor e documentar o hook de escape para full-bleed
+- [ ] Passo 4: Rodar a verificação visual e confirmar que a geometria do container casa com o Contrato de Verificação (cenário de container vazio)
+```
+
+O esqueleto é verificado primeiro: nenhuma task de Layer 2 pode considerar sua própria verificação visual concluída antes de a geometria do container do esqueleto estar confirmada.
+
+### Layer 1 / Layer 2 — component and screen task structure
 
 ```markdown
 ### Task N: [Nome do Componente de UI] (Figma)
@@ -209,6 +251,8 @@ Use this format for tasks that implement UI components with Figma designs. The d
 - **File Key:** `<file_key>`
 - **Node ID:** `<id>`
 - **Breakpoints:** <breakpoint_name> (<width>px), ...
+- **Medidas de aceite:** container max-width `<valor>`, margens laterais `<valor>`, gaps `<valor>`, colunas `<n>`, min/max de `<peça>` no breakpoint `<breakpoint_name>` (do Contrato de Layout)
+- **Cenários:** pior caso (`<descrição, ex: texto mais longo/mais itens>`), estado vazio, estado com 1 item (do Contrato de Verificação)
 
 - [ ] Implement using the Figma implementer workflow
 ```
@@ -217,6 +261,8 @@ Use this format for tasks that implement UI components with Figma designs. The d
 - **File Key:** Copy from the design doc's `## Recursos do Figma` section
 - **Node ID:** The single node ID for this task's component from the Node Map
 - **Breakpoints:** Include only the breakpoints relevant to this task's component (not all breakpoints in the design)
+- **Medidas de aceite:** Apenas quando `## Contrato de Layout` está presente. Copie a(s) linha(s) da tabela do Contrato de Layout relevantes ao frame/breakpoints desta task (container max-width, margens laterais, gaps, nº de colunas, min/max por peça). Se `## Contrato de Layout` estiver ausente, omita esta linha — não invente medidas.
+- **Cenários:** Apenas quando `## Contrato de Verificação` está presente e `verificacao_visual: aplicável`. Copie as linhas relevantes da tabela de Cenários de Dados Semeados (pior caso + estados críticos — vazio, 1 item, muitos itens, texto longo, etc. — aplicáveis ao componente/tela desta task). Se não aplicável, omita esta linha.
 - **Assets:** Set `<project assets dir>` to the codebase's existing asset convention when you can tell it from the design doc or project layout (e.g. `src/assets`, `public/`); otherwise leave the generic note — the implementer auto-detects and falls back to a sensible default. Never enumerate individual asset files here: which icons/images a design needs is only knowable at implement time (no Figma MCP calls at plan time). The `**Assets:**` line is a *grant + hint* that assets may be created outside the `**Files:**` list — omitting it does not block the implementer, it just loses the hint.
 
 **Mixed plans:** Figma and non-Figma tasks coexist in the same plan with standard dependency handling. A feature might have Tasks 1-2 as data models (standard TDD), Tasks 3-5 as UI components (Figma), and Task 6 as integration (standard TDD).
@@ -230,6 +276,9 @@ Use this format for tasks that implement UI components with Figma designs. The d
 - Figma tasks: include the `**Assets:**` grant line (project assets dir); never enumerate individual asset files — they're only knowable at implement time
 - When Figma resources exist: always split design (Figma task) and logic (standard task) into separate tasks. Design first, logic depends on it
 - Any task touching styling (CSS, Tailwind, layout, disposition) MUST be a Figma task when Figma resources are available
+- Quando `## Contrato de Layout` + `verificacao_visual: aplicável`: gere a task de esqueleto (Layer 0) dona do container por tela — Layer 2 DEPENDE dela, Layer 1 roda em paralelo, e o esqueleto é verificado primeiro
+- Componentes (Layer 1) são PROIBIDOS de setar max-width, centralização ou margens de página — regra imposta em runtime pelo implementer e checada pelo revisor visual
+- Toda task de UI (Layer 1/Layer 2) carrega no bloco `**Figma:**` as Medidas de aceite (do Contrato de Layout) e os Cenários (do Contrato de Verificação) para os breakpoints/estados relevantes
 
 ## Required Sub-Skills
 
