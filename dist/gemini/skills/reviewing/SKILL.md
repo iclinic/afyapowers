@@ -56,38 +56,17 @@ If the reviewer finds issues:
 4. Fix issues and re-dispatch (max 3 iterations)
 5. If still unresolved after 3 iterations, report remaining issues to the user and ask them to decide how to proceed
 
-### Step 4: Visual Fidelity Review
-
-Only run this step if `artifacts/design.md`'s `## Contrato de Verificação` has the flag `verificacao_visual: aplicável`. This flag is a single, feature-wide value (set once during the design phase), not a per-task marker. If it is `não-aplicável` — or the contract is absent, as for a non-UI feature — skip this step entirely: do not dispatch the agent, and omit the "Revisão de Fidelidade Visual" section from the review artifact in Step 5.
-
-Dispatch @"visual-fidelity-reviewer (agent)":
-- Provide the Contrato de Verificação and Contrato de Layout from `artifacts/design.md`
-- Provide the list of UI tasks that require visual verification — read these from `artifacts/plan.md`, where per-task granularity actually lives: the skeleton (Layer 0) task and each UI task carrying a `**Figma:**` block with Medidas de aceite / Cenários. (The `design.md` flag only decides whether this step runs at all; `plan.md` decides which tasks the agent verifies.)
-- Provide the contents of `implementation-concerns.md` so the agent can identify per-task code-only overrides (marker `[ACCEPTED BY USER: <reason>]`). For any task carrying that marker, the agent **skips** the visual verification for that task — this is not a silent PASS; the agent records the skip and the accepted reason instead
-- The agent invokes the `visual-verification` skill itself, per applicable task/breakpoint/state — do not invoke that skill directly from this skill, and do not re-verify visually yourself
-
-The agent returns, per task: PASS/FAIL/Pulado por override, with the measured values cited, plus any skeleton↔component boundary violations found.
-
-If the agent reports FAIL for any task without an accepted override, or reports a boundary violation:
-1. Report the findings to the user
-2. The user fixes issues
-3. Re-dispatch the visual-fidelity-reviewer (max 3 iterations)
-4. If still failing after 3 iterations, report unresolved findings to the user and ask them to decide how to proceed
-
-**Gate:** The overall review verdict cannot be **Aprovado** unless the visual-fidelity-reviewer reports **Aprovado**, or this step was skipped because `verificacao_visual` is `não-aplicável` (or absent).
-
-### Step 5: Produce Review Artifact
+### Step 4: Produce Review Artifact
 
 Read the template from `templates/review.md`. Fill in:
 - Spec compliance findings and resolutions
 - Code quality findings and resolutions
 - Blocking-concern findings: for each blocking concern from `implementation-concerns.md`, record whether it was fixed in the diff or explicitly accepted by the user, with the resolution. A concern line marked `[ACCEPTED BY USER: <reason>]` is "Accepted by user" — use the marker's reason as the resolution.
-- The `## Revisão de Fidelidade Visual` section, only when Step 4 ran: fill the findings table with any issues/boundary violations reported by the visual-fidelity-reviewer, the evidence table with one row per task/breakpoint/state verified (path under `artifacts/visual-checks/`), listing tasks skipped by an accepted override as PULADAS rather than failed, and the "Veredito da Fidelidade Visual" line with the agent's Aprovado/Alterações Solicitadas verdict. If Step 4 was skipped (`verificacao_visual` is `não-aplicável`), omit this section entirely.
-- Final verdict (in the `## Veredito` section): write exactly **Aprovado** — only if the spec compliance review passes, the code quality review passes, the visual fidelity review is Aprovado (or was skipped because `verificacao_visual` is `não-aplicável`), **and** every blocking concern is fixed or explicitly accepted (including those carrying an `[ACCEPTED BY USER: …]` marker). Any of the above failing, or any unresolved/unaccepted blocking concern → **Alterações Solicitadas**.
+- Final verdict (in the `## Veredito` section): write exactly **Aprovado** — only if the spec compliance review passes, the code quality review passes, **and** every blocking concern is fixed or explicitly accepted (including those carrying an `[ACCEPTED BY USER: …]` marker). Any of the above failing, or any unresolved/unaccepted blocking concern → **Alterações Solicitadas**.
 
 Save to `.afyapowers/features/<feature>/artifacts/review.md`
 
-### Step 6: Complete
+### Step 5: Complete
 
 Update `state.yaml` to add `review.md` to the review phase's artifacts list.
 Append `artifact_created` event to `history.yaml`.

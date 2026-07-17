@@ -72,6 +72,11 @@ git diff {BASE_SHA}..{HEAD_SHA}
 - Is the implementation following the file structure from the plan?
 - Did this implementation create new files that are already large, or significantly grow existing files? (Don't flag pre-existing file sizes — focus on what this change contributed.)
 
+**Skeleton ↔ component boundary (only when the plan has a skeleton/Layer 0 task):**
+- Components (Layer 1) must **not** set page-level `max-width`, page centering (`margin: 0 auto` or equivalent), or page-level side margins — those responsibilities belong exclusively to the skeleton (Layer 0), which owns the page container per the design's Contrato de Layout.
+- Any component that takes on those responsibilities itself — duplicating or conflicting with the skeleton's container — is a boundary violation and should be reported as an Issue, even if the final layout happens to look correct by coincidence.
+- Legitimate full-bleed content must use the skeleton's designated escape hook (e.g. a `fullBleed`/`data-full-bleed` prop, wrapper, or slot), never a page-level `max-width`/margin override on the component.
+
 ## Output Format
 
 ### Strengths

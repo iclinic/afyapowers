@@ -42,10 +42,9 @@
 >
 > Componentes (Layer 1) são **PROIBIDOS** de setar max-width, centralização ou margens de página — eles vivem dentro do container que o esqueleto define. Quando um componente precisa de **full-bleed** legítimo (ex: banner que ultrapassa a margem lateral), ele usa o hook de escape exposto por este esqueleto (ex: prop/slot `fullBleed` ou classe utilitária documentada aqui) — nunca sobrescreve max-width/centralização diretamente no componente.
 
-- [ ] Passo 1: Verificar a geometria do container vazio primeiro — sem conteúdo de seções, o esqueleto já deve exibir max-width, centralização e margens laterais corretas em todos os breakpoints
+- [ ] Passo 1: Definir a geometria do container vazio primeiro — sem conteúdo de seções, o esqueleto já deve exibir max-width, centralização e margens laterais corretas em todos os breakpoints, conforme o Contrato de Layout do design
 - [ ] Passo 2: Implementar o container — max-width, centralização, margens laterais e ritmo entre seções, conforme o Contrato de Layout do design
 - [ ] Passo 3: Expor e documentar o hook de escape para full-bleed
-- [ ] Passo 4: Rodar a verificação visual e confirmar que a geometria do container casa com o Contrato de Verificação (cenário de container vazio)
 
 > O commit é feito pelo orquestrador após a conclusão da tarefa — não adicione um passo de commit.
 
@@ -63,6 +62,5 @@
 - **Node ID:** `<id>`
 - **Breakpoints:** <breakpoint_name> (<width>px), ...
 - **Medidas de aceite:** container max-width `<valor>`, margens laterais `<valor>`, gaps `<valor>`, colunas `<n>`, min/max de `<peça>` no breakpoint `<breakpoint_name>` (do Contrato de Layout)
-- **Cenários:** pior caso (`<descrição, ex: texto mais longo/mais itens>`), estado vazio, estado com 1 item (do Contrato de Verificação)
 
 - [ ] Implementar usando o workflow do implementador Figma

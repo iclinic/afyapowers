@@ -129,49 +129,11 @@
 <!-- Remova [<category>] se não houver categoria do Figma; remova a cláusula "— pins:" se não houver propriedades fixadas. -->
 - node `<node_id>` (<node_name>) [<category>]: "<annotation label / note text>" — pins: <property types>
 
-## Contrato de Verificação
-<!-- Incluído apenas quando a feature tem UI + referência Figma. Remova esta seção se não se aplicar. Validado pelo design-reviewer. -->
-
-**verificacao_visual:** aplicável | não-aplicável
-<!-- "aplicável" se a feature tem UI renderizável e comparável visualmente contra o Figma; "não-aplicável" caso contrário (ex.: mudança apenas de backend/API) -->
-
-### Setup & Dev Server
-<!-- Comando de setup (ex.: seed/migrations) necessário antes de rodar o dev server + comando para subir o dev server -->
-- Setup: `<comando de seed/migrations>`
-- Dev server: `<comando do dev server>`
-
-### URL Base & Rotas
-<!-- URL base do dev server + rota(s) alvo para a verificação visual. Para componentes sem rota própria, use a URL de Storybook/harness -->
-- Base URL: `<http://localhost:XXXX>`
-- Rota(s) alvo: `<rota_alvo>` <!-- ou URL de Storybook/harness para componentes sem rota -->
-
-### Sinal de Readiness
-<!-- Seletor DOM que prova que a página está pronta para captura + timeout. Deve cobrir animações/transições — aguardar o settle antes de considerar a página pronta. -->
-- Seletor: `<seletor_css_ou_testid>`
-- Timeout: `<Nms>`
-- Animações/transições: <!-- como aguardar o settle (ex.: aguardar fim de transition/animation ou timeout adicional pós-seletor) -->
-
-### Estratégia de Auth
-<!-- Como autenticar durante a verificação visual: cookie/storageState pré-autenticado, ou rota de bypass em dev -->
-- <!-- ex.: storageState pré-autenticado salvo em <path>, ou rota de bypass /dev/login -->
-
-### Cenários de Dados Semeados
-<!-- Cenários de dados que devem ser semeados antes da captura: pior caso + estados críticos (vazio, 1 item, muitos itens, texto longo, etc.) -->
-
-| Cenário | Dados semeados |
-|---------|-----------------|
-<!-- ex.: | Pior caso | 50 itens com textos longos | -->
-<!-- ex.: | Vazio | Nenhum item | -->
-<!-- ex.: | Um item | 1 item | -->
-
-### Ferramenta de Browser
-<!-- Campo INFORMATIVO — a detecção autoritativa acontece em runtime pela skill visual-verification. Preencha com a ferramenta detectada ou "indisponível". -->
-- <ferramenta_detectada_ou_indisponível>
-
 ## Contrato de Layout
-<!-- Incluído apenas quando a feature tem UI + referência Figma. Remova esta seção se não se aplicar. -->
+<!-- Incluído apenas quando a feature tem UI + referência Figma. Remova esta seção se não se aplicar. Validado pelo design-reviewer. -->
 <!-- Medidas derivadas do get_metadata: margens = child.x relativo ao pai; gaps = sibling.x − (prev.x + prev.width);
      nº de colunas = irmãos de mesmo y; container = largura do frame de conteúdo; min/max = width/height. -->
+<!-- Serve como guia de fidelidade para o implementador (medidas de aceite por breakpoint) — não é verificado por renderização de tela. -->
 
 **captured-at:** `<timestamp ISO 8601 de quando as medidas foram extraídas do get_metadata>`
 

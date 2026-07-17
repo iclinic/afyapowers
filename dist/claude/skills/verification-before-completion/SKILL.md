@@ -50,7 +50,6 @@ Skip any step = lying, not verifying
 | Regression test works | Red-green cycle verified | Test passes once |
 | Agent completed | VCS diff shows changes | Agent reports "success" |
 | Requirements met | Line-by-line checklist | Tests passing |
-| Layout/visual fidelity claim (R8) | Rendered screen: browser screenshot + DOM measurement (`visual-verification` skill) | Typecheck, lint, code reading |
 
 ## Red Flags - STOP
 
@@ -111,7 +110,6 @@ Skip any step = lying, not verifying
 - Committing, PR creation, task completion
 - Moving to next task
 - Delegating to agents
-- Claiming layout/visual fidelity matches a design (R8): requires a rendered screen — browser screenshot + DOM measurement via `visual-verification` — typecheck, lint, or code reading alone is not sufficient
 
 **Rule applies to:**
 - Exact phrases

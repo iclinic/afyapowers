@@ -42,7 +42,7 @@ You MUST complete these items in order. **Requirements first (1-3), code explora
 5. **Explore the codebase** — ONLY now, with the requirement locked. Read files, docs, recent commits. Identify reuse candidates and evaluate each against the requirement/Figma — never let existing code become the starting point (see REQUIREMENTS-BEFORE-CODE). Apply the **Component Reuse Gate**: ask the user before reusing any candidate unless it is an exact match (name + layout + behavior)
 6. **Propose 2-3 approaches** — with trade-offs and your recommendation
 7. **Present design** — in sections scaled to their complexity, get user approval after each section
-8. **Determine visual-verification scope and fill the Verification Contract (R7/R9)** — set the `verificacao_visual` flag (`aplicável` only when the feature has UI **and** a Figma reference); when `aplicável`, fill `## Contrato de Verificação` with the user and confirm `## Contrato de Layout` (from `reading-figma-designs`) is present (see below)
+8. **Confirm the Layout Contract (when Figma is present)** — if Figma discovery ran, confirm `## Contrato de Layout` (derived by `reading-figma-designs` from `get_metadata`) is present and complete in the design doc; if there is no Figma reference, omit the section (see below)
 9. **Write design doc** — save to `.afyapowers/features/<feature>/artifacts/design.md` (only once no BLOCKING interrogation item remains open)
 10. **Design review loop** — dispatch @"design-reviewer (agent)"; fix issues and re-dispatch until approved (max 5 iterations, then surface to human)
 11. **User reviews written spec** — ask user to review the spec file before proceeding
@@ -65,9 +65,6 @@ digraph design {
     "Propose 2-3 approaches" [shape=box];
     "Present design sections" [shape=box];
     "User approves design?" [shape=diamond];
-    "Determine verificacao_visual scope" [shape=box];
-    "verificacao_visual aplicável?" [shape=diamond];
-    "Fill Contrato de Verificação" [shape=box];
     "Write design doc" [shape=box];
     "Design review loop" [shape=box];
     "Design review passed?" [shape=diamond];
@@ -92,11 +89,7 @@ digraph design {
     "Propose 2-3 approaches" -> "Present design sections";
     "Present design sections" -> "User approves design?";
     "User approves design?" -> "Present design sections" [label="no, revise"];
-    "User approves design?" -> "Determine verificacao_visual scope" [label="yes"];
-    "Determine verificacao_visual scope" -> "verificacao_visual aplicável?";
-    "verificacao_visual aplicável?" -> "Fill Contrato de Verificação" [label="yes"];
-    "verificacao_visual aplicável?" -> "Write design doc" [label="não-aplicável"];
-    "Fill Contrato de Verificação" -> "Write design doc";
+    "User approves design?" -> "Write design doc" [label="yes"];
     "Write design doc" -> "Design review loop";
     "Design review loop" -> "Design review passed?";
     "Design review passed?" -> "Design review loop" [label="issues found,\nfix and re-dispatch"];
@@ -255,30 +248,14 @@ Now — and only now — read the project: files, docs, recent commits, existing
 - If JIRA discovery was performed, include the `## Contexto do JIRA` section with issue key, summary, acceptance criteria, and linked issues
 - If Figma discovery was performed, include the `## Recursos do Figma` section with file info, breakpoints, node map, and the `### Anotações de Design` list. Reflect the annotations in the relevant design sections too — business rules in Requirements, the rest wherever they fit (Constraints, Architecture, Error Handling, Testing Strategy) — not just the annotations list.
 - If the design reuses any existing codebase/DS component, include the `## Decisões de Reúso de Componentes` section recording each reuse, its name/layout/behavior parity verdict, and whether it was an exact match or carries the user's explicit approval (per the Component Reuse Gate above).
-- If `verificacao_visual: aplicável` (see below), include the fully-filled `## Contrato de Verificação` and confirm `## Contrato de Layout` is present; if `não-aplicável`, omit both sections
+- If Figma discovery was performed, confirm `## Contrato de Layout` is present and complete (see below); if there is no Figma reference, omit the section
 - Be ready to go back and clarify if something doesn't make sense
 
-**Visual-verification scope (R9):**
+**Layout Contract (when Figma is present):**
 
-After the design is approved and before writing the design doc, determine and record the `verificacao_visual` flag in the `## Contrato de Verificação` section (template: `templates/design.md`):
+`## Contrato de Layout` is populated by the `reading-figma-designs` skill during Figma discovery (measurements derived from `get_metadata` — container max-width, side margins, gaps, column count, min/max per piece, per breakpoint). It serves as the fidelity guide for the implementer: concrete acceptance measures to hit, per breakpoint.
 
-- **`aplicável`** — the feature has renderable UI **and** a Figma reference (i.e., Figma discovery was triggered and the user provided URL(s)).
-- **`não-aplicável`** — backend/API/CLI/lib features with no UI, or UI work with no Figma reference. When `não-aplicável`, omit both `## Contrato de Verificação` and `## Contrato de Layout` from the design doc entirely (same rule as `## Recursos do Figma`) — the feature skips all visual verification in later phases with no friction: no dev server, readiness selector, auth strategy, or seeded cenários to negotiate.
-
-You already have both signals by this point (UI-ness from the Figma trigger-keyword check, Figma-ness from whether discovery ran) — confirm the resulting flag with the user before writing the design.
-
-**Filling the Contrato de Verificação (R7):**
-
-When `verificacao_visual: aplicável`, fill every subsection of `## Contrato de Verificação` (template: `templates/design.md`) by collecting the following with the user, one question at a time, before writing the design doc:
-
-- **Setup & Dev Server** — the setup command (seed/migrations) and the command to start the dev server.
-- **URL Base & Rotas** — the dev server's base URL and the target route(s) for verification (or the Storybook/harness URL for components with no route of their own).
-- **Sinal de Readiness** — a DOM selector/testid that proves the page is ready for capture, its timeout, and how animations/transitions are settled before capture is considered safe.
-- **Estratégia de Auth** — how to authenticate during visual verification (pre-authenticated storageState, a dev-only bypass route, etc.).
-- **Cenários de Dados Semeados** — data scenarios to seed before capture, covering the worst case (e.g., long text, many items) and critical states (empty, one item, many items).
-- **Ferramenta de Browser** — an informative field; fill it with the browser tool detected in the current environment, or `indisponível` (authoritative detection happens at runtime in the `visual-verification` skill).
-
-`## Contrato de Layout` is populated by the `reading-figma-designs` skill during Figma discovery (measurements derived from `get_metadata`). The design phase's job here is only to GUARANTEE that both `## Contrato de Verificação` and `## Contrato de Layout` are present and complete in the design doc whenever `verificacao_visual: aplicável` — the design-reviewer must reject the design if either is missing or incomplete in that case.
+The design phase's job here is only to GUARANTEE that `## Contrato de Layout` is present and complete in the design doc whenever Figma discovery ran — the design-reviewer must reject the design if it is missing or incomplete in that case. If there is no Figma reference (backend/API/CLI/lib features with no UI, or UI work with no Figma), omit the section entirely (same rule as `## Recursos do Figma`).
 
 **Design for isolation and clarity:**
 
