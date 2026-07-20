@@ -242,3 +242,4 @@ priorização) para quem invocou:
 - no **modo workflow**, a fase design grava a seção no `design.md` e segue com as demais seções;
 - no **modo standalone**, a `figma-component` usa a árvore para orquestrar a implementação do
   componente.
+

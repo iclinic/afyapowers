@@ -234,15 +234,17 @@ Then print the `## Árvore de Componentes de DS` table so the user can see every
 
 **Confirm item by item, in leaves→root order** (a node is confirmed only after all its dependencies are confirmed). This mirrors the design-phase confirmation (R7, parity). For **each node** whose:
 
+- **verdict is `Atualizar`** — an additive update to an existing generic **always** requires explicit user approval before it is applied (`references/ds-implementation.md` §3.2), regardless of confidence or ambiguity. The standalone path has no broad design-doc review to catch it, so this individual prompt IS the approval gate, OR
 - **verdict is ambiguous** (e.g. reduced-inventory confidence on `Importar`/`Atualizar`, `search_design_system` ambiguity, `Atualizar`-vs-`Derivar` borderline, orphan original), OR
 - **name is a proposed derivative** (`Derivar` nodes and any renamed generic),
 
 present the node and ask the user to **confirm or override**:
 - override the verdict (e.g. `Importar` → `Atualizar`, or `Atualizar` → `Derivar`),
+- for `Atualizar`, explicitly approve (or decline) applying the additive change to the existing generic,
 - override the proposed code name (e.g. accept `ProfileCardCompact` or supply another),
 - accept or decline the "catálogo não confirmado" fallback (or provide the DS library URL now to confirm the catalog).
 
-Nodes with an unambiguous verdict and no proposed derivative name need no individual prompt — present them as already-decided in the tree.
+Nodes with an unambiguous `Implementar`/`Importar` verdict and no proposed derivative name need no individual prompt — present them as already-decided in the tree. (`Atualizar` always prompts, per the first bullet above.)
 
 **Shared components are confirmed once.** A component depended on by several parents appears as a single tree row; confirm it a single time and reuse that decision for every parent — never re-ask per parent.
 

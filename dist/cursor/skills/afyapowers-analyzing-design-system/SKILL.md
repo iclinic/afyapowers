@@ -33,11 +33,11 @@ correspondente. **Em ambos os modos a saída é a mesma:** a tabela da seção
 ### Modo workflow (invocada pela fase design)
 
 - **Entrada:** o **Node Map já montado** por `afyapowers-reading-figma-designs` (as subseções
-  **Componentes Reutilizáveis** e **Telas**, com nós, node-ids, tipos e `componentId` de cada
-  INSTANCE). O formato exato do Node Map é o descrito por `afyapowers-reading-figma-designs` — trate-o
-  como fonte da estrutura.
-- **NÃO refaça `get_metadata`.** A composição (instâncias + `componentId`s) já está no Node Map;
-  reutilize-a. A cadeia de resolução (Passo 2) começa direto em `get_libraries`.
+  **Componentes Reutilizáveis** e **Telas**, com nós, node-ids e tipos — incluindo quais nós são
+  `INSTANCE` e sua hierarquia de composição). O formato exato do Node Map é o descrito por
+  `afyapowers-reading-figma-designs` — trate-o como fonte da estrutura.
+- **NÃO refaça `get_metadata`.** A detecção das instâncias (nós `INSTANCE`) e a composição já estão
+  no Node Map; reutilize-as. A cadeia de resolução (Passo 2) começa direto em `get_libraries`.
 - Recebe também o `fileKey` do arquivo consumidor (já parseado pela fase design) e, se o usuário
   tiver fornecido, a **URL do arquivo da lib de DS**.
 
@@ -46,10 +46,22 @@ correspondente. **Em ambos os modos a saída é a mesma:** a tabela da seção
 - **Entrada:** `node-id` + `file-key` do componente alvo (e, opcionalmente, a URL da lib de DS).
 - **Monta o próprio Node Map:** faz **1×** `get_metadata(fileKey, nodeId)` e deriva a mesma
   estrutura de Node Map descrita por `afyapowers-reading-figma-designs` (Componentes Reutilizáveis +
-  Telas, com `componentId`s das INSTANCEs). Este é o **único** `get_metadata` — não repita.
+  Telas, marcando quais nós são `INSTANCE` e a composição). Este é o **único** `get_metadata` — não
+  repita.
 
 Depois de ter o Node Map (recebido ou montado), os dois modos convergem para a mesma cadeia de
 resolução e montagem da árvore.
+
+### Como o original é resolvido (não dependa de `componentId` do `get_metadata`)
+
+Para instâncias de componentes de **lib de DS** (o caso alvo desta feature), o `get_metadata` **não
+expõe** um `componentId` utilizável — ele retorna apenas `id`/`name`/tipo/posição/tamanho, e o
+**main component vive num arquivo de lib separado**, não no arquivo consumidor. Portanto **não
+resolva a instância→original por um campo `componentId`** do Node Map. A resolução do original é
+feita pela cadeia do Passo 2: **por nome** (via `search_design_system` escopado nas libs) **+ o
+node-id do original** revelado no bloco "Component descriptions" do `get_design_context` da
+instância. O Node Map serve para **detectar** as instâncias e a composição (tipo `INSTANCE` + nome +
+hierarquia), não para identificar o original.
 
 ---
 
@@ -61,10 +73,10 @@ propósito único; **não repita chamadas** já feitas.
 
 | # | Chamada | Escopo / cardinalidade | Para que serve (req.) |
 |---|---------|------------------------|-----------------------|
-| 1 | `get_metadata` | **1×** (só no modo standalone; no workflow já veio pronto) | Detecta instâncias + composição (R1) |
+| 1 | `get_metadata` | **1×** (só no modo standalone; no workflow já veio pronto) | Detecta instâncias (nós `INSTANCE`) + composição (R1) |
 | 2 | `get_libraries` | **1×**, com os `libKey`s **cacheados na feature** | Descobre as libs de DS disponíveis (R2) |
-| 3 | `search_design_system` | **escopado** nas libs de DS (não global) | Resolve original + `assetType` + `componentKey` + docs (R2) |
-| 4 | `get_design_context` | **por original distinto, NÃO por instância** | Nome + node-id do main + descrições + anotações; apoia o diff (R3) |
+| 3 | `search_design_system` | **escopado** nas libs de DS (não global) | Resolve original **por nome** + `assetType` + `componentKey` + docs (R2) |
+| 4 | `get_design_context` | **por original distinto E por grupo de derivação estrutural distinto**, NÃO por instância | Nome + node-id do main + descrições + anotações + composição do consumidor; apoia o diff (R3) |
 | 5 | `get_context_for_code_connect` | no `COMPONENT_SET` **no arquivo da lib** | Catálogo completo de variantes (R5) — **condicional**, ver abaixo |
 | 6 | `get_code_connect_map` + busca na codebase | por original | Veredito de existência (R4/R8) |
 
@@ -72,8 +84,15 @@ propósito único; **não repita chamadas** já feitas.
 
 - **Cacheie os `libKey`s na feature** após a chamada 1× de `get_libraries` e reutilize-os no
   `search_design_system` — não chame `get_libraries` de novo dentro da mesma análise.
-- **`get_design_context` é por original distinto, não por instância.** Se cinco instâncias apontam
-  para o mesmo `componentId`, faça **uma** chamada para esse original, não cinco.
+- **`get_design_context` é por original distinto E por grupo de derivação estrutural distinto, não
+  por instância.** Se cinco instâncias resolvem para o mesmo original **e** compartilham a mesma
+  composição (mesmo grupo de derivação), faça **uma** chamada, não cinco. Mas quando o **mesmo
+  original** é reusado com **composições de slot diferentes** (grupos de derivação distintos),
+  faça **uma chamada por grupo** — o diff de cada grupo precisa do contexto do seu consumidor.
+  *Exemplo (dry-run):* o genérico `card` (`2001:8579`) foi usado tanto como "card de transmissão"
+  (`LiveCard`) quanto como "banner" (`LiveBanner`); apesar de ser o mesmo original, foram **2**
+  chamadas `get_design_context` (uma por grupo), não 1 — e ainda assim 2 chamadas para 14
+  instâncias, honrando a economia "não por instância".
 - **Nunca repita** uma chamada cujo resultado você já tem. Antes de qualquer chamada, verifique se o
   dado já está em mãos (Node Map, cache de libs, contexto já lido).
 - **Backoff + retry em 429:** ao receber HTTP 429 (rate limit), espere **30–60s** e tente
@@ -194,9 +213,10 @@ Emita a tabela **exatamente** no formato de `templates/design.md` (mesmas coluna
 
 Cubra explicitamente cada caso abaixo. Nenhum deles aborta a fase silenciosamente.
 
-- **Original órfão** (INSTANCE cujo `componentId` não resolve para nenhum componente em nenhuma lib
-  nem na codebase): **implementar isolado + aviso**; não aborta. Veredito `Implementar`, Fonte do
-  catálogo conforme disponível. Registre o aviso de que o original não foi encontrado.
+- **Original órfão** (INSTANCE cujo original **não resolve** — `search_design_system` por nome não
+  acha o componente em nenhuma lib e ele também não existe na codebase): **implementar isolado +
+  aviso**; não aborta. Veredito `Implementar`, Fonte do catálogo conforme disponível. Registre o
+  aviso de que o original não foi encontrado.
 - **Lib inacessível / URL da lib ausente:** implementar **observável** + aviso
   **"catálogo não confirmado"**. Isto é **distinto** de órfão — aqui o original existe (foi resolvido
   por `search_design_system`), mas o **catálogo completo de variantes** não pôde ser lido. É o

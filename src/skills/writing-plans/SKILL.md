@@ -217,7 +217,7 @@ Toda task carrega uma linha obrigatória `**Type:**` (junto de `**Files:**`/`**D
 | Type | O que é | Dispatch | Verificação | MCP · cap |
 |---|---|---|---|---|
 | **UI Screen** | Página/tela/view ou esqueleto de layout de página; composição de componentes | `figma-design-implementer` | staleness vs Contrato de Layout + `figma-token-verifier` | Sim · 4/wave |
-| **UI Component** | Um componente/`COMPONENT_SET`: primitivo, genérico de DS ou derivado; todas as variantes, isolado, exportado | `figma-component-implementer` | auto-review por screenshot (+ token-verifier opcional) | Sim · 4/wave |
+| **UI Component** | Um componente/`COMPONENT_SET`: primitivo, genérico de DS ou derivado; todas as variantes, isolado, exportado | `figma-component-implementer` | auto-review por screenshot (self-review do próprio agente) | Sim · 4/wave |
 | **UI Logic** | Comportamento/estado no cliente sem nova superfície visual (hooks, estado, validação, fetch/binding, rota, animação) | `tdd-implementer` | testes (TDD) | Não · sem cap |
 | **Backend** | Servidor: endpoints, serviços, models, migrations, regras de negócio, integrações | `tdd-implementer` | testes (TDD) | Não · sem cap |
 | **General** | Cross-cutting sem UI nem lógica de produto: config, tooling, scripts, docs, chore, refactor | `tdd-implementer` | testes quando aplicável | Não · sem cap |
