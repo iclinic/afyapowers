@@ -17,6 +17,8 @@
 - Modify: `caminho/exato/do/arquivo/existente:linhas`
 - Test: `tests/caminho/exato/do/teste`
 
+**Type:** Backend
+
 **Depends on:** none
 
 - [ ] Passo 1: Escrever o teste que falha — descreva os comportamentos a testar e os resultados esperados
@@ -30,6 +32,8 @@
 
 **Files:**
 - Create: `caminho/exato/do/esqueleto` (o layout que envolve as seções da tela)
+
+**Type:** UI Screen
 
 **Depends on:** none
 
@@ -54,6 +58,8 @@
 - Create: `caminho/exato/do/componente`
 
 **Assets:** `<diretório de assets do projeto>/` — o implementador pode baixar & criar arquivos de ícone/imagem aqui conforme necessário (arquivos exatos desconhecidos no momento do plano)
+
+**Type:** UI Component
 
 **Depends on:** none | Task X
 
