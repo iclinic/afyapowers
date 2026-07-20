@@ -31,10 +31,10 @@ Before EVERY Figma MCP tool call, you MUST check:
 2. Is this tool listed in the current phase's MCP_ALLOWLIST?
 3. If NO → STOP. Do not call it. Only the implementer subagent may use it.
 
-NEVER call get_design_context, get_screenshot, or get_variable_defs. Only the subagent calls these.
-NEVER launch Explore agents or scan the codebase for conventions, tokens, or patterns.
-NEVER run phases in parallel. Execute Phase 1, then Phase 2, then Phase 3, then Dispatch, in order.
-NEVER implement the component yourself. You are the orchestrator. The subagent implements.
+NEVER call get_screenshot or get_variable_defs — only the subagent calls these. NEVER call get_design_context to implement the component — that is the subagent's job. (Phase 3 has a single scoped exception: the {{skill:analyzing-design-system}} resolution chain may call get_design_context per distinct DS original, plus get_libraries / search_design_system / get_context_for_code_connect / get_code_connect_map, for diff/verdict ONLY — see the Phase 3 MCP_ALLOWLIST. These resolve DS originals and emit verdicts; they never implement.)
+NEVER launch Explore agents or scan the codebase for conventions, tokens, or patterns — EXCEPT the targeted codebase existence check that {{skill:analyzing-design-system}} performs in Phase 3 for its 3-way verdict (R4/R8).
+NEVER run phases in parallel. Execute Phase 1, then Phase 2, then Phase 3, then Phase 4, then Dispatch, in order.
+NEVER implement the component yourself. You are the orchestrator. The subagent implements. Building the DS tree in Phase 3 is analysis, not implementation.
 NEVER skip task creation. You MUST create all tasks before starting any work.
 NEVER mark a task as completed without actually doing the work.
 NEVER start a task that is blocked by an incomplete task.
@@ -50,7 +50,7 @@ Develop a single Figma component into production code. This skill is **standalon
 
 ## Step 0 — Create Tasks
 
-**Before doing ANY work, create all 9 tasks using TaskCreate, then set up dependencies with TaskUpdate.**
+**Before doing ANY work, create all 10 tasks using TaskCreate, then set up dependencies with TaskUpdate.**
 
 Create the following tasks in order:
 
@@ -61,12 +61,13 @@ Create the following tasks in order:
 | T3 | Phase 1.3: Validate node type via get_metadata | Call get_metadata and confirm the node is COMPONENT or COMPONENT_SET. Store the full response. |
 | T4 | Phase 1.4: Check Code Connect via get_code_connect_map | Call get_code_connect_map and check for existing implementation. Store the full response. |
 | T5 | Phase 2.1: Check child dependencies from stored metadata | Scan stored metadata for INSTANCE nodes with componentId references. |
-| T6 | Phase 2.2: Cross-reference dependencies with Code Connect map | Check each componentId against the stored Code Connect map. |
+| T6 | Phase 2.2: Cross-reference dependencies with Code Connect map | Check each componentId against the stored Code Connect map. Feed the DS analysis; do NOT hard-stop on missing deps. |
 | T7 | Phase 2.3: Detect output location, framework, Storybook | Glob for component directories, check package.json, detect Storybook. |
-| T8 | Phase 3: Present pre-flight results & confirm | Show pre-flight summary and wait for user confirmation. |
-| T9 | Dispatch implementer subagent | Build the subagent prompt and dispatch. Subagent includes self-review against Figma data. Handle the result. |
+| T8 | Phase 3: Build DS Component Tree | Invoke `{{skill:analyzing-design-system}}` in standalone mode (reusing the stored metadata from T3) to detect → resolve → diff → emit verdicts and assemble the `## Árvore de Componentes de DS`. |
+| T9 | Phase 4: Present pre-flight + item-by-item confirmation | Show the pre-flight summary and DS tree, then confirm/override each ambiguous verdict and proposed derivative name in leaves→root order. Handle rejected dependencies. |
+| T10 | Dispatch implementer subagent(s) per node | For each code-task node (leaves→root), build the extended subagent prompt and dispatch. Each subagent includes self-review against Figma data. Handle the results. |
 
-After creating all 9 tasks, set up dependencies using TaskUpdate `addBlockedBy`:
+After creating all 10 tasks, set up dependencies using TaskUpdate `addBlockedBy`:
 - T2 blocked by T1
 - T3 blocked by T2
 - T4 blocked by T3
@@ -75,6 +76,7 @@ After creating all 9 tasks, set up dependencies using TaskUpdate `addBlockedBy`:
 - T7 blocked by T6
 - T8 blocked by T7
 - T9 blocked by T8
+- T10 blocked by T9
 
 **Task execution protocol:** For every task:
 1. Mark it `in_progress` with TaskUpdate before starting
@@ -168,15 +170,7 @@ Mark T5 `in_progress`. From the **stored metadata response** (Phase 1, Task T3),
 
 Mark T6 `in_progress`. For each `componentId` found, check the **stored Code Connect map** (Phase 1, Task T4) for a matching entry. No MCP calls needed. Mark T6 `completed`.
 
-Hard stop if any dependencies are missing:
-```
-**STOPPED** — Dependencies: Missing child component dependencies.
-
-The following components are used inside this component but have not been implemented yet:
-<list of missing component names and their componentIds>
-
-**What to do:** Implement the missing child components first using `/afyapowers:figma-component`, then retry. Build bottom-up — leaf components before parents.
-```
+**Do NOT hard-stop on missing dependencies.** Unlike the previous single-node behavior, this skill is now DS-aware: missing children are no longer a dead end. Record which dependencies already exist (Code Connect hit → likely `Importar` candidates) and which are missing (no hit → likely `Implementar`/`Derivar` candidates). This split is an **input to Phase 3** — the `{{skill:analyzing-design-system}}` analysis resolves every dependency into a tree node with its own verdict, and the Dispatch phase implements the missing ones **leaves→root** in the same run. No "build the children first, then retry" round-trip.
 
 ### Task T7 — Detect output location, framework, Storybook
 
@@ -206,7 +200,36 @@ Before proceeding: verify tasks T5–T7 are all `completed`. If any task trigger
 
 ---
 
-## Phase 3 — Present & Confirm
+## Phase 3 — Analyze Design System
+
+<MCP_ALLOWLIST>
+Permitted MCP tools in this phase: those of the `{{skill:analyzing-design-system}}` resolution chain ONLY — `get_libraries`, `search_design_system`, `get_design_context` (per distinct DS original, for diff/verdict), `get_context_for_code_connect` (conditional, needs the lib file URL), and `get_code_connect_map`. These run **inside** that skill, under its own budget rules (R13, ~12 req/min, backoff on 429).
+FORBIDDEN in this phase: `get_screenshot`, `get_variable_defs`, and any call whose result you already hold (do NOT re-run `get_metadata` — reuse the T3 response). If you are about to call get_screenshot or get_variable_defs, STOP.
+</MCP_ALLOWLIST>
+
+Targeted codebase reads for the existence verdict (R4/R8 — props/types, Storybook argTypes, grep of usages) are permitted here **only as part of** `{{skill:analyzing-design-system}}`. No Explore agents; no convention/token scanning beyond that verdict check.
+
+### Task T8 — Build the DS Component Tree
+
+Mark T8 `in_progress`. Invoke `{{skill:analyzing-design-system}}` in **standalone mode**, passing the target `node-id` + `file-key` (from Phase 1, Task T1) and, if the user supplied one, the **DS library file URL**.
+
+- **Reuse the stored metadata from Phase 1, Task T3 (R13).** The standalone mode of that skill normally does `1×` `get_metadata` to build its Node Map; you already have that response — hand it over / point the skill at it so it does **not** repeat the call. Its resolution chain starts at `get_libraries`.
+- The skill detects instances → resolves each to its DS original → diffs instance↔original → emits a 3-way existence verdict (`Implementar` / `Importar` / `Atualizar`) or `Derivar`, verified against the real codebase → assembles the `## Árvore de Componentes de DS` in leaves→root topological order. The reuse-vs-derive cut, wrapper pattern, and additive-update rules live in that skill's `references/ds-implementation.md` — do not duplicate them here.
+- **DS library URL is a critical, recurring prompt.** Without it, `get_context_for_code_connect` on the lib `COMPONENT_SET` is impossible (the Figma MCP does not expose the lib `fileKey`) — this is the **common, expected** path: the affected generics come back with `Fonte do catálogo = só observado — catálogo não confirmado`. Surface this, don't treat it as a failure.
+
+Capture the returned tree (columns: `Nó (nome Figma · main node-id · componentKey) | Tipo Figma | Veredito | Depende de | Paridade | Nome no código (proposto) | Fonte do catálogo | Task Type`) plus any warnings (catálogo não confirmado, originais órfãos, confiança reduzida de inventário, itens fora de escopo por priorização). Mark T8 `completed`.
+
+For a **single self-contained component with no DS instances**, the tree is a single row (the target itself) — the flow degrades gracefully to the original single-node behavior.
+
+---
+
+### Phase Gate: Phase 3 → Phase 4
+
+Before proceeding: verify task T8 is `completed` and the DS tree is assembled. If any task triggered a hard stop, do NOT continue.
+
+---
+
+## Phase 4 — Present & Confirm (item by item)
 
 <MCP_ALLOWLIST>
 Permitted MCP tools in this phase: NONE.
@@ -214,37 +237,52 @@ ALL Figma MCP calls are FORBIDDEN in this phase.
 If you are about to call any Figma MCP tool, STOP. You are violating the skill protocol.
 </MCP_ALLOWLIST>
 
-### Task T8 — Present pre-flight results
+### Task T9 — Present pre-flight results & confirm item by item
 
-Mark T8 `in_progress`. Show the pre-flight results to the user:
+Mark T9 `in_progress`. First show the global pre-flight summary:
 
 ```
 ## Pre-flight Results
 
-- **Component:** <name> (<COMPONENT | COMPONENT_SET>)
+- **Target component:** <name> (<COMPONENT | COMPONENT_SET>)
 - **Variants:** <count> — <list> (if COMPONENT_SET)
-- **Dependencies:** All found | Missing: <list>
+- **DS tree:** <N> nodes — <count Implementar> to implement, <count Derivar> to derive, <count Atualizar> to update, <count Importar> to reuse
 - **Suggested directory:** <path> (you can override this)
 - **Framework:** <detected> (you can override this)
-- **Storybook:** detected — generate story file? (yes/no) | not detected
-- **Code Connect:** No existing mapping
-
-Ready to implement this component?
+- **Storybook:** detected — generate story files? (yes/no) | not detected
+- **Code Connect:** <target: existing mapping | none>
+- **Catalog:** <confirmed | "catálogo não confirmado" for: list of nodes> — provide the DS library URL to confirm the full variant catalog
 ```
 
-Wait for the user to respond. The user can:
-- Confirm and proceed to dispatch
-- Override the suggested directory or framework
-- Accept or decline Storybook story generation
-- Decline to stop entirely
+Then print the `## Árvore de Componentes de DS` table so the user can see every node, its verdict, its dependencies, and its proposed code name.
 
-Mark T8 `completed` after user confirms.
+**Confirm item by item, in leaves→root order** (a node is confirmed only after all its dependencies are confirmed). This mirrors the design-phase confirmation (R7, parity). For **each node** whose:
+
+- **verdict is ambiguous** (e.g. reduced-inventory confidence on `Importar`/`Atualizar`, `search_design_system` ambiguity, `Atualizar`-vs-`Derivar` borderline, orphan original), OR
+- **name is a proposed derivative** (`Derivar` nodes and any renamed generic),
+
+present the node and ask the user to **confirm or override**:
+- override the verdict (e.g. `Importar` → `Atualizar`, or `Atualizar` → `Derivar`),
+- override the proposed code name (e.g. accept `ProfileCardCompact` or supply another),
+- accept or decline the "catálogo não confirmado" fallback (or provide the DS library URL now to confirm the catalog).
+
+Nodes with an unambiguous verdict and no proposed derivative name need no individual prompt — present them as already-decided in the tree.
+
+**Shared components are confirmed once.** A component depended on by several parents appears as a single tree row; confirm it a single time and reuse that decision for every parent — never re-ask per parent.
+
+**Rejected-dependency handling.** If the user rejects a node (declines to implement/derive it) that another node **depends on**, you cannot silently implement the parent. **Block the parent** and ask how to proceed for each affected parent:
+- **Skip the parent** too (default), or
+- **Implement the parent without the dependency** (the parent renders without that child / with a placeholder).
+
+Record the choice. Default to **skip the parent** if the user does not choose. Cascade: skipping a parent that is itself a dependency re-triggers the same question for its parents.
+
+The user may also override the directory or framework, decline Storybook, or decline the whole run. Mark T9 `completed` after all item-by-item confirmations are resolved.
 
 ---
 
-### Phase Gate: Phase 3 → Dispatch
+### Phase Gate: Phase 4 → Dispatch
 
-Before proceeding: verify task T8 is `completed` and the user has confirmed. If the user declined, STOP.
+Before proceeding: verify task T9 is `completed` and the user has confirmed the tree (item by item). If the user declined the whole run, STOP. Carry forward the confirmed verdicts, confirmed code names, and the set of nodes to dispatch vs. skip.
 
 ---
 
@@ -256,20 +294,34 @@ The implementer subagent will make its own MCP calls (get_variable_defs, get_scr
 You as the orchestrator must NOT call any Figma MCP tools here.
 </MCP_ALLOWLIST>
 
-### Task T9 — Dispatch implementer subagent
+### Task T10 — Dispatch implementer subagent(s) per node
 
-Mark T9 `in_progress`. After the user confirms, dispatch @"figma-component-implementer (agent)". Build the prompt filling in:
+Mark T10 `in_progress`. Walk the confirmed DS tree in **leaves→root order** and dispatch @"figma-component-implementer (agent)" **once per code-task node**. A node with a code task is one whose `Task Type` is a code task (e.g. `UI Component`) — i.e. verdict `Implementar`, `Derivar`, or `Atualizar`. **Skip `Importar` nodes** (`Task Type = —`): no new code is dispatched; record the existing import path/symbol so parents reference it.
 
-- `[FILE_KEY]` — from Phase 1, Task T1
-- `[NODE_ID]` — from Phase 1, Task T1
-- `[NODE_TYPE]` — COMPONENT or COMPONENT_SET from Phase 1, Task T3
-- `[VARIANT_LIST]` — variant names from metadata (or "N/A — single component")
-- `[OUTPUT_DIRECTORY]` — confirmed path from Phase 3
-- `[FRAMEWORK]` — confirmed framework from Phase 3
-- `[GENERATE_STORYBOOK]` — yes or no from Phase 3
-- `[COMPONENT_NAME]` — component name from metadata
+**Ordering & dependency rules:**
+- Never dispatch a node before every node in its `Depende de` column has been dispatched (or is an already-satisfied `Importar`). For a `Derivar` node, its base — the **first** item in `Depende de` — must be implemented/imported first so the wrapper can compose it.
+- **Shared components are dispatched once.** A node depended on by several parents is implemented a single time; every parent reuses that result. Never dispatch it per parent.
+- **Skipped nodes.** Do NOT dispatch a node the user rejected in Phase 4, nor a parent chosen to be skipped because of a rejected dependency. For a parent confirmed as "implement without the dependency", dispatch it and state in the prompt that the missing child is intentionally omitted (placeholder / rendered without it).
 
-### After the Subagent Returns
+Build each subagent prompt filling in **per node** (from that node's tree row / stored metadata), plus the global confirmed settings:
+
+- `[FILE_KEY]` — the node's Figma file key (the target `fileKey` from Phase 1, Task T1 for nodes in the target file)
+- `[NODE_ID]` — the node's main node-id (from its tree row / stored metadata)
+- `[NODE_TYPE]` — COMPONENT or COMPONENT_SET for that node
+- `[VARIANT_LIST]` — variant names for that node (or "N/A — single component")
+- `[OUTPUT_DIRECTORY]` — confirmed path from Phase 4
+- `[FRAMEWORK]` — confirmed framework from Phase 4
+- `[GENERATE_STORYBOOK]` — yes or no from Phase 4
+- `[COMPONENT_NAME]` — the confirmed code name for the node (proposed name from the tree, as confirmed/overridden in Phase 4)
+- `[VERDICT]` — the confirmed verdict for the node: `implementar` | `importar` | `atualizar` | `derivar` (lowercase). Controls the subagent's behavior mode.
+- `[BASE_COMPONENT]` — for `derivar`, the existing generic base the wrapper composes (the first item in `Depende de`); for `atualizar`, the set being extended. Empty otherwise.
+- `[CATALOG_SOURCE]` — from the node's `Fonte do catálogo` column, mapped to the subagent's contract: `código` (project code inventory), `Figma lib URL` (lib file read via the provided URL), or `só observado` (catalog NOT confirmed). This calibrates the "catálogo não confirmado" warning.
+
+Dispatch nodes sequentially in leaves→root order; wait for each subagent to return before dispatching the next node that depends on it (independent leaves may be dispatched in the same wave). Handle each result per the section below.
+
+### After the Subagent(s) Return
+
+Aggregate the results of all node dispatches, then commit. If a leaf subagent reports BLOCKED, do NOT dispatch parents that depend on it — surface the block and skip the dependent subtree.
 
 Before committing, analyze the project's commit conventions:
 1. Run `git log --oneline -10` to identify the commit message pattern
@@ -279,9 +331,11 @@ Before committing, analyze the project's commit conventions:
 
 If a commit fails (pre-commit hook, commitlint, etc.): read the error, fix the issue (rewrite message format, run formatter, fix lint), re-stage, and retry up to 3 times. Never use `--no-verify`.
 
-- **If DONE (all self-review checks passed):** Commit all created files using the project's commit convention and report success. Mark T9 `completed`.
-- **If DONE (with unresolved self-review issues):** Commit all created files using the project's commit convention, report success, and relay the unresolved issues to the user so they can review manually. Mark T9 `completed`.
-- **If BLOCKED:** Relay the block reason. Mark T9 `completed` (the task was executed, even though the subagent was blocked):
+Commit once, at the end, after all node subagents have returned (a single commit covering the whole tree — or one per node if that better matches the project convention). Aggregate the per-node outcomes:
+
+- **If DONE (all nodes' self-review checks passed):** Commit all created files using the project's commit convention and report success per node (including which `Importar` nodes were reused and the import paths). Mark T10 `completed`.
+- **If DONE (with unresolved self-review issues on any node):** Commit all created files using the project's commit convention, report success, and relay the unresolved issues per node to the user so they can review manually. Mark T10 `completed`.
+- **If BLOCKED (any node):** Relay the block reason and name the node, note which dependent parents were skipped, and report the nodes that did complete. Mark T10 `completed` (the task was executed, even though a subagent was blocked):
 ```
 **STOPPED** — Component Implementation: <reason from subagent>
 
