@@ -35,19 +35,20 @@ Every project goes through this process. A todo list, a single-function utility,
 
 ## Checklist
 
-You MUST complete these items in order. **Requirements first (1-3), code exploration only after (4).**
+You MUST complete these items in order. **Requirements first (1-4), code exploration only after (5).**
 
 1. **JIRA discovery (offer-based)** — offer the user the chance to provide a JIRA issue key; if provided, fetch and summarize the issue (see below)
 2. **Figma discovery (trigger-based)** — check user request against trigger keywords (see below); if match, ask about Figma and run discovery
-3. **Ask clarifying questions** — confirm **and challenge** the inputs (see below); one question at a time
-4. **Interrogate requirements (REQUIRED)** — dispatch @"requirements-interrogator (agent)" on the gathered inputs, then drive a question loop with the user until every BLOCKING contradiction / gap / edge case / ambiguity / risky assumption is resolved or explicitly deferred (see REQUIREMENTS-GATE)
-5. **Explore the codebase** — ONLY now, with the requirement locked. Read files, docs, recent commits. Identify reuse candidates and evaluate each against the requirement/Figma — never let existing code become the starting point (see REQUIREMENTS-BEFORE-CODE). Apply the **Component Reuse Gate**: ask the user before reusing any candidate unless it is an exact match (name + layout + behavior)
-6. **Propose 2-3 approaches** — with trade-offs and your recommendation
-7. **Present design** — in sections scaled to their complexity, get user approval after each section
-8. **Confirm the Layout Contract (when Figma is present)** — if Figma discovery ran, confirm `## Contrato de Layout` (derived by `reading-figma-designs` from `get_metadata`) is present and complete in the design doc; if there is no Figma reference, omit the section (see below)
-9. **Write design doc** — save to `.afyapowers/features/<feature>/artifacts/design.md` (only once no BLOCKING interrogation item remains open)
-10. **Design review loop** — dispatch @"design-reviewer (agent)"; fix issues and re-dispatch until approved (max 5 iterations, then surface to human)
-11. **User reviews written spec** — ask user to review the spec file before proceeding
+3. **Analyze the design system (only when Figma is present)** — right after `reading-figma-designs` returns the Node Map, invoke `afyapowers:analyzing-design-system` to build the `## Árvore de Componentes de DS`; confirm proposed derivative names and ambiguous verdicts with the user in this phase (R7/R14). Skip entirely when there is no Figma (see below)
+4. **Ask clarifying questions** — confirm **and challenge** the inputs (see below); one question at a time
+5. **Interrogate requirements (REQUIRED)** — dispatch @"requirements-interrogator (agent)" on the gathered inputs, then drive a question loop with the user until every BLOCKING contradiction / gap / edge case / ambiguity / risky assumption is resolved or explicitly deferred (see REQUIREMENTS-GATE)
+6. **Explore the codebase** — ONLY now, with the requirement locked. Read files, docs, recent commits. Identify reuse candidates and evaluate each against the requirement/Figma — never let existing code become the starting point (see REQUIREMENTS-BEFORE-CODE). Apply the **Component Reuse Gate**: ask the user before reusing any candidate unless it is an exact match (name + layout + behavior)
+7. **Propose 2-3 approaches** — with trade-offs and your recommendation
+8. **Present design** — in sections scaled to their complexity, get user approval after each section
+9. **Confirm the Layout Contract (when Figma is present)** — if Figma discovery ran, confirm `## Contrato de Layout` (derived by `reading-figma-designs` from `get_metadata`) is present and complete in the design doc; if there is no Figma reference, omit the section (see below)
+10. **Write design doc** — save to `.afyapowers/features/<feature>/artifacts/design.md` (only once no BLOCKING interrogation item remains open)
+11. **Design review loop** — dispatch @"design-reviewer (agent)"; fix issues and re-dispatch until approved (max 5 iterations, then surface to human)
+12. **User reviews written spec** — ask user to review the spec file before proceeding
 
 ## Process Flow
 
@@ -59,6 +60,7 @@ digraph design {
     "Trigger keywords match?" [shape=diamond];
     "Ask Figma question" [shape=box];
     "Figma discovery" [shape=box];
+    "Analyze design system (build DS tree)" [shape=box];
     "Confirm + challenge questions" [shape=box];
     "Standard clarifying questions" [shape=box];
     "Interrogate requirements (agent + user loop)" [shape=box];
@@ -81,7 +83,8 @@ digraph design {
     "Trigger keywords match?" -> "Standard clarifying questions" [label="no"];
     "Ask Figma question" -> "Figma discovery" [label="user provides URLs"];
     "Ask Figma question" -> "Standard clarifying questions" [label="no Figma designs"];
-    "Figma discovery" -> "Confirm + challenge questions";
+    "Figma discovery" -> "Analyze design system (build DS tree)";
+    "Analyze design system (build DS tree)" -> "Confirm + challenge questions";
     "Confirm + challenge questions" -> "Interrogate requirements (agent + user loop)";
     "Standard clarifying questions" -> "Interrogate requirements (agent + user loop)";
     "Interrogate requirements (agent + user loop)" -> "BLOCKING items resolved?";
@@ -185,6 +188,16 @@ implementation, where the subagent already calls them per-task.
 **If no Figma designs:** Proceed normally. Do not include the Figma Resources section in the design doc.
 
 **Design tokens are NOT extracted during design phase.** They are deferred to implementation time — the implementer subagent will fetch them via `get_variable_defs` when needed.
+
+**Analyze the design system (only when Figma is present):**
+
+This step runs ONLY when Figma discovery produced a Node Map — skip it entirely for backend/API/CLI/lib features and for UI work with no Figma. Immediately after `afyapowers:reading-figma-designs` returns (the Node Map and `## Recursos do Figma` must already exist — the DS tree can only be built once they do) and BEFORE the clarifying questions, invoke `afyapowers:analyzing-design-system`.
+
+- **Pass the Node Map** just built by `reading-figma-designs` (the **Componentes Reutilizáveis** and **Telas** subsections, with node-ids, types, and each INSTANCE's `componentId`), plus the consumer `fileKey` and — if the user provided it — the DS library file URL. The skill runs in **workflow mode**: it does NOT redo `get_metadata`; it resolves each instance to its original, diffs instance↔original, emits the reuse-vs-derive and existence verdicts, and returns the `## Árvore de Componentes de DS` table (schema in `templates/design.md`).
+- **The design phase writes the returned `## Árvore de Componentes de DS` section into `design.md`.** The three-way existence verdicts (`Implementar` | `Importar` | `Atualizar` | `Derivar`) and the additive-vs-breaking determination are **confirmed in this phase** (R14) — human approval here is the safety net; the plan stays stable and implement does not reclassify at runtime.
+- **Confirm derivative names and ambiguous verdicts with the user before writing the final tree (R7).** Proposed code names for derived components, any `search_design_system` ambiguity, and any low-confidence inventory reads are surfaced to the user in the design phase and resolved with them before the `## Árvore de Componentes de DS` is finalized. Carry these into the clarifying questions below.
+
+This DS analysis feeds the tree, but it does NOT relax the **Component Reuse Gate** below — silent reuse remains restricted to exact matches per that gate.
 
 **Component Reuse Gate (always — Figma or not):**
 
