@@ -129,6 +129,29 @@
 <!-- Remova [<category>] se não houver categoria do Figma; remova a cláusula "— pins:" se não houver propriedades fixadas. -->
 - node `<node_id>` (<node_name>) [<category>]: "<annotation label / note text>" — pins: <property types>
 
+## Árvore de Componentes de DS
+<!-- Incluída apenas quando a feature tem referência Figma com componentes de design system. Remova esta seção se não se aplicar. -->
+<!-- Mapeamento entre nós Figma e componentes de código — um nó por linha, ordenação topológica folhas→raiz.
+     Componentes compartilhados aparecem UMA vez; dependências via coluna "Depende de". -->
+
+| Nó (nome Figma · main node-id · componentKey) | Tipo Figma | Veredito | Depende de | Paridade (campos que divergem inst.↔original) | Nome no código (proposto) | Fonte do catálogo | Task Type |
+|------------------------------------------------|------------|----------|------------|------------------------------------------------|---------------------------|-------------------|-----------|
+<!-- ex.: | card · 2001:8579 · 4433e34… | COMPONENT_SET | Derivar | **`Card` (base)**, Thumbnail, _Icon buttons, Tag | layout, border, filhos add. | `LiveCard` (proposto) | Figma lib (URL) | UI Component | -->
+<!-- ex.: | Thumbnail · … · … | COMPONENT | Implementar | — | — | `Thumbnail` | Figma lib (URL) | UI Component | -->
+<!-- ex.: | Card genérico · … · … | COMPONENT_SET | Importar | — | só conteúdo | `Card` (existe) | código | — | -->
+
+<!-- === Notas de convenção === -->
+<!-- **Paridade** = conjunto de campos que divergem entre a instância e o original:
+     "só conteúdo" ⇒ reusar; diffs estruturais/layout/estilo-fora-de-token ⇒ derivar. -->
+<!-- **Fonte do catálogo** = `código (existente)` | `Figma lib <url/libName>` | `só observado — catálogo não confirmado`. -->
+<!-- **Agrupamento de instâncias:** instâncias do mesmo original com diff só de conteúdo ⇒ um padrão "reusar";
+     grupos com conjuntos de diffs equivalentes além do corte ⇒ um derivado por grupo. -->
+<!-- **Convenção para "Derivar":** o PRIMEIRO item de "Depende de" é sempre o genérico base (o original que
+     o derivado compõe por baixo) — garante que a task do derivado só rode após a task/importação do genérico. -->
+<!-- **Determinação aditivo-vs-breaking (veredito "Atualizar"):** acontece AQUI, na fase design (a checagem de
+     existência inspeciona o código: props/tipos/Storybook); se a variante exigida só puder ser adicionada de forma
+     quebrante, o veredito já sai como "Derivar". Assim o plan permanece estável (R14) — o implement não reclassifica. -->
+
 ## Contrato de Layout
 <!-- Incluído apenas quando a feature tem UI + referência Figma. Remova esta seção se não se aplicar. Validado pelo design-reviewer. -->
 <!-- Medidas derivadas do get_metadata: margens = child.x relativo ao pai; gaps = sibling.x − (prev.x + prev.width);
