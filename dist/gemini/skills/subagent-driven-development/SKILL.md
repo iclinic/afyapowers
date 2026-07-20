@@ -18,7 +18,7 @@ digraph process {
     "Compute ready set" [shape=box];
     "Any tasks ready?" [shape=diamond];
     "Validate file overlap in ready set" [shape=box];
-    "Apply Figma concurrency cap\nDispatch parallel Agent calls" [shape=box];
+    "Apply Type concurrency cap\nDispatch parallel Agent calls" [shape=box];
     "Wait for all agents to return" [shape=box];
     "Process results" [shape=box];
     "Commit completed tasks (sequential)" [shape=box];
@@ -33,8 +33,8 @@ digraph process {
     "Compute ready set" -> "Any tasks ready?";
     "Any tasks ready?" -> "Write implementation-concerns.md" [label="all done"];
     "Any tasks ready?" -> "Validate file overlap in ready set" [label="yes"];
-    "Validate file overlap in ready set" -> "Apply Figma concurrency cap\nDispatch parallel Agent calls";
-    "Apply Figma concurrency cap\nDispatch parallel Agent calls" -> "Wait for all agents to return";
+    "Validate file overlap in ready set" -> "Apply Type concurrency cap\nDispatch parallel Agent calls";
+    "Apply Type concurrency cap\nDispatch parallel Agent calls" -> "Wait for all agents to return";
     "Wait for all agents to return" -> "Process results";
     "Process results" -> "Commit completed tasks (sequential)";
     "Commit completed tasks (sequential)" -> "All tasks done?";
@@ -152,23 +152,27 @@ Overlap validation covers `**Files:**` (source) paths only. **Asset files are ex
 
 ### Step 5: Dispatch
 
-**Figma-aware concurrency:** After file overlap validation, classify each task in the ready set:
-- **Figma task**: task text contains a `**Figma:**` section
-- **Non-Figma task**: no `**Figma:**` section
+**Type-aware concurrency:** After file overlap validation, classify each task in the ready set by its `**Type:**` line:
+- **MCP-capped task**: `Type` is `UI Screen` or `UI Component` — these implementers make Figma MCP calls
+- **Uncapped task**: `Type` is `UI Logic`, `Backend`, or `General` — no Figma MCP calls
+- **Legacy fallback**: if a task has NO `**Type:**` line, classify by the legacy heuristic — a task whose text contains a `**Figma:**` section counts as **MCP-capped**; otherwise **uncapped**
 
 Apply concurrency caps:
-- **Non-Figma tasks**: dispatch all (no cap)
-- **Figma tasks**: dispatch up to **4** per cycle. If more than 4 Figma tasks are ready, pick the first 4 by task number; the rest stay in the ready pool for the next cycle
+- **Uncapped tasks**: dispatch all (no cap)
+- **MCP-capped tasks**: dispatch up to **4** per cycle. If more than 4 MCP-capped tasks are ready, pick the first 4 by task number; the rest stay in the ready pool for the next cycle
 
-> **Why 4?** The Figma MCP rate-limits at 15 requests/minute. Each Figma task makes 3 mandatory MCP calls, so 4 concurrent tasks = 12 calls — safely under the limit.
+> **Why 4?** The Figma MCP rate-limits at 15 requests/minute. Each MCP-capped task makes ~3 mandatory MCP calls, so 4 concurrent tasks = 12 calls — safely under the limit.
 
 **Figma tasks self-verify.** The `figma-design-implementer` now runs a fixed fidelity-verification step (its Step 5): after writing the code it spawns a read-only `figma-token-verifier` and loops (max 5 attempts) fixing token/measure mismatches until PASS. The verifier reads code only — it makes **no** Figma MCP calls, so up to 4 verifiers running concurrently do not touch the 15 req/min budget. Consequence for you: a Figma task's `DONE` already carries a fidelity checklist (verifier PASS), and a `DONE_WITH_CONCERNS` may carry a BLOCKING "unresolved fidelity mismatch after 5 attempts" concern — handle it like any other blocking concern. This does not change wave scheduling or the commit flow.
 
-Dispatch the combined set (all non-Figma + up to 4 Figma) as parallel Subagent calls in a single message.
+Dispatch the combined set (all uncapped + up to 4 MCP-capped) as parallel Subagent calls in a single message.
 
-**Prompt routing:** Select the correct implementer agent based on the task type:
-- If the task text contains a `**Figma:**` section → dispatch @"figma-design-implementer (agent)". Include the Figma metadata (file key, node ID, breakpoints) in the agent context.
-- If the task does NOT contain a `**Figma:**` section → dispatch @"tdd-implementer (agent)" (standard TDD implementer).
+**Prompt routing:** Read the task's `**Type:**` line and select the implementer agent from this table:
+- `UI Screen` → dispatch @"figma-design-implementer (agent)". Include the Figma metadata (file key, node ID, breakpoints) in the agent context.
+- `UI Component` → dispatch @"figma-component-implementer (agent)" (design-system-aware component implementer). Include the Figma metadata (file key, node ID, breakpoints) in the agent context.
+- `UI Logic` / `Backend` / `General` → dispatch @"tdd-implementer (agent)" (standard TDD implementer).
+
+**Legacy fallback (no `**Type:**` line):** apply the pre-Type heuristic — if the task text contains a `**Figma:**` section → dispatch @"figma-design-implementer (agent)" (include Figma metadata); otherwise → dispatch @"tdd-implementer (agent)".
 
 Each agent gets:
 - Full task text (steps, file list, code/Figma metadata) — paste directly, don't make agent read files
@@ -248,13 +252,14 @@ Ready: [5] (deps [3,4] all completed) → dispatch
 Completed: [1, 2, 3, 4, 5] → Write implementation-concerns.md → Done
 ```
 
-#### Mixed Figma / Non-Figma Example
+#### Mixed Type Example
 
 ```
-Ready: [1(std), 2(std), 3(figma), 4(figma), 5(std), 6(figma)]
-→ Classify: non-Figma = [1, 2, 5], Figma = [3, 4, 6]
-→ Apply caps: all non-Figma + first 4 Figma
-→ Dispatch: [1, 2, 5] + [3, 4, 6] = 6 parallel agents (all 3 Figma tasks fit under the cap of 4)
+Ready: [1(Backend), 2(General), 3(UI Screen), 4(UI Component), 5(UI Logic), 6(UI Component)]
+→ Classify by Type: uncapped (no MCP) = [1, 2, 5], MCP-capped = [3, 4, 6]
+→ Route: 1,2,5 → tdd-implementer; 3 → figma-design-implementer; 4,6 → figma-component-implementer
+→ Apply caps: all uncapped + first 4 MCP-capped
+→ Dispatch: [1, 2, 5] + [3, 4, 6] = 6 parallel agents (all 3 MCP-capped tasks fit under the cap of 4)
 ```
 
 ### Fallback to Sequential
@@ -316,8 +321,9 @@ Implementer subagents report one of four statuses:
 
 ## Prompt Templates
 
-- @"tdd-implementer (agent)" - Dispatch standard implementer subagent (TDD workflow)
-- @"figma-design-implementer (agent)" - Dispatch Figma design implementer subagent (visual fidelity workflow)
+- @"tdd-implementer (agent)" - Dispatch standard implementer subagent (TDD workflow) — for `UI Logic` / `Backend` / `General`
+- @"figma-design-implementer (agent)" - Dispatch Figma design implementer subagent (visual fidelity workflow) — for `UI Screen`
+- @"figma-component-implementer (agent)" - Dispatch Figma component implementer subagent (design-system-aware component workflow) — for `UI Component`
 
 ## Red Flags
 
@@ -346,8 +352,9 @@ Implementer subagents report one of four statuses:
 - **implementing** (REQUIRED SUB-SKILL) — implementing loads the plan and design, then invokes SDD to execute all tasks
 
 **Subagent prompts:**
-- @"tdd-implementer (agent)" — TDD rules are embedded directly in this prompt (used for standard tasks)
-- @"figma-design-implementer (agent)" — Figma implement-design workflow (used for tasks with `**Figma:**` section)
+- @"tdd-implementer (agent)" — TDD rules are embedded directly in this prompt (used for `UI Logic` / `Backend` / `General` tasks, and legacy non-Figma tasks)
+- @"figma-design-implementer (agent)" — Figma implement-design workflow (used for `UI Screen` tasks, and legacy tasks with a `**Figma:**` section)
+- @"figma-component-implementer (agent)" — design-system-aware component workflow (used for `UI Component` tasks)
 
 **Context:** When invoked by implementing, the plan and design are already in the conversation context. Use them directly. If the plan is not in context (e.g., invoked standalone), read it from `.afyapowers/features/<feature>/artifacts/plan.md`.
 
