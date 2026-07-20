@@ -20,6 +20,9 @@ You are implementing the Figma component **[COMPONENT_NAME]**.
 - **Framework:** [FRAMEWORK]
 - **Generate Storybook:** [GENERATE_STORYBOOK]
 - **Component name:** [COMPONENT_NAME]
+- **Verdict:** [VERDICT] — one of `implementar`, `importar`, `atualizar`, `derivar`. Determines the behavior mode for this component (see the `## Workflow` verdict branch). If absent or empty, default to `implementar` (build the generic from scratch — the original single-mode behavior).
+- **Base component:** [BASE_COMPONENT] — the existing generic base to compose under a wrapper. Only meaningful when `[VERDICT]` is `derivar` (or `atualizar`, where it names the set being extended); empty otherwise.
+- **Catalog source:** [CATALOG_SOURCE] — how the design-system catalog for this component was determined: `código` (project code inventory), `Figma lib URL` (the library file was read via the provided URL), or `só observado` (only the states seen on the consuming screen — catalog NOT confirmed). Calibrates the "catálogo não confirmado" warning in Reporting.
 
 ## Core Principles
 
@@ -48,6 +51,22 @@ If `get_metadata` fallback calls in Step 3 pushed your total above 10, pause bef
 **Backoff on 429 / "too many requests".** If any Figma MCP call fails with a rate-limit error (HTTP 429, "Too Many Requests", or "rate limit exceeded"), do NOT retry immediately and do NOT give up. Wait a jittered **30–60 seconds**, then retry the same call once. If it fails again, wait once more (toward the 60s end) and retry. Only after a second failed retry report BLOCKED with the rate-limit error. Never skip a mandatory call or fabricate its data because of a rate limit.
 
 ## Workflow
+
+### Step 0 — Select Behavior Mode by Verdict
+
+Before touching design data, branch on `[VERDICT]`. The verdict comes from the design/plan phase (design-system analysis) and decides what "implementing this component" means. This same branch applies to both entry paths — a workflow `UI Component` task and a standalone dispatch (R10).
+
+The detailed rules for each mode — the reuse-vs-derive cut, the wrapper pattern, additive-update constraints, and combinatorial-props guidance — live in `references/ds-implementation.md` in the `afyapowers:analyzing-design-system` skill. Read it and follow it; the summaries below only orient you to the right mode. Do not duplicate those rules here.
+
+- **`implementar`** (default when verdict is absent) — Build the **generic** component from scratch with ALL its variants. Each Figma variant axis (`size`, `type`, `state`, …) becomes an **independent prop**, never a cartesian-product union (see `ds-implementation.md` §3.3). This is the full original workflow: proceed through Steps 1–7 exactly as written below.
+
+- **`importar`** — The component already exists in the codebase and is complete; do NOT reimplement it. Locate the existing component (search by name/path per the catalog inventory), confirm its import resolves, and confirm it exposes the variant/state the Figma node requires. If the required variant exists, no new component code is produced — you only wire/reference the existing one where the task directs (or report the exact import path and props to use). Still run the mandatory design-data calls (Steps 1–3) to verify the required variant matches Figma, then the self-review calls (Step 6). **If the required variant does NOT exist in the imported component, the verdict is wrong** — this is really an `atualizar` (missing variant) or `derivar` case: report a BLOCKING concern rather than silently forcing it.
+
+- **`atualizar`** — The generic in `[BASE_COMPONENT]` is missing exactly the variant/state this Figma node needs. Add it **additively** to the existing set — a new optional prop, a new variant value, or a new optional slot — following `ds-implementation.md` §3.2. Existing consumers MUST keep working: no signature change, no removed prop, no changed default, no altered existing-variant behavior. If accommodating the Figma node would require a **breaking change**, do NOT apply it — report a BLOCKING concern and note that the correct verdict is `derivar` (the update-vs-derive boundary belongs to the design phase; see `ds-implementation.md` §3.6). Approval for additive updates is granted at design time; build the additive change and report exactly what you added.
+
+- **`derivar`** — Implement a NEW component as a **wrapper** that composes `[BASE_COMPONENT]` underneath (`ds-implementation.md` §2). Import the base and render it as the primary child; pass its props through; add only the extra children/slots/behavior that justified the derivation. NEVER copy or reimplement the base's source. Check the codebase for a name collision before naming the derived component (`ds-implementation.md` §3.5). Steps 1–7 below then apply to the wrapper's own added surface (its extra children, layout, and tokens), not to re-deriving the base.
+
+**Catalog-confidence note (applies to every mode).** When `[CATALOG_SOURCE]` is `só observado`, the full variant catalog was NOT confirmed — this is the **common/default path** when the DS library URL was not provided, not an exceptional case (see the DS spike). Implement the observable states from the Figma node, and flag "catálogo não confirmado" in Reporting as a **CONCERN** (routine, non-blocking) — distinct from a "component not found in library" (orphan) situation. When `[CATALOG_SOURCE]` is `código` or `Figma lib URL`, the catalog is confirmed and no such warning is needed.
 
 ### Step 1 — Build Token Reference Table
 
@@ -195,6 +214,12 @@ Walk through every token from the fresh `get_variable_defs` output:
 - `aria-label` on icon-only actions?
 - Focus states present for interactive elements?
 
+**F. Verdict Mode Integrity** (check only the row matching `[VERDICT]`)
+- **`implementar`** — Same as check C: every variant axis is an independent prop, all variants covered.
+- **`importar`** — Does the import statement actually resolve (the referenced module/symbol exists at the path you used)? Does the imported component expose the exact variant/state the Figma node requires? If the required variant is missing, this is an ISSUE — it cannot be fixed by import (the verdict was wrong); record it as a BLOCKING concern.
+- **`atualizar`** — Is the change strictly **additive**? Confirm no existing prop/variant signature was removed, retyped, or had its default changed, and no existing variant's rendered behavior changed. Any non-additive edit is an ISSUE and a BLOCKING concern (the correct verdict would be `derivar` — `ds-implementation.md` §3.6). Confirm the newly added variant/state renders per Figma.
+- **`derivar`** — Does the wrapper **compose** `[BASE_COMPONENT]` (import + render it as the primary child) rather than duplicate/reimplement its source? Are only the justifying extras added on top? Is there no name collision with an existing symbol? Any duplication of the base is an ISSUE.
+
 **If all checks PASS:** Skip Step 7 and proceed to Reporting.
 
 **If any ISSUE is found:** Proceed to Step 7.
@@ -308,15 +333,20 @@ Write a commit message that follows the project's convention and describes what 
 
 When done, report:
 - **Status:** DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT
+- **Verdict mode** — which of `implementar` / `importar` / `atualizar` / `derivar` you ran, and the mode-specific outcome:
+  - `importar` — the resolved import path/symbol and the confirmed variant/state used.
+  - `atualizar` — exactly what was added (new optional prop / variant value / slot) to `[BASE_COMPONENT]`, and the confirmation that existing consumers are unaffected.
+  - `derivar` — the wrapper's name, the base it composes (`[BASE_COMPONENT]`), and the extras it adds.
 - **What was implemented** — component structure and key decisions
 - **Visual validation** — does it match the screenshot from Step 2?
 - **Files created**
 - **Assets created** — full paths of every asset file (icon/image) downloaded and saved, plus the assets directory chosen. "none" if you created no asset files.
 - **Variant coverage** — which variants were implemented (for COMPONENT_SET)
+- **Catalog confidence** — the `[CATALOG_SOURCE]` you worked from. If `só observado`, state plainly "catálogo não confirmado — implementei os estados observáveis" and list it as a CONCERN (see below). If `código` or `Figma lib URL`, state "catálogo confirmado".
 - **Self-review result** — all checks passed / N issues found, M fixed, K unresolved
 - **Concerns** — group every concern under one of two severities:
-  - **BLOCKING** — the output looks or behaves differently from Figma/design: a substituted component that fails the name/visual/interaction-model match (Implementation Rule 2), a wrong interaction model, a visual mismatch, or a layout that may not render as designed because the host height couldn't be confirmed (Rule 6). **A divergence is BLOCKING even if you were instructed to do it** (e.g. the task told you to reuse a component that doesn't match). Flag it — do not bury it. Name the specific mismatch.
-  - **CONCERN** (non-blocking) — doubts, fragility, edge cases, unmatched tokens / token drift, unresolved self-review issues, accessibility additions.
+  - **BLOCKING** — the output looks or behaves differently from Figma/design: a substituted component that fails the name/visual/interaction-model match (Implementation Rule 2), a wrong interaction model, a visual mismatch, or a layout that may not render as designed because the host height couldn't be confirmed (Rule 6). **Also BLOCKING per verdict mode:** an `importar` where the required variant does not exist in the imported component; an `atualizar` that could only be done via a breaking change (report it and note the correct verdict is `derivar`); a `derivar` where the wrapper duplicates the base instead of composing it. **A divergence is BLOCKING even if you were instructed to do it** (e.g. the task told you to reuse a component that doesn't match). Flag it — do not bury it. Name the specific mismatch.
+  - **CONCERN** (non-blocking) — doubts, fragility, edge cases, unmatched tokens / token drift, unresolved self-review issues, accessibility additions, and the routine **"catálogo não confirmado"** flag when `[CATALOG_SOURCE]` is `só observado`. The catalog flag is the common/default case (see the DS spike), so keep it a calm, non-blocking CONCERN — do not escalate it to BLOCKING; it is distinct from a "component not found in library" (orphan) situation, which is more serious.
 - **MCP calls made** — total count (typically 5; higher if get_metadata fallbacks were needed)
 
 **Status guidance:**
