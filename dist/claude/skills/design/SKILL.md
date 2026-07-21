@@ -39,7 +39,7 @@ You MUST complete these items in order. **Requirements first (1-4), code explora
 
 1. **JIRA discovery (offer-based)** — offer the user the chance to provide a JIRA issue key; if provided, fetch and summarize the issue (see below)
 2. **Figma discovery (trigger-based)** — check user request against trigger keywords (see below); if match, ask about Figma and run discovery
-3. **Analyze the design system (only when Figma is present)** — right after `reading-figma-designs` returns the Node Map, invoke `afyapowers:analyzing-design-system` to build the `## Árvore de Componentes de DS`; confirm proposed derivative names and ambiguous verdicts with the user in this phase (R7/R14). Skip entirely when there is no Figma (see below)
+3. **Verificação Code Connect de DS (só quando há Figma)** — resolve original + variantes usadas, checa existência+cobertura no código, grava `## Componentes de DS (verificação Code Connect)`; gate se faltar componente/variante. Skip entirely when there is no Figma (see below)
 4. **Ask clarifying questions** — confirm **and challenge** the inputs (see below); one question at a time
 5. **Interrogate requirements (REQUIRED)** — dispatch @"requirements-interrogator (agent)" on the gathered inputs, then drive a question loop with the user until every BLOCKING contradiction / gap / edge case / ambiguity / risky assumption is resolved or explicitly deferred (see REQUIREMENTS-GATE)
 6. **Explore the codebase** — ONLY now, with the requirement locked. Read files, docs, recent commits. Identify reuse candidates and evaluate each against the requirement/Figma — never let existing code become the starting point (see REQUIREMENTS-BEFORE-CODE). Apply the **Component Reuse Gate**: ask the user before reusing any candidate unless it is an exact match (name + layout + behavior)
@@ -60,7 +60,9 @@ digraph design {
     "Trigger keywords match?" [shape=diamond];
     "Ask Figma question" [shape=box];
     "Figma discovery" [shape=box];
-    "Analyze design system (build DS tree)" [shape=box];
+    "Verificação Code Connect de DS + gate" [shape=box];
+    "DS components/variants missing?" [shape=diamond];
+    "Block: list missing DS items" [shape=box];
     "Confirm + challenge questions" [shape=box];
     "Standard clarifying questions" [shape=box];
     "Interrogate requirements (agent + user loop)" [shape=box];
@@ -83,8 +85,11 @@ digraph design {
     "Trigger keywords match?" -> "Standard clarifying questions" [label="no"];
     "Ask Figma question" -> "Figma discovery" [label="user provides URLs"];
     "Ask Figma question" -> "Standard clarifying questions" [label="no Figma designs"];
-    "Figma discovery" -> "Analyze design system (build DS tree)";
-    "Analyze design system (build DS tree)" -> "Confirm + challenge questions";
+    "Figma discovery" -> "Verificação Code Connect de DS + gate";
+    "Verificação Code Connect de DS + gate" -> "DS components/variants missing?";
+    "DS components/variants missing?" -> "Block: list missing DS items" [label="yes"];
+    "Block: list missing DS items" -> "Verificação Code Connect de DS + gate" [label="user implements via /figma-component, re-check"];
+    "DS components/variants missing?" -> "Confirm + challenge questions" [label="no / not configured (user confirms manually)"];
     "Confirm + challenge questions" -> "Interrogate requirements (agent + user loop)";
     "Standard clarifying questions" -> "Interrogate requirements (agent + user loop)";
     "Interrogate requirements (agent + user loop)" -> "BLOCKING items resolved?";
@@ -189,15 +194,26 @@ implementation, where the subagent already calls them per-task.
 
 **Design tokens are NOT extracted during design phase.** They are deferred to implementation time — the implementer subagent will fetch them via `get_variable_defs` when needed.
 
-**Analyze the design system (only when Figma is present):**
+**Verificação Code Connect de DS (only when Figma is present):**
 
-This step runs ONLY when Figma discovery produced a Node Map — skip it entirely for backend/API/CLI/lib features and for UI work with no Figma. Immediately after `afyapowers:reading-figma-designs` returns (the Node Map and `## Recursos do Figma` must already exist — the DS tree can only be built once they do) and BEFORE the clarifying questions, invoke `afyapowers:analyzing-design-system`.
+This step runs ONLY when Figma discovery produced a Node Map — skip it entirely for backend/API/CLI/lib features and for UI work with no Figma. Immediately after `afyapowers:reading-figma-designs` returns (the Node Map and `## Recursos do Figma` must already exist) and BEFORE the clarifying questions, run this lean check directly (no sub-skill dispatch):
 
-- **Pass the Node Map** just built by `reading-figma-designs` (the **Componentes Reutilizáveis** and **Telas** subsections, with node-ids and types — including which nodes are `INSTANCE` and their composition), plus the consumer `fileKey` and — if the user provided it — the DS library file URL. The skill runs in **workflow mode**: it does NOT redo `get_metadata`; it resolves each instance to its original (by name via `search_design_system` + the original's node-id from `get_design_context` — not via a `componentId` field, which `get_metadata` does not expose for DS-library instances), diffs instance↔original, emits the reuse-vs-derive and existence verdicts, and returns the `## Árvore de Componentes de DS` table (schema in `templates/design.md`).
-- **The design phase writes the returned `## Árvore de Componentes de DS` section into `design.md`.** The three-way existence verdicts (`Implementar` | `Importar` | `Atualizar` | `Derivar`) and the additive-vs-breaking determination are **confirmed in this phase** (R14) — human approval here is the safety net; the plan stays stable and implement does not reclassify at runtime.
-- **Confirm derivative names and ambiguous verdicts with the user before writing the final tree (R7).** Proposed code names for derived components, any `search_design_system` ambiguity, and any low-confidence inventory reads are surfaced to the user in the design phase and resolved with them before the `## Árvore de Componentes de DS` is finalized. Carry these into the clarifying questions below.
+- **Input:** the Node Map just built by `reading-figma-designs` (the **Componentes Reutilizáveis** and **Telas** subsections, with node-ids and types — including which nodes are `INSTANCE` and their composition).
+- **For each `INSTANCE` of a DS library component used in the layout:**
+  1. `get_libraries` to identify the source library, then `search_design_system` to resolve the **original** component (name + componentKey).
+  2. Read which **variants** of that original the layout actually uses (from the instance's properties in the Node Map / annotations).
+  3. `get_code_connect_map` — the **authoritative source of existence**: does a code component already exist mapped to this original? If not mapped, the component does not exist for this check's purposes.
+  4. When a mapping exists, do a **complementary codebase search** — inspect the mapped component's props/types/Storybook stories — solely to check whether it **covers** the specific variants the layout uses (e.g., a `size="lg"` or `state="error"` variant the layout needs but the mapped component doesn't expose).
+- **Result: no verdicts (no Implementar/Importar/Atualizar/Derivar).** Each DS component used is simply one of: **OK** (exists + covers used variants), **falta-componente** (no Code Connect mapping found), or **falta-variante** (mapped, but doesn't cover a variant the layout uses).
+- **Write the result to `## Componentes de DS (verificação Code Connect)`** in `design.md` — a lean list/table of the components checked and their status. Omit the section entirely when the layout uses no DS components.
 
-This DS analysis feeds the tree, but it does NOT relax the **Component Reuse Gate** below — silent reuse remains restricted to exact matches per that gate.
+**Gate:** if any component is missing (falta-componente) or any used variant isn't covered (falta-variante), **block the workflow here** — do not proceed to clarifying questions or any later step. Tell the user, in pt-BR, exactly which components/variants are missing and instruct them to implement each one via `/figma-component` before the design phase can continue. Re-run the check after they confirm the implementation is done.
+
+**Code Connect not configured:** if `get_code_connect_map` indicates Code Connect isn't set up for the library/file (rather than returning an empty/negative mapping for a specific component), do NOT silently treat this as "everything is missing." Tell the user Code Connect isn't configured and ask them to either configure it, or manually confirm — component by component — that each DS component used in the layout already exists in code before proceeding.
+
+**No DS components in the layout:** if the layout uses no DS library instances, omit the `## Componentes de DS (verificação Code Connect)` section and continue normally — nothing to gate on.
+
+This Code Connect verification does NOT relax the **Component Reuse Gate** below — silent reuse remains restricted to exact matches per that gate.
 
 **Component Reuse Gate (always — Figma or not):**
 

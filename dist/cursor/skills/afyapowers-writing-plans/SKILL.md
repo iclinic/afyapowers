@@ -36,36 +36,7 @@ If the spec covers multiple independent subsystems, it should have been broken i
 
 Before defining Figma tasks, check if the design doc contains a `## Recursos do Figma` section with a `### Node Map`.
 
-### Fonte de verdade dos componentes: Árvore de Componentes de DS
-
-Antes de aplicar a inference legada (Layers 0/1/2), verifique se o design doc contém uma seção `## Árvore de Componentes de DS`.
-
-**Quando a Árvore de DS está presente, ela é a fonte de verdade das tasks de componente** (substitui a derivação de Layer 1 a partir de **Componentes Reutilizáveis**). Cada linha da árvore carrega um **Veredito** e um **Tipo Figma**; transforme cada linha em uma task com o veredito embutido:
-
-- **Implementar** — componente genérico construído do zero, com **todas as variantes** (`COMPONENT_SET` completo), isolado e exportado. Gera uma task de componente.
-- **Importar** — o componente já existe no código e está completo (paridade "só conteúdo"). **Não gera task de implementação** — vira uma **nota** no plano (ex: sob o cabeçalho de notas ou como observação na task da tela que o consome), registrando o nome no código a reusar. Nenhum implementer é despachado para ele.
-- **Atualizar** — extensão **aditiva** de um componente existente (nova variante/prop que não quebra o contrato atual). Gera uma task de componente sobre o componente existente.
-- **Derivar** — **wrapper** sobre um genérico base (a instância diverge do original além de conteúdo — layout/estrutura/estilo fora de token). Gera uma task de componente que compõe o genérico base por baixo, carregando o **nome proposto** e o **genérico base como dependência**.
-
-**Ordenação folhas→raiz:** ordene as tasks usando a coluna **Depende de** — um nó só pode virar task depois que todos os nós listados em seu "Depende de" já tiverem task (ou nota, no caso de Importar). Para um **Derivar**, o **primeiro item de "Depende de" é o genérico base**: a task do derivado depende da task/nota do genérico base antes de qualquer outra dependência.
-
-**Mapeamento veredito/tipo de nó → `Type` de task:**
-
-- Nó de componente ou `COMPONENT_SET` da árvore (verdicts Implementar / Atualizar / Derivar) → task **`UI Component`**. A task carrega o veredito; para **Derivar**, carrega o nome proposto (coluna "Nome no código (proposto)") e o genérico base como `**Depends on:**`.
-- Composição da tela (frame raiz — as entradas de **Telas** do Node Map) → task **`UI Screen`**.
-- Lógica de dados/estado sem nova superfície visual (fetch/binding, estado, validação, rota, animação) → task **`UI Logic`**.
-
-A coluna **Task Type** da própria árvore (quando preenchida) já indica o `Type` da task — use-a; na ausência dela, derive o `Type` pelo Tipo Figma/veredito conforme o mapeamento acima.
-
-**Validação Figma da Árvore de DS (rode antes de finalizar o plano, quando a árvore está presente):**
-1. Cada nó da árvore com veredito **Implementar / Atualizar / Derivar** tem sua própria task `UI Component` (nós **Importar** viram nota, não task de implementação)
-2. Nenhuma task de tela (`UI Screen`) reimplementa um componente que já tem task própria — a tela apenas compõe/consome os componentes
-3. Toda task com veredito **Derivar** declara o genérico base como primeira dependência em `**Depends on:**`
-4. A ordenação das tasks respeita a coluna "Depende de" (folhas→raiz): nenhuma task roda antes das tasks dos nós dos quais depende
-
-**Legado (sem Árvore de DS):** quando o design doc **não** tem a seção `## Árvore de Componentes de DS`, mantenha o comportamento legado da inference — derive as tasks de componente a partir de **Componentes Reutilizáveis** como Layers 0/1/2 (abaixo). A árvore, quando presente, é a fonte de verdade das tasks de componente; as regras de Layer 0 (esqueleto) e Layer 2 (telas) continuam valendo em conjunto com ela.
-
-### Inference legada por Layers (Node Map)
+### Inference por Layers (Node Map)
 
 **If Figma Resources are present**, read the Node Map and infer task layers directly — no Figma MCP calls at planning time:
 
@@ -310,7 +281,7 @@ O esqueleto vem primeiro: as tasks de Layer 2 montam seu conteúdo dentro do con
 ```
 
 **Building the Figma block:**
-- **Type:** `UI Component` para tasks de componente (Layer 1, ou nós Implementar/Atualizar/Derivar da Árvore de DS); `UI Screen` para tasks de tela e esqueleto (Layer 0/Layer 2). Ver "Task Type & Roteamento" acima.
+- **Type:** `UI Component` para tasks de componente (Layer 1); `UI Screen` para tasks de tela e esqueleto (Layer 0/Layer 2). Ver "Task Type & Roteamento" acima.
 - **File Key:** Copy from the design doc's `## Recursos do Figma` section
 - **Node ID:** The single node ID for this task's component from the Node Map
 - **Breakpoints:** Include only the breakpoints relevant to this task's component (not all breakpoints in the design)
@@ -321,7 +292,6 @@ O esqueleto vem primeiro: as tasks de Layer 2 montam seu conteúdo dentro do con
 
 ## Remember
 - Toda task carrega `**Type:**` (`UI Screen` | `UI Component` | `UI Logic` | `Backend` | `General`) — determina dispatch e verificação; plan sem `**Type:**` cai no heurístico legado
-- Quando `## Árvore de Componentes de DS` está presente, ela é a fonte de verdade das tasks de componente: Implementar/Atualizar/Derivar → task `UI Component`; Importar → nota (sem task); ordene folhas→raiz pela coluna "Depende de"; para Derivar, o genérico base é a primeira dependência
 - Exact file paths always
 - Describe behavior and edge cases completely (not just "add validation") — but never include code snippets
 - Exact commands with expected output

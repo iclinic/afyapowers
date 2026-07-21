@@ -7,8 +7,8 @@ Before EVERY Figma MCP tool call, you MUST check:
 2. Is this tool listed in the current phase's MCP_ALLOWLIST?
 3. If NO → STOP. Do not call it. Only the implementer subagent may use it.
 
-NEVER call get_screenshot or get_variable_defs — only the subagent calls these. NEVER call get_design_context to implement the component — that is the subagent's job. (Phase 3 has a single scoped exception: the afyapowers:analyzing-design-system resolution chain may call get_design_context per distinct DS original, plus get_libraries / search_design_system / get_context_for_code_connect / get_code_connect_map, for diff/verdict ONLY — see the Phase 3 MCP_ALLOWLIST. These resolve DS originals and emit verdicts; they never implement.)
-NEVER launch Explore agents or scan the codebase for conventions, tokens, or patterns — EXCEPT the targeted codebase existence check that afyapowers:analyzing-design-system performs in Phase 3 for its 3-way verdict (R4/R8).
+NEVER call get_screenshot or get_variable_defs — only the subagent calls these. NEVER call get_design_context to implement the component — that is the subagent's job. (Phase 3 has a single scoped exception: the DS resolution chain in Phase 3 below may call get_design_context per distinct DS original, plus get_libraries / search_design_system / get_context_for_code_connect / get_code_connect_map, for diff/verdict ONLY — see the Phase 3 MCP_ALLOWLIST. These resolve DS originals and emit verdicts; they never implement.)
+NEVER launch Explore agents or scan the codebase for conventions, tokens, or patterns — EXCEPT the targeted codebase existence check performed inline in Phase 3 for its 3-way verdict (R4/R8).
 NEVER run phases in parallel. Execute Phase 1, then Phase 2, then Phase 3, then Phase 4, then Dispatch, in order.
 NEVER implement the component yourself. You are the orchestrator. The subagent implements. Building the DS tree in Phase 3 is analysis, not implementation.
 NEVER skip task creation. You MUST create all tasks before starting any work.
@@ -39,7 +39,7 @@ Create the following tasks in order:
 | T5 | Phase 2.1: Check child dependencies from stored metadata | Scan stored metadata for INSTANCE nodes with componentId references. |
 | T6 | Phase 2.2: Cross-reference dependencies with Code Connect map | Check each componentId against the stored Code Connect map. Feed the DS analysis; do NOT hard-stop on missing deps. |
 | T7 | Phase 2.3: Detect output location, framework, Storybook | Glob for component directories, check package.json, detect Storybook. |
-| T8 | Phase 3: Build DS Component Tree | Invoke `afyapowers:analyzing-design-system` in standalone mode (reusing the stored metadata from T3) to detect → resolve → diff → emit verdicts and assemble the `## Árvore de Componentes de DS`. |
+| T8 | Phase 3: Build DS Component Tree | Reusing the stored metadata from T3, run the inline DS resolution chain to detect → resolve → diff → emit verdicts and assemble the `## Árvore de Componentes de DS`. |
 | T9 | Phase 4: Present pre-flight + item-by-item confirmation | Show the pre-flight summary and DS tree, then confirm/override each ambiguous verdict and proposed derivative name in leaves→root order. Handle rejected dependencies. |
 | T10 | Dispatch implementer subagent(s) per node | For each code-task node (leaves→root), build the extended subagent prompt and dispatch. Each subagent includes self-review against Figma data. Handle the results. |
 
@@ -146,7 +146,7 @@ Mark T5 `in_progress`. From the **stored metadata response** (Phase 1, Task T3),
 
 Mark T6 `in_progress`. For each `componentId` found, check the **stored Code Connect map** (Phase 1, Task T4) for a matching entry. No MCP calls needed. Mark T6 `completed`.
 
-**Do NOT hard-stop on missing dependencies.** Unlike the previous single-node behavior, this skill is now DS-aware: missing children are no longer a dead end. Record which dependencies already exist (Code Connect hit → likely `Importar` candidates) and which are missing (no hit → likely `Implementar`/`Derivar` candidates). This split is an **input to Phase 3** — the `afyapowers:analyzing-design-system` analysis resolves every dependency into a tree node with its own verdict, and the Dispatch phase implements the missing ones **leaves→root** in the same run. No "build the children first, then retry" round-trip.
+**Do NOT hard-stop on missing dependencies.** Unlike the previous single-node behavior, this skill is now DS-aware: missing children are no longer a dead end. Record which dependencies already exist (Code Connect hit → likely `Importar` candidates) and which are missing (no hit → likely `Implementar`/`Derivar` candidates). This split is an **input to Phase 3** — the DS resolution analysis below resolves every dependency into a tree node with its own verdict, and the Dispatch phase implements the missing ones **leaves→root** in the same run. No "build the children first, then retry" round-trip.
 
 ### Task T7 — Detect output location, framework, Storybook
 
@@ -179,21 +179,71 @@ Before proceeding: verify tasks T5–T7 are all `completed`. If any task trigger
 ## Phase 3 — Analyze Design System
 
 <MCP_ALLOWLIST>
-Permitted MCP tools in this phase: those of the `afyapowers:analyzing-design-system` resolution chain ONLY — `get_libraries`, `search_design_system`, `get_design_context` (per distinct DS original, for diff/verdict), `get_context_for_code_connect` (conditional, needs the lib file URL), and `get_code_connect_map`. These run **inside** that skill, under its own budget rules (R13, ~12 req/min, backoff on 429).
+Permitted MCP tools in this phase: the DS resolution chain ONLY — `get_libraries`, `search_design_system`, `get_design_context` (per distinct DS original, for diff/verdict), `get_context_for_code_connect` (conditional, needs the lib file URL), and `get_code_connect_map`. These run under the budget rules below (R13, ~12 req/min, backoff on 429).
 FORBIDDEN in this phase: `get_screenshot`, `get_variable_defs`, and any call whose result you already hold (do NOT re-run `get_metadata` — reuse the T3 response). If you are about to call get_screenshot or get_variable_defs, STOP.
 </MCP_ALLOWLIST>
 
-Targeted codebase reads for the existence verdict (R4/R8 — props/types, Storybook argTypes, grep of usages) are permitted here **only as part of** `afyapowers:analyzing-design-system`. No Explore agents; no convention/token scanning beyond that verdict check.
+Targeted codebase reads for the existence verdict (R4/R8 — props/types, Storybook argTypes, grep of usages) are permitted here **only as part of** the DS resolution chain below. No Explore agents; no convention/token scanning beyond that verdict check.
 
 ### Task T8 — Build the DS Component Tree
 
-Mark T8 `in_progress`. Invoke `afyapowers:analyzing-design-system` in **standalone mode**, passing the target `node-id` + `file-key` (from Phase 1, Task T1) and, if the user supplied one, the **DS library file URL**.
+Mark T8 `in_progress`. Build the `## Árvore de Componentes de DS` **inline**, for the target `node-id` + `file-key` (from Phase 1, Task T1) and, if the user supplied one, the **DS library file URL**.
 
-- **Reuse the stored metadata from Phase 1, Task T3 (R13).** The standalone mode of that skill normally does `1×` `get_metadata` to build its Node Map; you already have that response — hand it over / point the skill at it so it does **not** repeat the call. Its resolution chain starts at `get_libraries`.
-- The skill detects instances → resolves each to its DS original → diffs instance↔original → emits a 3-way existence verdict (`Implementar` / `Importar` / `Atualizar`) or `Derivar`, verified against the real codebase → assembles the `## Árvore de Componentes de DS` in leaves→root topological order. The reuse-vs-derive cut, wrapper pattern, and additive-update rules live in that skill's `references/ds-implementation.md` — do not duplicate them here.
-- **DS library URL is a critical, recurring prompt.** Without it, `get_context_for_code_connect` on the lib `COMPONENT_SET` is impossible (the Figma MCP does not expose the lib `fileKey`) — this is the **common, expected** path: the affected generics come back with `Fonte do catálogo = só observado — catálogo não confirmado`. Surface this, don't treat it as a failure.
+**Reuse the stored metadata from Phase 1, Task T3 (R13) — do NOT repeat `get_metadata`.** The instances and their `componentId` references were already scanned from that response in Phase 2, Task T5; reuse that same derived structure here instead of re-deriving it. The resolution chain below starts directly at `get_libraries`.
 
-Capture the returned tree (columns: `Nó (nome Figma · main node-id · componentKey) | Tipo Figma | Veredito | Depende de | Paridade | Nome no código (proposto) | Fonte do catálogo | Task Type`) plus any warnings (catálogo não confirmado, originais órfãos, confiança reduzida de inventário, itens fora de escopo por priorização). Mark T8 `completed`.
+**Resolution chain, Dev-seat and economical (R13).** Resolve each INSTANCE to its DS original by running the sequence below **in order**, respecting the MCP budget (~12 req/min). Each step has a single purpose; never repeat a call whose result you already hold:
+
+| # | Call | Scope / cardinality | Purpose |
+|---|------|----------------------|---------|
+| 1 | `get_libraries` | **1×**, cache the returned `libKey`s for this run | Discover the available DS libraries (R2) |
+| 2 | `search_design_system` | scoped to the cached DS libraries (not global) | Resolve the original + `assetType` + `componentKey` + docs (R2) |
+| 3 | `get_design_context` | **per distinct original, NOT per instance** | Name + main node-id + descriptions/annotations; feeds the diff (R3) |
+| 4 | `get_context_for_code_connect` | on the lib's `COMPONENT_SET`, **conditional** — see below | Full variant catalog (R5) |
+| 5 | `get_code_connect_map` + codebase search | per original | Existence verdict (R4/R8) |
+
+Budget and cache rules:
+- **Cache the `libKey`s** returned by the single `get_libraries` call and reuse them in `search_design_system` — never call `get_libraries` a second time within the same analysis.
+- **`get_design_context` is per distinct original, not per instance.** If five instances reference the same `componentId`, make **one** call for that original, not five.
+- **Never repeat a call whose result you already have.** Before any call, check whether the data is already in hand (stored metadata, lib cache, context already read).
+- **Backoff + retry on 429 (rate limit):** wait **30–60s** and retry. A 429 does **not** hard-stop the phase — it is transient, just a delay. If it persists after retries, report it as a CONCERN, not a fatal error.
+
+**Step 4 is conditional.** `get_context_for_code_connect` on the lib's `COMPONENT_SET` requires the lib file's `fileKey`, which the Figma MCP does not expose (`get_libraries` returns a `libraryKey` hash, not a `fileKey`; `search_design_system` returns `componentKey` + a virtual `filePath`, neither a `fileKey` nor `nodeId`). Therefore:
+- This step is possible **only if the user supplied the DS library file URL** (`https://figma.com/design/<fileKey>/...?node-id=...`).
+- **Without the lib URL, this is the standard path, not the exception** — go straight to the "catálogo não confirmado" fallback described below. Don't treat this as a failure; it is the common, expected case.
+- **Asking for / confirming the DS library URL is therefore a critical, recurring step**, not optional, whenever a generic is being built from scratch.
+
+**Diff instance↔original and the reuse-vs-derive cut.** Compare each INSTANCE against its resolved original (via that original's `get_design_context` plus the instance's composition from the stored metadata). The reuse-vs-derive cut and the content-only-vs-structural classification live in `references/ds-implementation.md` §1 — follow that file, do not duplicate the heuristic here. In summary: content-only diffs (text/image/icon swap, existing variant value, visibility of an existing slot) ⇒ **reuse** the generic with props/variant; structural diffs (added/removed child, layout change, composed subcomponent, new behavior, style outside any existing token/variant) ⇒ **derive** (a wrapper composing the base generic, per `references/ds-implementation.md` §2). Record the diverging fields in the **Paridade** column — it is the justification for the reuse/derive verdict.
+
+**3-way existence verdict, verified against the codebase (R4/R8/R9/R14).** For each original, decide between three verdicts by inspecting the **real code** (not just Figma):
+- **Implementar (complete)** — the generic does not exist in the codebase (not in Code Connect, not found by search). Full implementation task for the generic from scratch.
+- **Importar** — the generic already exists **and** covers the required variant. The check inspects props/types/union types, Storybook `argTypes`, and codebase usages (TypeScript props as the primary signal, Storybook and usage grep as secondary/tertiary). No new code task — just import.
+- **Atualizar (additive)** — the generic exists but is **missing** the required variant, **and** it can be added **non-breakingly** (new optional prop, new variant value, new optional slot). Requires **explicit user approval** (`references/ds-implementation.md` §3.2).
+
+**Hard rule (R9/R14):** the additive-vs-breaking determination happens **here**, in Phase 3. The check inspects the code (props/types/Storybook); if the required variant can **only** be added in a breaking way (prop removal/change, type change, default change), the verdict **already comes out as `Derivar`** — never `Atualizar`. This keeps the confirmed tree stable so Dispatch never has to reclassify at runtime.
+
+Use `get_code_connect_map` + codebase search for the existence check (R4/R8). Where the code-derived variant inventory is low-confidence (weak typing, `...rest` spreads, third-party wrappers), **flag reduced confidence** — the item-by-item confirmation in Phase 4 is the safety net.
+
+**Just-in-time catalog / "catálogo não confirmado" (R5).** When building a generic from scratch (verdict `Implementar`), the full variant catalog is just-in-time:
+- **Ask for / confirm the DS library URL** (resolution chain, step 4). With it, read the lib's `COMPONENT_SET` and assemble the full catalog; the **Fonte do catálogo** column becomes `Figma lib <url/libName>`.
+- **If the URL is unavailable** (the common path — see above), implement only the **observed** variants/states (those used on the consuming screens, inferred via the consumer's `get_design_context`) and flag **"catálogo não confirmado"**; the **Fonte do catálogo** column becomes `só observado — catálogo não confirmado`. Treat this as the expected, recurring path, with the URL prompt as a standard step.
+
+**Leaves→root order (R6).** Order the tree rows in leaves→root topological order: a component appears **after** all of its dependencies. For `Derivar`, the **first** item in the **Depende de** column is always the base generic the derivative composes — this guarantees the derivative's task only runs after the base generic's task/import.
+
+**Instance grouping and proposed derivative names (§3.5).** Instances of the same original with content-only diffs ⇒ a single "reuse" pattern (one entry). Groups with equivalent sets of structural diffs ⇒ **one derivative per group**, not one per instance. Propose each derivative's code name preserving its semantics, checking for **name collisions** in the codebase before proposing it (`references/ds-implementation.md` §3.5): if it collides, propose an alternative (e.g., `ProfileCard` exists ⇒ `ProfileCardCompact`).
+
+**Edge cases — none of these abort silently:**
+- **Orphan original** (INSTANCE whose `componentId` resolves to nothing in any lib or the codebase): implement isolated + warning; verdict `Implementar`, catalog source as available. Record the warning that the original was not found.
+- **Inaccessible lib / missing lib URL:** implement **observed** + "catálogo não confirmado" warning. This is **distinct** from an orphan — here the original *was* resolved (via `search_design_system`), but the **full variant catalog** could not be read. It is the **standard** path without the lib URL.
+- **429 (rate limit):** backoff 30–60s + retry. Does **not** fail the phase. If it persists, CONCERN, not a fatal error.
+- **Ambiguous `search_design_system` match** (more than one candidate): disambiguate using name + description + `componentKey`. If still ambiguous, **confirm with the user** — never guess.
+- **Instance with no overrides** (exact copy of the original): use the generic directly; **do not create a derivative**.
+- **Multiple instances of the same original:** one resolution (one `get_design_context`), grouped per the rule above.
+- **Combinatorial set** (`size × type × state` axes): each axis becomes an **independent prop**, not a cartesian product of variants.
+- **Component shared by multiple parents:** a **single entry** in the tree; parents reference it via the **Depende de** column. Never duplicate the row.
+- **Divergent verdict across screens** (the same instance shows different diffs on different screens): the **more specific** one wins (derive beats reuse).
+- **Tree with 30+ nodes:** ask the user to **prioritize** and **record what was left out** — never truncate silently.
+
+Capture the assembled tree (columns: `Nó (nome Figma · main node-id · componentKey) | Tipo Figma | Veredito | Depende de | Paridade | Nome no código (proposto) | Fonte do catálogo | Task Type`) plus any warnings (catálogo não confirmado, originais órfãos, confiança reduzida de inventário, itens fora de escopo por priorização). Mark T8 `completed`.
 
 For a **single self-contained component with no DS instances**, the tree is a single row (the target itself) — the flow degrades gracefully to the original single-node behavior.
 
