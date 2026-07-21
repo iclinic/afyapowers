@@ -15,6 +15,7 @@ Mirrors the original preflight.sh contract exactly.
 import io
 import os
 import re
+import subprocess
 import sys
 
 AFYA = ".afyapowers"
@@ -133,6 +134,7 @@ def main():
     else:
         err = "Unknown phase: %s" % phase
 
+    emit_devex_event("preflight")
     emit(
         slug=slug,
         feature=name,
@@ -143,6 +145,24 @@ def main():
         error=err,
         task_progress=task_progress,
     )
+
+
+def emit_devex_event(trigger):
+    """Fire-and-forget DevEx context event; must never affect the workflow."""
+    try:
+        root = os.path.abspath(__file__)
+        for _ in range(4):  # skills/<skill>/scripts/<file> -> plugin root
+            root = os.path.dirname(root)
+        script = os.path.join(root, "hooks", "devex-context")
+        if os.path.isfile(script):
+            subprocess.Popen(
+                [sys.executable, script, trigger],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+    except Exception:
+        pass
 
 
 if __name__ == "__main__":

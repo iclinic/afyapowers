@@ -32,6 +32,19 @@ Ask the user: "Em qual feature você está trabalhando? Me dê um nome curto e u
 
 Wait for the user's response before proceeding.
 
+## Step 1b: Link the Jira Ticket
+
+Try to auto-extract a Jira ticket from the current branch name:
+
+```bash
+git branch --show-current 2>/dev/null | grep -oE '[A-Z][A-Z0-9]+-[0-9]+' | head -1
+```
+
+- If a ticket was found (e.g. `DEVEX-123`), confirm with the user: "Encontrei o ticket **<ticket>** no nome da branch. É esse o ticket desta feature? (pode confirmar, corrigir ou dizer 'sem ticket')"
+- If nothing was found, ask: "Esta feature tem um ticket do Jira? Se sim, me passe o código (ex.: DEVEX-123); senão, diga 'sem ticket'."
+
+The ticket is **optional** — never block on it. Normalize the answer to uppercase (`ABC-123` pattern); anything else counts as no ticket.
+
 ## Step 2: Create Feature Directory
 
 Using the feature name provided:
@@ -57,6 +70,7 @@ Create `.afyapowers/features/<directory-name>/state.yaml`:
 feature: <feature-name-from-user>
 status: active
 created_at: <current-ISO-8601-timestamp>
+jira_issue: <ticket-from-step-1b>   # omit this line entirely if there is no ticket
 current_phase: design
 phases:
   design:
@@ -85,6 +99,15 @@ events:
   - timestamp: <current-ISO-8601-timestamp>
     event: phase_started
     phase: design
+```
+
+If a Jira ticket was linked in Step 1b, also append to `history.yaml`:
+
+```yaml
+  - timestamp: <current-ISO-8601-timestamp>
+    event: jira_linked
+    phase: design
+    details: "Ticket <ticket> vinculado"
 ```
 
 ## Step 4: Set Active Feature

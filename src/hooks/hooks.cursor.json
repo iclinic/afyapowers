@@ -4,11 +4,17 @@
     "sessionStart": [
       {
         "command": "./hooks/session-start"
+      },
+      {
+        "command": "./hooks/devex-context session-start"
       }
     ],
     "sessionEnd": [
       {
         "command": "./hooks/render-history cursor"
+      },
+      {
+        "command": "./hooks/devex-context session-end"
       }
     ]
   }

@@ -1,0 +1,215 @@
+#!/usr/bin/env python3
+"""Emit a DevEx context event for the current session. Fire-and-forget.
+
+Usage:
+  devex-context session-start   # as Claude Code hook (payload on stdin)
+  devex-context session-end     # as Claude Code hook (payload on stdin)
+  devex-context setup           # from setup.py    (/afyapowers:new)
+  devex-context preflight       # from preflight.py (/afyapowers:next)
+
+Events are POSTed directly to the DevEx collector ($AFYADEVEX_COLLECTOR_URL,
+default http://localhost:8788) so the control tower stays near-real-time; if
+the collector is unreachable (or times out in 2s) the event falls back to the
+local spool at ~/.afyadevex/events/YYYY-MM-DD.jsonl, drained later by
+`afyadevex sync` / the next launch. Spool format == wire format.
+
+Hook invocations receive the hook payload on stdin — Claude Code sends
+`session_id`/`cwd`; Cursor sends `conversation_id`/`workspace_roots` (sniffed
+the same way render-history does). Script invocations (setup/preflight) run
+outside the hook protocol, so
+session-start persists a per-cwd marker under ~/.afyadevex/sessions/ that they
+read back. Concurrent sessions in the same cwd overwrite each other's marker
+(last start wins) — acceptable for analytics.
+
+Must never block or fail the session: any error exits 0 with no output.
+"""
+
+import hashlib
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+import urllib.error
+import urllib.request
+
+AFYADEVEX_HOME = os.path.expanduser(os.environ.get("AFYADEVEX_HOME", "~/.afyadevex"))
+COLLECTOR_URL = os.environ.get("AFYADEVEX_COLLECTOR_URL", "http://localhost:8788")
+POST_TIMEOUT = 2  # seconds — the session must never wait on the collector
+
+HOOK_TRIGGERS = ("session-start", "session-end")
+SCRIPT_TRIGGERS = ("setup", "preflight")
+
+
+def utc_now():
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def run_git(cwd, *args):
+    try:
+        out = subprocess.run(
+            ["git", "-C", cwd] + list(args),
+            capture_output=True, text=True, timeout=2,
+        )
+        return out.stdout.strip() if out.returncode == 0 else ""
+    except Exception:
+        return ""
+
+
+def normalize_repo(remote_url, toplevel):
+    """git@github.com:org/repo.git | https://github.com/org/repo.git -> org/repo.
+    No remote -> local/<root basename>. Not a repo -> ''."""
+    if remote_url:
+        m = re.search(r"[:/]([^/:]+/[^/]+?)(?:\.git)?/?$", remote_url)
+        if m:
+            return m.group(1)
+    if toplevel:
+        return "local/" + os.path.basename(toplevel)
+    return ""
+
+
+def git_context(cwd):
+    toplevel = run_git(cwd, "rev-parse", "--show-toplevel")
+    if not toplevel:
+        return {}
+    ctx = {"repo": normalize_repo(run_git(cwd, "config", "--get", "remote.origin.url"), toplevel)}
+    branch = run_git(cwd, "branch", "--show-current")
+    if branch:
+        ctx["git_branch"] = branch
+    return ctx
+
+
+def yaml_value(text, key):
+    m = re.search(r"(?m)^%s:\s*(.*)$" % re.escape(key), text)
+    if not m:
+        return ""
+    return m.group(1).strip().strip("'\"")
+
+
+def feature_context(cwd):
+    afya = os.path.join(cwd, ".afyapowers")
+    active_file = os.path.join(afya, "features", "active")
+    if not os.path.isfile(active_file):
+        return {}
+    with open(active_file, encoding="utf-8") as fh:
+        slug = fh.read().strip()
+    if not slug or os.path.basename(slug) != slug:
+        return {}
+    state_file = os.path.join(afya, "features", slug, "state.yaml")
+    if not os.path.isfile(state_file):
+        return {}
+    with open(state_file, encoding="utf-8") as fh:
+        state = fh.read()
+    ctx = {"feature": slug}
+    for event_key, yaml_key in (("phase", "current_phase"), ("jira_ticket", "jira_issue")):
+        value = yaml_value(state, yaml_key)
+        if value:
+            ctx[event_key] = value
+    return ctx
+
+
+def plugin_version():
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    for manifest_dir in (".claude-plugin", ".cursor-plugin"):
+        try:
+            with open(os.path.join(root, manifest_dir, "plugin.json"), encoding="utf-8") as fh:
+                return json.load(fh).get("version", "")
+        except Exception:
+            continue
+    return ""
+
+
+def marker_path(cwd):
+    digest = hashlib.sha1(os.path.realpath(cwd).encode("utf-8")).hexdigest()
+    return os.path.join(AFYADEVEX_HOME, "sessions", digest + ".json")
+
+
+def read_marker(cwd):
+    try:
+        with open(marker_path(cwd), encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data.get("session_id"), data.get("agent")
+    except Exception:
+        return None, None
+
+
+def write_marker(cwd, session_id, agent):
+    path = marker_path(cwd)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump({"session_id": session_id, "agent": agent, "ts": utc_now(), "cwd": cwd}, fh)
+
+
+def spool(event):
+    spool_dir = os.path.join(AFYADEVEX_HOME, "events")
+    os.makedirs(spool_dir, exist_ok=True)
+    path = os.path.join(spool_dir, time.strftime("%Y-%m-%d", time.gmtime()) + ".jsonl")
+    with open(path, "a", encoding="utf-8") as fh:
+        fh.write(json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n")
+
+
+def post_to_collector(event):
+    """POST the event to the collector. Returns True on success."""
+    base = COLLECTOR_URL.rstrip("/")
+    if not base:
+        return False
+    req = urllib.request.Request(
+        base + "/v1/context-events",
+        data=json.dumps(event, ensure_ascii=False, sort_keys=True).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=POST_TIMEOUT) as resp:
+            return resp.status == 200
+    except Exception:
+        return False
+
+
+def emit(event):
+    """Collector first (near-real-time control tower); spool as fallback."""
+    if not post_to_collector(event):
+        spool(event)
+
+
+def main():
+    trigger = sys.argv[1] if len(sys.argv) > 1 else ""
+    if trigger not in HOOK_TRIGGERS + SCRIPT_TRIGGERS:
+        return
+
+    if trigger in HOOK_TRIGGERS:
+        payload = json.load(sys.stdin)
+        # Cursor sends conversation_id/workspace_roots; Claude sends session_id/cwd.
+        is_cursor = bool(payload.get("cursor_version") or payload.get("conversation_id"))
+        agent = "cursor" if is_cursor else "claude"
+        session_id = payload.get("session_id") or payload.get("conversation_id")
+        roots = payload.get("workspace_roots") or []
+        cwd = payload.get("cwd") or (roots[0] if roots else "") or os.getcwd()
+        if trigger == "session-start" and session_id:
+            write_marker(cwd, session_id, agent)
+    else:
+        cwd = os.getcwd()
+        session_id, agent = read_marker(cwd)
+        agent = agent or "unknown"
+
+    event = {
+        "claude_session_id": session_id if agent == "claude" else None,
+        "ts": utc_now(),
+        "trigger": trigger,
+        "agent": agent,
+        "afyapowers_version": plugin_version(),
+    }
+    if agent == "cursor" and session_id:
+        event["cursor_conversation_id"] = session_id
+    event.update(git_context(cwd))
+    event.update(feature_context(cwd))
+    emit(event)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception:
+        pass
+    sys.exit(0)
