@@ -64,7 +64,7 @@ If `get_metadata` fallback calls in Step 3 pushed your total above 10, pause bef
 
 Before touching design data, branch on `[VERDICT]`. The verdict comes from the design/plan phase (design-system analysis) and decides what "implementing this component" means. This same branch applies to both entry paths — a workflow `UI Component` task and a standalone dispatch (R10).
 
-The detailed rules for each mode — the reuse-vs-derive cut, the wrapper pattern, additive-update constraints, and combinatorial-props guidance — live in `references/ds-implementation.md` in the `{{skill:analyzing-design-system}}` skill. Read it and follow it; the summaries below only orient you to the right mode. Do not duplicate those rules here.
+The detailed rules for each mode — the reuse-vs-derive cut, the wrapper pattern, additive-update constraints, and combinatorial-props guidance — live in `references/ds-implementation.md` in the `{{skill:figma-component}}` skill. Read it and follow it; the summaries below only orient you to the right mode. Do not duplicate those rules here.
 
 - **`implementar`** (default when verdict is absent) — Build the **generic** component from scratch with ALL its variants. Each Figma variant axis (`size`, `type`, `state`, …) becomes an **independent prop**, never a cartesian-product union (see `ds-implementation.md` §3.3). This is the full original workflow: proceed through Steps 1–7 exactly as written below.
 
