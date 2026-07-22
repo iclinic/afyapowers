@@ -7,7 +7,7 @@ Before EVERY Figma MCP tool call, you MUST check:
 2. Is this tool listed in the current phase's MCP_ALLOWLIST?
 3. If NO → STOP. Do not call it. Only the implementer subagent may use it.
 
-NEVER call get_screenshot or get_variable_defs — only the subagent calls these. NEVER call get_design_context to implement the component — that is the subagent's job. (Phase 3 has a single scoped exception: the DS resolution chain in Phase 3 below may call get_design_context per distinct DS original, plus get_libraries / search_design_system / get_context_for_code_connect / get_code_connect_map, for diff/verdict ONLY — see the Phase 3 MCP_ALLOWLIST. These resolve DS originals and emit verdicts; they never implement.)
+NEVER call get_screenshot or get_variable_defs — only the subagent calls these. NEVER call get_design_context to implement the component — that is the subagent's job. (Phase 3 has a single scoped exception: the resolution chain in Phase 3 below may call get_design_context per distinct DS original, plus get_libraries / search_design_system / get_context_for_code_connect / get_code_connect_map, AND get_metadata **re-pointed at a dependency's componentId** to resolve/read a same-file component defined on another page and recurse into its subtree, for resolution/diff/verdict ONLY — see the Phase 3 MCP_ALLOWLIST. These resolve originals and emit verdicts; they never implement. The ban on re-running get_metadata applies to the TARGET node only — reuse the T3 response for the target.)
 NEVER launch Explore agents or scan the codebase for conventions, tokens, or patterns — EXCEPT the targeted codebase existence check performed inline in Phase 3 for its 3-way verdict (R4/R8).
 NEVER run phases in parallel. Execute Phase 1, then Phase 2, then Phase 3, then Phase 4, then Dispatch, in order.
 NEVER implement the component yourself. You are the orchestrator. The subagent implements. Building the DS tree in Phase 3 is analysis, not implementation.
@@ -36,10 +36,10 @@ Create the following tasks in order:
 | T2 | Phase 1.2: Check MCP availability | Verify all 5 required Figma MCP tools are callable. |
 | T3 | Phase 1.3: Validate node type via get_metadata | Call get_metadata and confirm the node is COMPONENT or COMPONENT_SET. Store the full response. |
 | T4 | Phase 1.4: Check Code Connect via get_code_connect_map | Call get_code_connect_map and check for existing implementation. Store the full response. |
-| T5 | Phase 2.1: Check child dependencies from stored metadata | Scan stored metadata for INSTANCE nodes with componentId references. |
-| T6 | Phase 2.2: Cross-reference dependencies with Code Connect map | Check each componentId against the stored Code Connect map. Feed the DS analysis; do NOT hard-stop on missing deps. |
+| T5 | Phase 2.1: Check child dependencies from stored metadata | Scan stored metadata for INSTANCE nodes with componentId references. Flag which componentIds resolve inside the T3 subtree vs. which point outside it (other page / library — resolved in Phase 3). |
+| T6 | Phase 2.2: Cross-reference dependencies with Code Connect map | Check each componentId against the stored Code Connect map. A hit = child already exists → `Importar` (recursion stops there). Feed the analysis; do NOT hard-stop on missing deps. |
 | T7 | Phase 2.3: Detect output location, framework, Storybook | Glob for component directories, check package.json, detect Storybook. |
-| T8 | Phase 3: Build DS Component Tree | Reusing the stored metadata from T3, run the inline DS resolution chain to detect → resolve → diff → emit verdicts and assemble the `## Árvore de Componentes de DS`. |
+| T8 | Phase 3: Build Component Tree | Reusing the stored metadata from T3, run the inline resolution chain to detect → resolve (same-file/other-page via get_metadata, DS library, or codebase) → recurse leaves→root (existence gates recursion) → diff → emit verdicts and assemble the `## Árvore de Componentes de DS`. |
 | T9 | Phase 4: Present pre-flight + item-by-item confirmation | Show the pre-flight summary and DS tree, then confirm/override each ambiguous verdict and proposed derivative name in leaves→root order. Handle rejected dependencies. |
 | T10 | Dispatch implementer subagent(s) per node | For each code-task node (leaves→root), build the extended subagent prompt and dispatch. Each subagent includes self-review against Figma data. Handle the results. |
 
@@ -140,13 +140,15 @@ Limited codebase access: only Glob and reading `package.json` / config files. No
 
 ### Task T5 — Check dependencies
 
-Mark T5 `in_progress`. From the **stored metadata response** (Phase 1, Task T3), recursively scan all descendant nodes for `INSTANCE` types with `componentId` references. No MCP calls needed. Mark T5 `completed`.
+Mark T5 `in_progress`. From the **stored metadata response** (Phase 1, Task T3), recursively scan all descendant nodes for `INSTANCE` types with `componentId` references. No MCP calls needed.
+
+**Classify each distinct `componentId`:** does its main component node already appear **inside the T3 subtree** (same page/subtree captured) or **not** (its definition lives on another page, in a DS library, or is unknown)? Those outside the subtree are **not** resolved here — record them as "to resolve in Phase 3." This split is what Phase 3 walks. Mark T5 `completed`.
 
 ### Task T6 — Cross-reference dependencies
 
 Mark T6 `in_progress`. For each `componentId` found, check the **stored Code Connect map** (Phase 1, Task T4) for a matching entry. No MCP calls needed. Mark T6 `completed`.
 
-**Do NOT hard-stop on missing dependencies.** Unlike the previous single-node behavior, this skill is now DS-aware: missing children are no longer a dead end. Record which dependencies already exist (Code Connect hit → likely `Importar` candidates) and which are missing (no hit → likely `Implementar`/`Derivar` candidates). This split is an **input to Phase 3** — the DS resolution analysis below resolves every dependency into a tree node with its own verdict, and the Dispatch phase implements the missing ones **leaves→root** in the same run. No "build the children first, then retry" round-trip.
+**Do NOT hard-stop on missing dependencies.** Unlike the previous single-node behavior, this skill is now DS-aware and composition-aware: missing children are no longer a dead end. Record which dependencies already exist (Code Connect hit → likely `Importar` candidates, and **recursion stops** at them — they are done) and which are missing (no hit → likely `Implementar`/`Derivar` candidates that Phase 3 must resolve and, if same-file, **recurse into**). This split is an **input to Phase 3** — the resolution analysis below resolves every dependency into a tree node with its own verdict, and the Dispatch phase implements the missing ones **leaves→root** in the same run. No "build the children first, then retry" round-trip.
 
 ### Task T7 — Detect output location, framework, Storybook
 
@@ -179,8 +181,8 @@ Before proceeding: verify tasks T5–T7 are all `completed`. If any task trigger
 ## Phase 3 — Analyze Design System
 
 <MCP_ALLOWLIST>
-Permitted MCP tools in this phase: the DS resolution chain ONLY — `get_libraries`, `search_design_system`, `get_design_context` (per distinct DS original, for diff/verdict), `get_context_for_code_connect` (conditional, needs the lib file URL), and `get_code_connect_map`. These run under the budget rules below (R13, ~12 req/min, backoff on 429).
-FORBIDDEN in this phase: `get_screenshot`, `get_variable_defs`, and any call whose result you already hold (do NOT re-run `get_metadata` — reuse the T3 response). If you are about to call get_screenshot or get_variable_defs, STOP.
+Permitted MCP tools in this phase: the resolution chain ONLY — `get_libraries`, `search_design_system`, `get_design_context` (per distinct DS original, for diff/verdict), `get_context_for_code_connect` (conditional, needs the lib file URL), `get_code_connect_map`, and `get_metadata` **re-pointed at a dependency's `componentId`** to resolve/read a same-file component defined on another page and to recurse into its subtree (one call per distinct not-yet-cached same-file component). These run under the budget rules below (R13, ~12 req/min, backoff on 429).
+FORBIDDEN in this phase: `get_screenshot`, `get_variable_defs`, and re-running `get_metadata` **on the TARGET node** (reuse the T3 response) or any call whose result you already hold. Calling `get_metadata` on a dependency `componentId` you have not yet resolved is ALLOWED (that is the cross-page resolution). If you are about to call get_screenshot or get_variable_defs, STOP.
 </MCP_ALLOWLIST>
 
 Targeted codebase reads for the existence verdict (R4/R8 — props/types, Storybook argTypes, grep of usages) are permitted here **only as part of** the DS resolution chain below. No Explore agents; no convention/token scanning beyond that verdict check.
@@ -189,9 +191,28 @@ Targeted codebase reads for the existence verdict (R4/R8 — props/types, Storyb
 
 Mark T8 `in_progress`. Build the `## Árvore de Componentes de DS` **inline**, for the target `node-id` + `file-key` (from Phase 1, Task T1) and, if the user supplied one, the **DS library file URL**.
 
-**Reuse the stored metadata from Phase 1, Task T3 (R13) — do NOT repeat `get_metadata`.** The instances and their `componentId` references were already scanned from that response in Phase 2, Task T5; reuse that same derived structure here instead of re-deriving it. The resolution chain below starts directly at `get_libraries`.
+**Reuse the stored metadata from Phase 1, Task T3 (R13) — do NOT repeat `get_metadata` on the target.** The target's instances and their `componentId` references were already scanned from that response in Phase 2, Task T5; reuse that same derived structure here instead of re-deriving it.
 
-**Resolution chain, Dev-seat and economical (R13).** Resolve each INSTANCE to its DS original by running the sequence below **in order**, respecting the MCP budget (~12 req/min). Each step has a single purpose; never repeat a call whose result you already hold:
+#### Resolve each dependency (4-way) and recurse leaves→root
+
+The target may be **composed** of other components (e.g. `multi-select = input + menu`), and those sub-components frequently live **in the same Figma file, on another page**. Build the full tree by resolving **each distinct `componentId`** through the four routes below, **in order**, keeping a **visited-set** of already-resolved `componentId`s (dedup + cycle guard — never resolve or recurse the same `componentId` twice):
+
+1. **Already in stored metadata** — the main component node appears inside the T3 subtree (same page/subtree). Use it directly; **no MCP call**.
+2. **Same-file, another page** — call **`get_metadata(fileKey, componentId)`** (node-ids are file-global, so this reads the main component wherever it lives in the file). If it resolves to a `COMPONENT`/`COMPONENT_SET` **in this file**, it is a **same-file component (possibly on another page)**. Store its metadata.
+3. **DS library** — if step 2 does not resolve in this file, run the **DS library resolution chain** below (`get_libraries` → `search_design_system` → …). This is the published-library path.
+4. **Orphan** — resolves in none of the above (not in-file, not in any lib, not in the codebase): implement isolated + warning (see edge cases).
+
+**Existence gates recursion.** For every resolved dependency (routes 1–3), run the existence check (`get_code_connect_map` + codebase search by name — R4/R8):
+- **Exists in code** → verdict `Importar`; **STOP — do not recurse into it.** It is done; parents just import it.
+- **Does not exist** → it must be implemented, so **recurse**: for a **same-file** dependency (routes 1–2), scan **its** metadata subtree for `INSTANCE` `componentId`s and resolve each one through this same 4-way procedure, until you reach **leaves** (components with no further sub-component instances). DS-library and orphan dependencies are leaves for recursion purposes (their internals are not ours to decompose).
+
+Each resolved node becomes a tree row with its own verdict; its sub-components go in its **Depende de** column. A node whose Figma structure renders ≥1 sub-component as a structural child is a **composite** — its own verdict is `Implementar` (a new component built from Figma) and its children are listed in **Depende de** (they are dispatched first and imported, never reimplemented — see Dispatch `[COMPOSE_FROM]`).
+
+**Budget for cross-page resolution (R13).** One `get_metadata` per distinct **not-yet-cached** same-file `componentId` (the visited-set prevents repeats and shared-component fan-out). Respect the ~12 req/min budget; backoff 30–60s on 429 (transient, does not abort). If the recursive tree grows large, apply the "30+ nodes" prioritization rule in the edge cases below — never truncate silently.
+
+#### DS library resolution chain (route 3), Dev-seat and economical (R13)
+
+**Resolution chain (route 3 above).** Resolve an INSTANCE to its **published DS library** original by running the sequence below **in order**, respecting the MCP budget (~12 req/min). Each step has a single purpose; never repeat a call whose result you already hold:
 
 | # | Call | Scope / cardinality | Purpose |
 |---|------|----------------------|---------|
@@ -232,7 +253,9 @@ Use `get_code_connect_map` + codebase search for the existence check (R4/R8). Wh
 **Instance grouping and proposed derivative names (§3.5).** Instances of the same original with content-only diffs ⇒ a single "reuse" pattern (one entry). Groups with equivalent sets of structural diffs ⇒ **one derivative per group**, not one per instance. Propose each derivative's code name preserving its semantics, checking for **name collisions** in the codebase before proposing it (`references/ds-implementation.md` §3.5): if it collides, propose an alternative (e.g., `ProfileCard` exists ⇒ `ProfileCardCompact`).
 
 **Edge cases — none of these abort silently:**
-- **Orphan original** (INSTANCE whose `componentId` resolves to nothing in any lib or the codebase): implement isolated + warning; verdict `Implementar`, catalog source as available. Record the warning that the original was not found.
+- **Orphan original** (INSTANCE whose `componentId` resolves to nothing: **not in-file via `get_metadata`**, not in any lib, and not in the codebase): implement isolated + warning; verdict `Implementar`, catalog source as available. Record the warning that the original was not found. Do NOT classify a same-file/other-page component as orphan just because it is not in a published library — route 2 (`get_metadata` on the componentId) resolves it first.
+- **Same-file dependency that also exists in code** (route 1/2 resolves it AND the existence check finds it): verdict `Importar`; **do not recurse into it** — it is already implemented, parents just import it.
+- **Cyclic dependency** (a component whose subtree references an ancestor `componentId`): the visited-set stops the recursion; reference the existing tree row via **Depende de**, never resolve/recurse it twice.
 - **Inaccessible lib / missing lib URL:** implement **observed** + "catálogo não confirmado" warning. This is **distinct** from an orphan — here the original *was* resolved (via `search_design_system`), but the **full variant catalog** could not be read. It is the **standard** path without the lib URL.
 - **429 (rate limit):** backoff 30–60s + retry. Does **not** fail the phase. If it persists, CONCERN, not a fatal error.
 - **Ambiguous `search_design_system` match** (more than one candidate): disambiguate using name + description + `componentKey`. If still ambiguous, **confirm with the user** — never guess.
@@ -243,9 +266,9 @@ Use `get_code_connect_map` + codebase search for the existence check (R4/R8). Wh
 - **Divergent verdict across screens** (the same instance shows different diffs on different screens): the **more specific** one wins (derive beats reuse).
 - **Tree with 30+ nodes:** ask the user to **prioritize** and **record what was left out** — never truncate silently.
 
-Capture the assembled tree (columns: `Nó (nome Figma · main node-id · componentKey) | Tipo Figma | Veredito | Depende de | Paridade | Nome no código (proposto) | Fonte do catálogo | Task Type`) plus any warnings (catálogo não confirmado, originais órfãos, confiança reduzida de inventário, itens fora de escopo por priorização). Mark T8 `completed`.
+Capture the assembled tree (columns: `Nó (nome Figma · main node-id · componentKey) | Tipo Figma | Veredito | Depende de | Paridade | Nome no código (proposto) | Fonte do catálogo | Task Type`) plus any warnings (catálogo não confirmado, originais órfãos, confiança reduzida de inventário, itens fora de escopo por priorização). For each node, note its **origem de resolução** (same-file/outra-página · DS library · código · orphan) — fold it into the **Fonte do catálogo** column (e.g. `same-file p.<página>` / `Figma lib <name>` / `código`); the **main node-id** column already records the node-id resolved via `get_metadata` for same-file/other-page nodes. Mark T8 `completed`.
 
-For a **single self-contained component with no DS instances**, the tree is a single row (the target itself) — the flow degrades gracefully to the original single-node behavior.
+For a **single self-contained component with no sub-component instances**, the tree is a single row (the target itself) — the flow degrades gracefully to the original single-node behavior.
 
 ---
 
@@ -272,7 +295,8 @@ Mark T9 `in_progress`. First show the global pre-flight summary:
 
 - **Target component:** <name> (<COMPONENT | COMPONENT_SET>)
 - **Variants:** <count> — <list> (if COMPONENT_SET)
-- **DS tree:** <N> nodes — <count Implementar> to implement, <count Derivar> to derive, <count Atualizar> to update, <count Importar> to reuse
+- **Component tree:** <N> nodes — <count Implementar> to implement, <count Derivar> to derive, <count Atualizar> to update, <count Importar> to reuse
+- **Composition:** <count composites> composed of sub-components; <count resolved from another page of this file>; recursion depth <D>
 - **Suggested directory:** <path> (you can override this)
 - **Framework:** <detected> (you can override this)
 - **Storybook:** detected — generate story files? (yes/no) | not detected
@@ -327,14 +351,14 @@ You as the orchestrator must NOT call any Figma MCP tools here.
 Mark T10 `in_progress`. Walk the confirmed DS tree in **leaves→root order** and dispatch @"figma-component-implementer (agent)" **once per code-task node**. A node with a code task is one whose `Task Type` is a code task (e.g. `UI Component`) — i.e. verdict `Implementar`, `Derivar`, or `Atualizar`. **Skip `Importar` nodes** (`Task Type = —`): no new code is dispatched; record the existing import path/symbol so parents reference it.
 
 **Ordering & dependency rules:**
-- Never dispatch a node before every node in its `Depende de` column has been dispatched (or is an already-satisfied `Importar`). For a `Derivar` node, its base — the **first** item in `Depende de` — must be implemented/imported first so the wrapper can compose it.
+- Never dispatch a node before every node in its `Depende de` column has been dispatched (or is an already-satisfied `Importar`). For a `Derivar` node, its base — the **first** item in `Depende de` — must be implemented/imported first so the wrapper can compose it. For a **composite** `Implementar` node, ALL children in `Depende de` must be implemented/imported first; pass them as `[COMPOSE_FROM]` so the subagent imports and composes them.
 - **Shared components are dispatched once.** A node depended on by several parents is implemented a single time; every parent reuses that result. Never dispatch it per parent.
 - **Skipped nodes.** Do NOT dispatch a node the user rejected in Phase 4, nor a parent chosen to be skipped because of a rejected dependency. For a parent confirmed as "implement without the dependency", dispatch it and state in the prompt that the missing child is intentionally omitted (placeholder / rendered without it).
 
 Build each subagent prompt filling in **per node** (from that node's tree row / stored metadata), plus the global confirmed settings:
 
-- `[FILE_KEY]` — the node's Figma file key (the target `fileKey` from Phase 1, Task T1 for nodes in the target file)
-- `[NODE_ID]` — the node's main node-id (from its tree row / stored metadata)
+- `[FILE_KEY]` — the node's Figma file key. Same-file/other-page nodes keep the **same `fileKey`** as the target (from Phase 1, Task T1) — a different page is not a different file.
+- `[NODE_ID]` — the node's main node-id. For same-file/other-page nodes this is the **main component node-id resolved via `get_metadata`** in Phase 3 (route 2), not the instance node-id.
 - `[NODE_TYPE]` — COMPONENT or COMPONENT_SET for that node
 - `[VARIANT_LIST]` — variant names for that node (or "N/A — single component")
 - `[OUTPUT_DIRECTORY]` — confirmed path from Phase 4
@@ -343,6 +367,7 @@ Build each subagent prompt filling in **per node** (from that node's tree row / 
 - `[COMPONENT_NAME]` — the confirmed code name for the node (proposed name from the tree, as confirmed/overridden in Phase 4)
 - `[VERDICT]` — the confirmed verdict for the node: `implementar` | `importar` | `atualizar` | `derivar` (lowercase). Controls the subagent's behavior mode.
 - `[BASE_COMPONENT]` — for `derivar`, the existing generic base the wrapper composes (the first item in `Depende de`); for `atualizar`, the set being extended. Empty otherwise.
+- `[COMPOSE_FROM]` — for a **composite** node (`implementar` with sub-components in its `Depende de`), the list of child components it must import and compose, each as `{ confirmed code name, resolved import path }`. By the time this node is dispatched, every child has already been implemented or imported (leaves→root order), so each entry has a real resolved path. The subagent imports and composes these — it MUST NOT reimplement them. Empty for nodes that compose nothing. (Distinct from `[BASE_COMPONENT]`: that is a single base being *derived from*; `[COMPOSE_FROM]` is N peer children being *composed*.)
 - `[CATALOG_SOURCE]` — from the node's `Fonte do catálogo` column, mapped to the subagent's contract: `código` (project code inventory), `Figma lib URL` (lib file read via the provided URL), or `só observado` (catalog NOT confirmed). This calibrates the "catálogo não confirmado" warning.
 
 Dispatch nodes sequentially in leaves→root order; wait for each subagent to return before dispatching the next node that depends on it (independent leaves may be dispatched in the same wave). Handle each result per the section below.

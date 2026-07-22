@@ -82,6 +82,19 @@ O wrapper:
 - **Nao substitua o generico por reimplementacao.** Se o derivado deixa de usar o generico e reimplementa tudo do zero, ele nao e um derivado -- e um componente separado, e a decisao de design deve refletir isso.
 - **Nao importe o generico apenas para descartar a maior parte dele.** Se o wrapper usa menos de ~30% da renderizacao do generico, questione se a composicao faz sentido ou se um componente independente seria mais claro.
 
+### 2.3 Composicao de multiplos componentes (peers)
+
+Um **composto** difere de um **derivado**: o derivado (secoes 2/2.1) e um wrapper sobre **um unico** generico base do qual ele estende; um composto e um componente **novo** montado a partir de **N componentes peer**, sem um base primario unico. Exemplo: `multi-select = input + menu` -- nem o input nem o menu e "o base"; ambos sao filhos compostos lado a lado.
+
+Os filhos de um composto chegam ao implementer pela lista `[COMPOSE_FROM]` (`{ nome de codigo, import path }` por filho). Quando o composto e implementado (verdict `implementar`), **todos os filhos ja existem no codigo** -- o orquestrador os implementou/importou antes, em ordem folhas->raiz. Regras:
+
+1. **Importe e componha cada filho** de `[COMPOSE_FROM]` pelo seu import path resolvido -- renderize-os na estrutura que o Figma mostra.
+2. **Nao reimplemente** nenhum filho listado (mesma proibicao da secao 2.2): nunca copie/reinline o codigo-fonte de um filho que ja existe.
+3. **Adicione apenas** o que o composto tem de proprio: layout, wiring/estado entre os filhos, e quaisquer elementos extras que nao sejam os filhos.
+4. **Exporte** sua propria interface de props, que orquestra os filhos (superconjunto ou interface independente que abstrai a composicao).
+
+Se um filho listado nao existe ou seu import nao resolve, isso e um problema **BLOCKING** -- reporte, nao reimplemente para tapar o buraco (a ordenacao folhas->raiz do orquestrador deveria ter garantido a existencia).
+
 ---
 
 ## 3. Isolamento, Atualizacao Aditiva e Casos de Borda
