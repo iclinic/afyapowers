@@ -7,17 +7,17 @@ Usage:
   devex-context setup           # from setup.py    (/afyapowers:new)
   devex-context preflight       # from preflight.py (/afyapowers:next)
 
-Events are POSTed directly to the DevEx collector ($AFYADEVEX_COLLECTOR_URL,
+Events are POSTed directly to the DevEx collector ($AFYAPOWERS_COLLECTOR_URL,
 default http://localhost:8788) so the control tower stays near-real-time; if
 the collector is unreachable (or times out in 2s) the event falls back to the
-local spool at ~/.afyadevex/events/YYYY-MM-DD.jsonl, drained later by
-`afyadevex sync` / the next launch. Spool format == wire format.
+local spool at ~/.afyapowers/events/YYYY-MM-DD.jsonl, drained later by
+`afyapowers sync` / the next launch. Spool format == wire format.
 
 Hook invocations receive the hook payload on stdin — Claude Code sends
 `session_id`/`cwd`; Cursor sends `conversation_id`/`workspace_roots` (sniffed
 the same way render-history does). Script invocations (setup/preflight) run
 outside the hook protocol, so
-session-start persists a per-cwd marker under ~/.afyadevex/sessions/ that they
+session-start persists a per-cwd marker under ~/.afyapowers/sessions/ that they
 read back. Concurrent sessions in the same cwd overwrite each other's marker
 (last start wins) — acceptable for analytics.
 
@@ -34,8 +34,8 @@ import time
 import urllib.error
 import urllib.request
 
-AFYADEVEX_HOME = os.path.expanduser(os.environ.get("AFYADEVEX_HOME", "~/.afyadevex"))
-COLLECTOR_URL = os.environ.get("AFYADEVEX_COLLECTOR_URL", "http://localhost:8788")
+AFYAPOWERS_HOME = os.path.expanduser(os.environ.get("AFYAPOWERS_HOME", "~/.afyapowers"))
+COLLECTOR_URL = os.environ.get("AFYAPOWERS_COLLECTOR_URL", "http://localhost:8788")
 POST_TIMEOUT = 2  # seconds — the session must never wait on the collector
 
 HOOK_TRIGGERS = ("session-start", "session-end")
@@ -122,7 +122,7 @@ def plugin_version():
 
 def marker_path(cwd):
     digest = hashlib.sha1(os.path.realpath(cwd).encode("utf-8")).hexdigest()
-    return os.path.join(AFYADEVEX_HOME, "sessions", digest + ".json")
+    return os.path.join(AFYAPOWERS_HOME, "sessions", digest + ".json")
 
 
 def read_marker(cwd):
@@ -142,7 +142,7 @@ def write_marker(cwd, session_id, agent):
 
 
 def spool(event):
-    spool_dir = os.path.join(AFYADEVEX_HOME, "events")
+    spool_dir = os.path.join(AFYAPOWERS_HOME, "events")
     os.makedirs(spool_dir, exist_ok=True)
     path = os.path.join(spool_dir, time.strftime("%Y-%m-%d", time.gmtime()) + ".jsonl")
     with open(path, "a", encoding="utf-8") as fh:
