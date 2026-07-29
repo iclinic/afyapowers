@@ -42,16 +42,16 @@
 <!-- Componentes, como interagem -->
 
 ## Decisões de Reúso de Componentes
-<!-- Preenchida sempre que o design reutiliza um componente existente do codebase/DS. Uma linha por reúso. Um
-     componente só pode ser reutilizado silenciosamente SE for uma correspondência exata nos três eixos (Name +
-     Layout + Behavior). Qualquer outra coisa exige aprovação explícita do usuário antes de adotá-lo.
-     Decision = "Exact match (auto)" ou "Approved by user" ou "Build custom (rejected)".
-     Remova esta seção se nenhum componente for reutilizado. -->
+<!-- Uma linha por candidato de reúso avaliado (componentes de DS do Figma vão na Árvore de DS, não aqui).
+     NENHUMA adoção automática: o agente recomenda, o usuário decide cada linha.
+     Decisão ∈ "Aprovado pelo usuário" | "Rejeitado pelo usuário (build custom)"; divergência entre as
+     colunas = usuário sobrescreveu (mantenha o registro). Remova a seção se nenhum candidato foi avaliado. -->
 
-| Target (Figma node / requisito) | Componente candidato | Name | Layout | Behavior | Decision |
-|---------------------------------|----------------------|------|--------|----------|----------|
-<!-- ex.: | Specialty Chip (2:5471) | DropdownPicker (DS) | ✗ | ✗ | ✗ drawer vs popover | Build custom (rejected) | -->
-<!-- ex.: | Submit Button (3:120)   | PrimaryButton (DS)  | ✓ | ✓ | ✓                   | Exact match (auto)     | -->
+| Target (Figma node / requisito) | Componente candidato | Name | Layout | Behavior | Recomendação do agente | Decisão do usuário |
+|---------------------------------|----------------------|------|--------|----------|------------------------|--------------------|
+<!-- ex.: | Specialty Chip (2:5471) | DropdownPicker (DS) | ✗ | ✗ | ✗ drawer vs popover | Build custom | Rejeitado pelo usuário (build custom) | -->
+<!-- ex.: | Submit Button (3:120)   | PrimaryButton       | ✓ | ✓ | ✓                   | Reusar               | Aprovado pelo usuário                 | -->
+<!-- ex.: | Filter Row (4:88)       | ToolbarRow          | ✓ | ✓ | ✓                   | Reusar               | Rejeitado pelo usuário (build custom) | ← divergência registrada -->
 
 ## Fluxo de Dados
 <!-- Como os dados transitam pelo sistema -->
@@ -97,48 +97,115 @@
 
 ## Recursos do Figma
 <!-- Incluído apenas quando a feature tem designs no Figma. Remova esta seção se não se aplicar. -->
-<!-- Se a feature abrange múltiplos arquivos do Figma, repita a estrutura File/File Key/Node Map para cada arquivo. -->
+<!-- Estrutura: Arquivos → Telas → Componentes → Anotações. Cada entrada de Telas e de Componentes é
+     AUTOSSUFICIENTE: carrega tudo que é necessário para buscá-la no Figma (fileKey, node id, nome, tipo),
+     sem depender de outra seção. Telas recebem IDs T1, T2…; Componentes recebem C1, C2…
+     Essas IDs são a chave usada pelo Contrato de Layout (por T#) e pela Árvore de Componentes de DS (por C#),
+     para que nenhuma coordenada seja repetida em dois lugares e possa divergir. -->
 
-**File:** `<figma_url>`
-**File Key:** `<file_key>`
+### Arquivos
+<!-- Todo arquivo do Figma envolvido: o da tela e cada arquivo de origem de componente (ex.: o do design system).
+     Necessário porque um componente pode ter origem em arquivo diferente do da tela. -->
+
+| # | Papel | URL | fileKey |
+|---|-------|-----|---------|
+<!-- ex.: | F1 | telas da feature      | figma.com/design/eS5l5l…/Transmissões?node-id=3048-1870 | `eS5l5l…` | -->
+<!-- ex.: | F2 | design system (origem) | figma.com/design/AbC123/Core-Components?node-id=45-12   | `AbC123`  | -->
 
 ### Breakpoints
 <!-- Inferidos a partir dos nomes e dimensões dos frames de topo na resposta do get_metadata -->
-- <breakpoint_name>: <width>px (Frame "<frame_name>", node `<node_id>`)
+- <breakpoint_name>: <width>px (Tela T<n> "<frame_name>", node `<node_id>`)
 
-### Node Map
-<!-- Uma única chamada get_metadata em depth 2. Separado em subseções Reusable Components e Screens. -->
-<!-- Nós COMPONENT/COMPONENT_SET vão em Reusable Components. Todo o resto fica em Screens. -->
+### Telas
+<!-- Uma entrada por FRAME de topo. Cada uma autossuficiente para fetch: arquivo, node id, tipo, dimensões.
+     Filhos INSTANCE referenciam o componente por C# — a identidade e as coordenadas do componente vivem em
+     ### Componentes, não aqui, para não duplicar.
+     Marque "(subárvore não explorada)" em todo nó com filhos não percorridos (limite de depth 2). -->
 
-#### Page: <page_name>
-
-**Componentes Reutilizáveis:**
-<!-- Liste todos os nós COMPONENT/COMPONENT_SET com node IDs. Se nenhum, escreva: (nenhum — todos os componentes são externos ou pré-existentes) -->
-- <component_name> (node `<node_id>`, COMPONENT)
-- <component_set_name> (node `<node_id>`, COMPONENT_SET)
-
-**Telas:**
-<!-- Liste cada FRAME de topo com filhos (excluindo COMPONENT/COMPONENT_SET já listados acima). Colapse nós INSTANCE repetidos com contagem ×N. -->
-- **<screen_name>** (node `<node_id>`, FRAME, <width>x<height>)
-  - <element_name> (node `<node_id>`, INSTANCE, componentId: `<component_id>`) ×N
+#### T1 — <screen_name>
+- **Arquivo:** F1 (`<file_key>`)
+- **Node ID:** `<node_id>`
+- **Tipo:** FRAME
+- **Dimensões:** <width>x<height>
+- **Breakpoint:** <breakpoint_name>
+- **Página no Figma:** <page_name>
+- **Conteúdo:**
+  - C1 <component_name> ×3 (instâncias: `<node_id>`, `<node_id>`, `<node_id>`)
+  - C2 <component_name> ×1 (instância: `<node_id>`) (subárvore não explorada)
   - <leaf_name> (node `<node_id>`, TEXT)
+
+### Componentes
+<!-- Uma entrada por componente DISTINTO, autossuficiente para fetch do ORIGINAL (o COMPONENT/COMPONENT_SET
+     no arquivo que o DECLARA — nunca a instância; regras completas na skill analyzing-design-system).
+     Identidade = fileKey + node id (a URL de origem não é guardada). Coordenada preenchida = original
+     resolvido e validado. Tipo: COMPONENT_SET (eixos de variante) | COMPONENT (único).
+     Coordenada não resolvida → campos `—` + linha `Pendência:`; um componente com Pendência bloqueia a
+     fase design e NÃO entra na Árvore de Componentes de DS. -->
+
+#### C1 — <component_name>
+- **Arquivo do original:** F2 (`<file_key>`)
+- **Node ID do original:** `<node_id>`
+- **Tipo:** COMPONENT_SET
+- **Variantes que o original declara:** <axis>=<v1>|<v2>, <axis>=<v1>|<v2>
+- **Variantes que o layout usa:** <axis>=<valor>, <axis>=<valor>
+- **Instâncias:** 3 em T1, 1 em T2
+
+<!-- ex. de componente declarado no próprio arquivo da tela (nenhum link foi necessário):
+#### C2 — Header
+- **Arquivo do original:** F1 (`eS5l5l…`)
+- **Node ID do original:** `88:2`
+- **Tipo:** COMPONENT
+- **Variantes que o original declara:** (nenhuma — COMPONENT simples)
+- **Variantes que o layout usa:** —
+- **Instâncias:** 1 em T1
+-->
+
+<!-- ex. de componente ainda pendente (bloqueia a fase):
+#### C3 — Pagination
+- **Arquivo do original:** —
+- **Node ID do original:** —
+- **Tipo:** —
+- **Pendência:** aguardando link direto do nó (o último link recebido era de arquivo, sem node-id — rejeitado sem chamada MCP)
+- **Variantes que o original declara:** — (sem acesso ao original)
+- **Variantes que o layout usa:** size=md
+- **Instâncias:** 1 em T1
+-->
 
 ### Anotações de Design
 <!-- Todas as anotações do Dev Mode extraídas via use_figma. Uma entrada por nó anotado, verbatim. Omita esta subseção se nenhuma. -->
 <!-- Anotações são requisitos (regras de negócio, comportamento, animações, acessibilidade, instruções de dev). Reflita-as também nas seções acima — regras de negócio em Requisitos. -->
 <!-- Remova [<category>] se não houver categoria do Figma; remova a cláusula "— pins:" se não houver propriedades fixadas. -->
-- node `<node_id>` (<node_name>) [<category>]: "<annotation label / note text>" — pins: <property types>
+<!-- Referencie o dono quando aplicável (T# ou C#), para a anotação ter destino nas tasks. -->
+- node `<node_id>` (<node_name>) [<category>] (dono: T1 | C1): "<annotation label / note text>" — pins: <property types>
 
-## Componentes de DS (verificação Code Connect)
-<!-- Incluída apenas quando a feature tem referência Figma com componentes de design system. Remova esta seção se não se aplicar. -->
-<!-- Verificação por Code Connect: para cada componente Figma usado, resolve o original, confirma se existe no
-     código e se cobre as variantes usadas. Sem coluna de veredito — apenas o estado observado. -->
+## Árvore de Componentes de DS
+<!-- Incluída apenas quando a feature tem referência Figma com componentes. Remova esta seção se não se aplicar. -->
+<!-- Produzida pela skill analyzing-design-system (regras completas lá). Nenhuma linha entra sem decisão
+     explícita do usuário — nem Importar. ESTA TABELA SÓ CARREGA DECISÕES: coordenadas vivem em
+     ### Componentes, referenciadas pela C# (quem monta a task lê o veredito aqui e o fileKey/node-id lá).
+     Ordem: folhas→raiz. Veredito ∈ Implementar (do zero, a partir do original, todas as variantes;
+     com filhos em "Depende de" = composto: compõe, não reconstrói) | Importar (já existe; sem task, só
+     import path) | Atualizar (falta variante; aditivo; aprovado nesta fase) | Derivar (novo, envolve a
+     base = primeiro item de "Depende de").
+     Paridade = campos divergentes instância vs original (justificativa). Nome no código = confirmado;
+     para Importar, o import path. Task Type = "—" para Importar. Override do usuário → registre as duas
+     em "Veredito" (ex.: "Derivar (recomendado: Atualizar)"). Componente com Pendência não entra aqui. -->
 
-| Componente (nome Figma) | Original resolvido | Variantes usadas | Existe no código? | Cobre variantes? | Status |
-|--------------------------|---------------------|--------------------|---------------------|---------------------|--------|
-<!-- ex.: | Button (2:5471)         | `Button` (DS lib)      | size=lg, state=hover | ✓ (`@ds/Button`) | ✓                 | OK | -->
-<!-- ex.: | MultiSelect (2:6012)    | `MultiSelect` (DS lib) | size=md              | ✗                 | —                 | Falta componente → `/figma-component` | -->
-<!-- ex.: | Input (2:6015)          | `Input` (DS lib)       | state=error          | ✓ (`@ds/Input`)   | ✗ (falta `error`) | Falta variante → `/figma-component` | -->
+| # | Componente | Veredito | Depende de | Paridade | Nome no código | Task Type |
+|---|-----------|----------|------------|----------|----------------|-----------|
+<!-- ex.: | C4 | Button      | Importar    | —        | size=lg já existe        | `@ds/Button`           | —            | -->
+<!-- ex.: | C5 | Input       | Atualizar   | —        | falta state=error        | `@ds/Input`            | UI Component | -->
+<!-- ex.: | C6 | Menu        | Implementar | —        | não existe no código     | `Menu`                 | UI Component | -->
+<!-- ex.: | C7 | MultiSelect | Implementar | C5, C6   | composto de 2 filhos     | `MultiSelect`          | UI Component | -->
+<!-- ex.: | C8 | ProfileCard+Badge | Derivar | C2      | badge extra sobre avatar | `ProfileCardWithBadge` | UI Component | -->
+
+### Avisos da análise de DS
+<!-- Omita esta subseção se não houver avisos. -->
+<!-- Originais inalcançáveis (usuário não conseguiu fornecer link válido — o nó fica FORA da árvore e o que
+     depende dele fica bloqueado), confiança reduzida de inventário (tipagem fraca, ...rest spreads, wrappers
+     de terceiros), nós deprioritizados pelo usuário, nós rejeitados com o efeito em cascata nos pais
+     (skip vs. implementar sem a dependência), e componentes homônimos com componentIds diferentes. -->
+- ...
 
 ## Contrato de Layout
 <!-- Incluído apenas quando a feature tem UI + referência Figma. Remova esta seção se não se aplicar. Validado pelo design-reviewer. -->
@@ -148,7 +215,9 @@
 
 **captured-at:** `<timestamp ISO 8601 de quando as medidas foram extraídas do get_metadata>`
 
-| Frame / Breakpoint | Container max-width | Margens laterais | Gaps | Nº de colunas | Min/Max por peça |
-|---------------------|----------------------|-------------------|------|----------------|--------------------|
-<!-- ex.: | Desktop (1440px) | 1200px | 120px | 24px | 3 | 360px / 400px | -->
-<!-- ex.: | Mobile (375px)   | 343px  | 16px  | 16px | 1 | 343px / 343px  | -->
+<!-- Chaveado por T# (ver ### Telas) — a identidade e as coordenadas da tela vivem lá, não aqui. -->
+
+| # | Tela / Breakpoint | Container max-width | Margens laterais | Gaps | Nº de colunas | Min/Max por peça |
+|---|-------------------|----------------------|-------------------|------|----------------|--------------------|
+<!-- ex.: | T1 | Desktop (1440px) | 1200px | 120px | 24px | 3 | 360px / 400px | -->
+<!-- ex.: | T2 | Mobile (375px)   | 343px  | 16px  | 16px | 1 | 343px / 343px  | -->

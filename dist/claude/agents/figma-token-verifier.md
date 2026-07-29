@@ -21,6 +21,8 @@ The dispatching implementer gives you:
 
 If any of these is missing or empty, do not guess — report it as a **preflight failure** in your output (verdict `FAIL`, with a note naming what was not provided) so the implementer can supply it.
 
+**Re-verification mode (attempt 2):** when the implementer states it is re-dispatching after fixes, the input is intentionally lean — only the previously-failed mismatches (each with its `valor-alvo`) plus the files touched by the fixes. Re-check exactly those items against the code; do not demand the full contract again and do not re-verify items that already passed.
+
 ## Verification Process
 
 Read the changed files (and, when a value is expressed through a project token/mixin, read the project's token/theme definition files to resolve it). For **every** expected value in the input contract:

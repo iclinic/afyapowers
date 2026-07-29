@@ -41,6 +41,8 @@
 - **File Key:** `<file_key>`
 - **Node ID:** `<id>` (frame raiz da tela)
 - **Breakpoints:** <breakpoint_name> (<width>px), ...
+- **Skeleton:** sim (o implementer faz só 2 chamadas MCP e constrói a partir das Medidas de aceite)
+- **Medidas de aceite:** container max-width `<valor>`, margens laterais `<valor>`, gaps entre seções `<valor>`, colunas `<n>` no breakpoint `<breakpoint_name>` (do Contrato de Layout — obrigatório, é o critério de aceite do container e o input do figma-token-verifier)
 
 > Esta task é a **dona do container**: largura máxima, centralização e margens laterais da página, mais o ritmo (gap) entre seções — tudo derivado da geometria do frame no Figma (ver Contrato de Layout do design). Tasks de tela/montagem (Layer 2) DEPENDEM desta task e não redefinem essas medidas.
 >
@@ -56,17 +58,37 @@
 
 **Files:**
 - Create: `caminho/exato/do/componente`
+<!-- Para veredito `atualizar`, liste também o componente base como Modify — sem isso o implementer bate na allowlist e reporta NEEDS_CONTEXT: -->
+<!-- - Modify: `caminho/do/componente/base` -->
 
 **Assets:** `<diretório de assets do projeto>/` — o implementador pode baixar & criar arquivos de ícone/imagem aqui conforme necessário (arquivos exatos desconhecidos no momento do plano)
 
 **Type:** UI Component
 
 **Depends on:** none | Task X
+<!-- Reproduz a coluna "Depende de" da Árvore de Componentes de DS. Para `derivar`, a base é a primeira
+     dependência. Para composto, todos os filhos são dependências. Ordem folhas→raiz. -->
 
 **Figma:**
-- **File Key:** `<file_key>`
-- **Node ID:** `<id>`
+<!-- ATENÇÃO: em task UI Component, File Key e Node ID são os DO ORIGINAL — colunas "Arquivo do original" e
+     "Node ID do original" da entrada C# em ### Componentes. NUNCA os de uma instância, e o File Key
+     pode ser de OUTRO arquivo (o do DS). A instância mostra só a variante que aquela tela usou; o original
+     declara todos os eixos. Apontar para a instância entrega um componente mais pobre que o real — e como
+     ele funciona na tela que originou a task, ninguém percebe. -->
+- **File Key:** `<file_key_do_original>`
+- **Node ID:** `<node_id_do_original>`
 - **Breakpoints:** <breakpoint_name> (<width>px), ...
 - **Medidas de aceite:** container max-width `<valor>`, margens laterais `<valor>`, gaps `<valor>`, colunas `<n>`, min/max de `<peça>` no breakpoint `<breakpoint_name>` (do Contrato de Layout)
+
+**Design System:**
+<!-- Copiado da linha deste nó na `## Árvore de Componentes de DS` do design. Omita o bloco INTEIRO se o
+     design não tem a árvore — nunca escreva um veredito que a árvore não confirmou. Sem o bloco, o
+     implementer roda o procedimento de veredito ausente (checa existência antes de construir). -->
+- **Veredito:** implementar | atualizar | derivar
+- **Base:** `<Nome>` (`<import path>`) <!-- só para derivar (base que o wrapper compõe) e atualizar (set estendido) -->
+- **Compõe de:** `<Nome>` (`<import path>`), `<Nome>` (`<import path>`) <!-- só para composto; cada filho já existe no código -->
+- **Variantes:** <todas as variantes/estados que o ORIGINAL declara>
+- **Anotações do Figma:** <anotações do Dev Mode deste nó, verbatim — estados interativos, animação, a11y, regras de conteúdo>
+- **Estados a cobrir:** <linhas de `## Casos de Borda & Estados` que este componente é dono>
 
 - [ ] Implementar usando o workflow do implementador Figma

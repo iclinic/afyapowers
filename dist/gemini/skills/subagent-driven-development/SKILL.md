@@ -159,24 +159,50 @@ Overlap validation covers `**Files:**` (source) paths only. **Asset files are ex
 
 Apply concurrency caps:
 - **Uncapped tasks**: dispatch all (no cap)
-- **MCP-capped tasks**: dispatch up to **4** per cycle. If more than 4 MCP-capped tasks are ready, pick the first 4 by task number; the rest stay in the ready pool for the next cycle
+- **MCP-capped tasks**: budget by **estimated MCP calls**, not by task count. The Figma MCP rate-limits at **15 requests/minute**; target a wave of **≤12 calls** to leave headroom:
 
-> **Why 4?** The Figma MCP rate-limits at 15 requests/minute. Each MCP-capped task makes ~3 mandatory MCP calls, so 4 concurrent tasks = 12 calls — safely under the limit.
+  | Type | Implementer | MCP calls per task | Budget cost |
+  |---|---|---|---|
+  | `UI Screen` | `figma-design-implementer` | 3 mandatory (2 for skeleton tasks) + occasional `get_metadata` fallback + `download_assets` | **~4** |
+  | `UI Component` | `figma-component-implementer` | 3 mandatory + `download_assets` + fallbacks (self-review reuses data already in context — no extra calls) | **~4** |
 
-**Figma tasks self-verify (with different mechanisms per Type).** `UI Screen` tasks (`figma-design-implementer`) run a fixed fidelity-verification step (its Step 5): after writing the code the implementer spawns a read-only `figma-token-verifier` and loops (max 5 attempts) fixing token/measure mismatches until PASS. `UI Component` tasks (`figma-component-implementer`) do **not** use `figma-token-verifier`; they self-verify via a screenshot self-review (its Step 6 — the agent re-reads `get_screenshot`/`get_variable_defs` and compares against its output). Either way the verification reads-only and makes no *extra* uncapped Figma calls beyond the implementer's own budget. Consequence for you: a Figma task's `DONE` already carries a fidelity self-check, and a `DONE_WITH_CONCERNS` may carry a BLOCKING fidelity concern (e.g. `figma-design-implementer`'s "unresolved fidelity mismatch after 5 attempts", or a `figma-component-implementer` screenshot-mismatch concern) — handle it like any other blocking concern. This does not change wave scheduling or the commit flow.
+  So per cycle: **3 MCP-capped tasks** of either type (≈12). Pick by task number in order; the rest stay in the ready pool for the next cycle.
 
-Dispatch the combined set (all uncapped + up to 4 MCP-capped) as parallel Subagent calls in a single message.
+> **Why budget by calls, not tasks?** Both implementers declare 3 mandatory calls, but assets and truncation fallbacks add 1-2 more per task in practice. Four tasks concurrently can exceed 15 req/min: tasks hit 429, back off 30-60s, and the wave serializes anyway — after burning the retries. Budgeting by calls (~4 each, ≤12/wave) keeps the wave under the limit.
+
+**Figma tasks self-verify (with different mechanisms per Type).** `UI Screen` tasks (`figma-design-implementer`) run a fixed fidelity-verification step (its Step 5): after writing the code the implementer spawns a read-only `figma-token-verifier` and loops (max **2** attempts) fixing token/measure mismatches until PASS. `UI Component` tasks (`figma-component-implementer`) do **not** use `figma-token-verifier`; they self-verify via a screenshot self-review (its Step 6 — comparing against the screenshot and token data **already fetched in its Steps 1-2**; no re-fetch). Neither verification makes extra Figma calls. Consequence for you: a Figma task's `DONE` already carries a fidelity self-check, and a `DONE_WITH_CONCERNS` may carry a BLOCKING fidelity concern (e.g. "unresolved fidelity mismatch after 2 attempts", or a screenshot-mismatch concern) — handle it like any other blocking concern. This does not change wave scheduling or the commit flow.
+
+Dispatch the combined set (all uncapped + the MCP-capped tasks that fit the ≤12-call budget) as parallel Subagent calls in a single message.
 
 **Prompt routing:** Read the task's `**Type:**` line and select the implementer agent from this table:
-- `UI Screen` → dispatch @"figma-design-implementer (agent)". Include the Figma metadata (file key, node ID, breakpoints) in the agent context.
-- `UI Component` → dispatch @"figma-component-implementer (agent)" (design-system-aware component implementer). Include the Figma metadata (file key, node ID, breakpoints) in the agent context.
+- `UI Screen` → dispatch @"figma-design-implementer (agent)". Include the Figma metadata (file key, node ID, breakpoints, acceptance measures) in the agent context.
+- `UI Component` → dispatch @"figma-component-implementer (agent)" (design-system-aware component implementer). Include the Figma metadata **and the full `**Design System:**` block** — see the mapping below.
 - `UI Logic` / `Backend` / `General` → dispatch @"tdd-implementer (agent)" (standard TDD implementer).
+
+**Mapping the `**Design System:**` block into the component implementer's placeholders.** This is the load-bearing part of a `UI Component` dispatch. The agent is organised entirely around its verdict, so an empty verdict changes what it builds:
+
+| Task line | Agent placeholder |
+|---|---|
+| `**Veredito:**` | `[VERDICT]` (lowercase: `implementar` / `importar` / `atualizar` / `derivar`) |
+| `**Base:**` | `[BASE_COMPONENT]` — name + resolved import path |
+| `**Compõe de:**` | `[COMPOSE_FROM]` — the list of `{ code name, import path }` children |
+| `**Variantes:**` | `[VARIANT_LIST]` — every axis the original declares |
+| task name + `**Files:**` target | `[COMPONENT_NAME]`, `[OUTPUT_DIRECTORY]` |
+| `**Anotações do Figma:**` / `**Estados a cobrir:**` | paste verbatim into the task text — interactive states, animation and a11y rules the implementer cannot see in the default frame |
+
+Also pass `[NODE_TYPE]`, `[FRAMEWORK]` and `[GENERATE_STORYBOOK]` from the task/project context.
+
+**`[FILE_KEY]` and `[NODE_ID]` on a `UI Component` task point at the ORIGINAL component, not at the instance** — and the file key may belong to a **different file** than the screen (the design-system file). Pass them exactly as the task carries them. Do not "correct" them to the screen's file key because they look inconsistent with the other tasks in the wave: that inconsistency is the point. The implementer has to read the component where it is declared, or it only ever sees the one variant that appeared on the screen.
+
+**Leaves→root ordering is already enforced by `**Depends on:**`** — the plan derives each component task's dependencies from the DS tree's `Depende de` column, so the normal ready-set rule (a task is ready only when all its deps are `completed`) dispatches bases before derivatives and children before composites. You do not need a separate ordering pass. But do sanity-check it: a `derivar` task whose `[BASE_COMPONENT]` is not among its `**Depends on:**`, or a composite whose `[COMPOSE_FROM]` children are not all dependencies, means the plan dropped an edge. Surface that instead of dispatching — the agent would find the import unresolvable and report BLOCKING anyway, after doing the work.
+
+**If the task has no `**Design System:**` block**, pass the placeholders empty and say so explicitly in the prompt. Do **not** invent a verdict to fill the gap. The agent has a defined procedure for a missing verdict — it checks whether the component already exists before building anything — and that check is the whole safeguard. Silently passing `implementar` defeats it and produces a duplicate of an existing design-system component, which is the worst outcome available here: permanent, invisible, and it looks like the task succeeded.
 
 **Legacy fallback (no `**Type:**` line):** apply the pre-Type heuristic — if the task text contains a `**Figma:**` section → dispatch @"figma-design-implementer (agent)" (include Figma metadata); otherwise → dispatch @"tdd-implementer (agent)".
 
 Each agent gets:
-- Full task text (steps, file list, code/Figma metadata) — paste directly, don't make agent read files
-- Design spec content for context
+- Full task text (steps, file list, code/Figma metadata, and the `**Design System:**` block if present) — paste directly, don't make agent read files
+- **Task-relevant design spec excerpts — not the whole spec.** Paste only the sections the task actually needs: for Figma tasks, the task's screen/section context plus — from `## Árvore de Componentes de DS` — **only the rows for this task's node and its `**Depends on:**` nodes**, and — from `## Decisões de Reúso de Componentes` — only the decisions citing those nodes (these record which components exist, their import paths, and which reuses the user approved; an implementer that can't see its rows re-derives those decisions by guessing). For `UI Screen` tasks also paste the relevant Layout Contract row(s). `tdd-implementer` tasks do NOT get the DS tree — only the spec sections describing the behavior they implement. Never paste the full design.md: every byte you paste is re-sent on all of the subagent's turns
 - File constraint: "You may ONLY modify these files: [list from task's Files: section]". **For Figma tasks, append:** "— plus you MAY create asset files (icons/images) under the project's assets directory as needed; list every asset file you create in your report."
 - Return format: status (DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED) + summary, **including the exact list of files changed**. For Figma tasks, the report must **separately list any asset files created** (the "Assets created" line) — these are usually not in the Files: section and the orchestrator needs them to stage the assets.
 
@@ -258,8 +284,9 @@ Completed: [1, 2, 3, 4, 5] → Write implementation-concerns.md → Done
 Ready: [1(Backend), 2(General), 3(UI Screen), 4(UI Component), 5(UI Logic), 6(UI Component)]
 → Classify by Type: uncapped (no MCP) = [1, 2, 5], MCP-capped = [3, 4, 6]
 → Route: 1,2,5 → tdd-implementer; 3 → figma-design-implementer; 4,6 → figma-component-implementer
-→ Apply caps: all uncapped + first 4 MCP-capped
-→ Dispatch: [1, 2, 5] + [3, 4, 6] = 6 parallel agents (all 3 MCP-capped tasks fit under the cap of 4)
+→ Budget the MCP wave (target ≤12 calls): 3(UI Screen)≈4 + 4(UI Component)≈6 = 10 ✓; adding 6(UI Component)≈6 → 16 ✗
+→ Dispatch: [1, 2, 5] + [3, 4] = 5 parallel agents. Task 6 waits for the next cycle
+→ Next cycle: 6(UI Component)≈6 dispatches alone
 ```
 
 ### Fallback to Sequential

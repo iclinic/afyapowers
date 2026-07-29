@@ -71,6 +71,9 @@ git diff {BASE_SHA}..{HEAD_SHA}
 - Are units decomposed so they can be understood and tested independently?
 - Is the implementation following the file structure from the plan?
 - Did this implementation create new files that are already large, or significantly grow existing files? (Don't flag pre-existing file sizes — focus on what this change contributed.)
+- Did it create a component that already existed somewhere in the codebase? Search by name and by rendered structure before accepting a new component as new.
+
+**Design-system conformance is NOT your check.** Verdict compliance (`Importar`/`Atualizar`/`Derivar`/composição, cartesian-product props, interaction-states-as-props, recorded reuse decisions) is owned by the **spec-reviewer** — do not re-verify it here; duplicated findings cost review cycles. If you incidentally notice a DS violation, mention it in one line and move on.
 
 **Skeleton ↔ component boundary (only when the plan has a skeleton/Layer 0 task):**
 - Components (Layer 1) must **not** set page-level `max-width`, page centering (`margin: 0 auto` or equivalent), or page-level side margins — those responsibilities belong exclusively to the skeleton (Layer 0), which owns the page container per the design's Contrato de Layout.
