@@ -56,6 +56,18 @@ Read the implementation code and verify:
 - Did they solve the wrong problem?
 - Did they implement the right feature but wrong way?
 
+**Design-system verdicts (when the design has a `## Árvore de Componentes de DS`):**
+
+The tree records a verdict per component that the **user confirmed** during the design phase. Verify the code honors each one — this is a spec requirement like any other, and it is the easiest to violate invisibly:
+
+- **`Importar`** → the component must appear in the diff as an **import** of the recorded path. If a new definition of that component was written instead, the implementation built a duplicate of something that already existed. Report it as an issue, not a style nit.
+- **`Atualizar`** → the change to the existing component must be strictly **additive** (new optional prop / new variant value / new optional slot). A removed prop, a retyped prop, or a changed default means it silently became a breaking change the user never approved.
+- **`Derivar`** → the new component must **import and compose** its recorded base. A wrapper that reimplements the base is not the thing that was specified.
+- **`Implementar` with `Compõe de`** → every listed child must be imported, not re-inlined.
+- Any component **rejected** by the user (in the tree or in `## Decisões de Reúso de Componentes`) must not appear in the implementation.
+
+**Annotations and edge-case states:** when the task carried `**Anotações do Figma:**` or `**Estados a cobrir:**`, check those specific interactive states, animations, a11y rules and edge-case behaviors are actually implemented — not just the default frame. These were confirmed with the user during design; a missing hover state or unhandled empty state is a missing requirement.
+
 **Verify by reading code, not by trusting report.**
 
 Report:

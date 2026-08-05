@@ -149,6 +149,7 @@ def process_single_files(
     file_prefix: str,
     agent_name: str,
     output_dir: Path,
+    skill_ref_prefix: str = "",
 ) -> tuple[int, int]:
     out_dir = output_dir / output_subdir
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -158,6 +159,7 @@ def process_single_files(
         for src_file in sorted(src_dir.glob("*.md")):
             file_text = src_file.read_text(encoding="utf-8")
             agent_sections, body = parse_embedded_frontmatter(file_text)
+            body = substitute_skill_refs(body, skill_ref_prefix)
 
             out_file = out_dir / f"{file_prefix}{src_file.name}"
             agent_yaml = agent_sections.get(agent_name)
@@ -364,6 +366,7 @@ def sync_agent(
         config.agents_file_prefix,
         config.agent,
         config.output_dir,
+        config.skills_ref_prefix,
     )
     msg = f"  agents: {count} files"
     if removed:

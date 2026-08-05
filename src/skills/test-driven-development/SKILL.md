@@ -15,6 +15,16 @@ github-copilot:
 
 # Test-Driven Development (TDD)
 
+> **This doctrine has a second home.** A condensed copy of these rules is inlined in the
+> `tdd-implementer` agent, because a dispatched subagent cannot reliably read a skill's files — it only
+> has its own prompt. So the implement phase (`subagent-driven-development`) never invokes this skill;
+> it dispatches that agent instead.
+>
+> This file is the canonical, full version: read it when working on TDD doctrine directly, or when a
+> situation the agent's condensation does not cover comes up. **If you change the rules here, update
+> `src/agents/tdd-implementer.md` in the same commit** — the two drifting apart is the failure mode this
+> note exists to prevent.
+
 ## Overview
 
 Write the test first. Watch it fail. Write minimal code to pass.

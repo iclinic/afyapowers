@@ -32,7 +32,7 @@ Otherwise (direct invocation):
 ### Step 2: Spec Compliance Review
 
 Dispatch @"spec-reviewer (agent)":
-- Provide the design spec content as "what was requested"
+- Provide the design spec content as "what was requested" — **including `## Árvore de Componentes de DS` and `## Decisões de Reúso de Componentes` when present.** Those hold the per-component verdicts the user confirmed, and verifying the code honored them is spec compliance, not a style question
 - Provide a summary of implemented changes as "what was built"
 - Provide the base and head commit SHAs and the `git diff --stat` summary (the agent will read code and diffs itself)
 - Include a "Priority Areas" section with the contents of `implementation-concerns.md` (or "No concerns were flagged." if the file doesn't exist)
@@ -65,8 +65,9 @@ If the reviewer finds issues:
 Read the template from `templates/review.md`. Fill in:
 - Spec compliance findings and resolutions
 - Code quality findings and resolutions
+- **`## Conformidade de Design System`** (only when the design has `## Árvore de Componentes de DS`): one row per tree node, recording the confirmed verdict, where it landed in the code (`arquivo:linha`), and whether the code honored it. Plus the composition/variant checks and which annotations and edge-case states were actually covered. A node whose verdict was `Importar` but which appears in the diff as a **new definition** is a duplicated design-system component — record it as Critical, because it is permanent, invisible in review of the file itself, and will drift from the real component from day one
 - Blocking-concern findings: for each blocking concern from `implementation-concerns.md`, record whether it was fixed in the diff or explicitly accepted by the user, with the resolution. A concern line marked `[ACCEPTED BY USER: <reason>]` is "Accepted by user" — use the marker's reason as the resolution.
-- Final verdict (in the `## Veredito` section): write exactly **Aprovado** — only if both reviews pass **and** every blocking concern is fixed or explicitly accepted (including those carrying an `[ACCEPTED BY USER: …]` marker). Any unresolved/unaccepted blocking concern → **Alterações Solicitadas**.
+- Final verdict (in the `## Veredito` section): write exactly **Aprovado** — only if the spec compliance review passes, the code quality review passes, **and** every blocking concern is fixed or explicitly accepted (including those carrying an `[ACCEPTED BY USER: …]` marker). Any of the above failing, or any unresolved/unaccepted blocking concern → **Alterações Solicitadas**.
 
 Save to `.afyapowers/features/<feature>/artifacts/review.md`
 

@@ -33,18 +33,25 @@ Every project goes through this process. A todo list, a single-function utility,
 
 ## Checklist
 
-You MUST complete these items in order. **Requirements first (1-3), code exploration only after (4).**
+You MUST complete these items in order. **Requirements first (1-4), code exploration only after (5).**
 
 1. **JIRA discovery (offer-based)** — offer the user the chance to provide a JIRA issue key; if provided, fetch and summarize the issue (see below)
 2. **Figma discovery (trigger-based)** — check user request against trigger keywords (see below); if match, ask about Figma and run discovery
 3. **Ask clarifying questions** — confirm **and challenge** the inputs (see below); one question at a time
 4. **Interrogate requirements (REQUIRED)** — dispatch @"requirements-interrogator (agent)" on the gathered inputs, then drive a question loop with the user until every BLOCKING contradiction / gap / edge case / ambiguity / risky assumption is resolved or explicitly deferred (see REQUIREMENTS-GATE)
-5. **Explore the codebase** — ONLY now, with the requirement locked. Read files, docs, recent commits. Identify reuse candidates and evaluate each against the requirement/Figma — never let existing code become the starting point (see REQUIREMENTS-BEFORE-CODE). Apply the **Component Reuse Gate**: ask the user before reusing any candidate unless it is an exact match (name + layout + behavior)
-6. **Propose 2-3 approaches** — with trade-offs and your recommendation
-7. **Present design** — in sections scaled to their complexity, get user approval after each section
-8. **Write design doc** — save to `.afyapowers/features/<feature>/artifacts/design.md` (only once no BLOCKING interrogation item remains open)
-9. **Design review loop** — dispatch @"design-reviewer (agent)"; fix issues and re-dispatch until approved (max 5 iterations, then surface to human)
-10. **User reviews written spec** — ask user to review the spec file before proceeding
+5. **Análise de Design System (só quando há Figma)** — invoke `afyapowers:analyzing-design-system` on the `### Componentes` entries. **HARD GATE:** every component instance whose original is not declared in the file you read requires a direct node link from the user. Check JIRA and the initial request first, then ask for **all** pending components in one open-question message (validating each answer on arrival, re-asking only failures); the phase stops until all are resolved. Then confirm **every** node's verdict with the user — in compact batches of up to 4 nodes per prompt, one explicit answer per node — and record the completed `### Componentes` entries + `## Árvore de Componentes de DS`. Skip entirely when there is no Figma (see below)
+6. **Explore the codebase** — ONLY now, with the requirement locked. Read files, docs, recent commits. Identify reuse candidates and evaluate each against the requirement/Figma — never let existing code become the starting point (see REQUIREMENTS-BEFORE-CODE). Apply the **Component Reuse Gate**: ask the user before adopting **any** candidate, without exception
+7. **Propose 2-3 approaches** — with trade-offs and your recommendation
+8. **Present design** — in sections scaled to their complexity, get user approval after each section
+9. **Confirm the Layout Contract (when Figma is present)** — if Figma discovery ran, confirm `## Contrato de Layout` (derived by `reading-figma-designs` from `get_metadata`) is present and complete in the design doc; if there is no Figma reference, omit the section (see below)
+10. **Write design doc** — save to `.afyapowers/features/<feature>/artifacts/design.md` (only once no BLOCKING interrogation item remains open)
+11. **Design review loop** — dispatch @"design-reviewer (agent)"; fix issues and re-dispatch until approved (max 5 iterations, then surface to human)
+12. **User reviews written spec** — ask user to review the spec file before proceeding
+
+**Why the DS analysis comes after the interrogation (item 5, not item 3):** it reads the codebase to
+decide what already exists. Requirements must be locked first, or the requirement gets anchored on
+whatever the code happens to contain — the same reason as REQUIREMENTS-BEFORE-CODE. A missing DS
+component is a code-inventory fact; it must never block requirements gathering.
 
 ## Process Flow
 
@@ -60,6 +67,12 @@ digraph design {
     "Standard clarifying questions" [shape=box];
     "Interrogate requirements (agent + user loop)" [shape=box];
     "BLOCKING items resolved?" [shape=diamond];
+    "Figma present?" [shape=diamond];
+    "Detectar componentes NÃO RESOLVIDOS" [shape=box];
+    "Toda instância tem origem validada?" [shape=diamond];
+    "PARAR: pedir link de UM componente (pergunta aberta)" [shape=box];
+    "Analisar Design System (sub-skill)" [shape=box];
+    "Confirmar cada nó da árvore (1 pergunta por nó)" [shape=box];
     "Explore codebase (requirement locked)" [shape=box];
     "Propose 2-3 approaches" [shape=box];
     "Present design sections" [shape=box];
@@ -83,7 +96,15 @@ digraph design {
     "Standard clarifying questions" -> "Interrogate requirements (agent + user loop)";
     "Interrogate requirements (agent + user loop)" -> "BLOCKING items resolved?";
     "BLOCKING items resolved?" -> "Interrogate requirements (agent + user loop)" [label="no — ask user, re-run"];
-    "BLOCKING items resolved?" -> "Explore codebase (requirement locked)" [label="yes / deferred"];
+    "BLOCKING items resolved?" -> "Figma present?" [label="yes / deferred"];
+    "Figma present?" -> "Detectar componentes NÃO RESOLVIDOS" [label="yes"];
+    "Figma present?" -> "Explore codebase (requirement locked)" [label="no — skip DS analysis"];
+    "Detectar componentes NÃO RESOLVIDOS" -> "Toda instância tem origem validada?";
+    "Toda instância tem origem validada?" -> "PARAR: pedir link de UM componente (pergunta aberta)" [label="no"];
+    "PARAR: pedir link de UM componente (pergunta aberta)" -> "Toda instância tem origem validada?" [label="valida na hora; falhou → re-pergunta o mesmo componente"];
+    "Toda instância tem origem validada?" -> "Analisar Design System (sub-skill)" [label="yes"];
+    "Analisar Design System (sub-skill)" -> "Confirmar cada nó da árvore (1 pergunta por nó)";
+    "Confirmar cada nó da árvore (1 pergunta por nó)" -> "Explore codebase (requirement locked)";
     "Explore codebase (requirement locked)" -> "Propose 2-3 approaches";
     "Propose 2-3 approaches" -> "Present design sections";
     "Present design sections" -> "User approves design?";
@@ -165,9 +186,9 @@ If a keyword matches but the request is clearly not UI work (e.g., "write unit t
 If no keywords match, skip Figma discovery and proceed to clarifying questions.
 
 If the user provides Figma URL(s), invoke `afyapowers:reading-figma-designs`. It parses each URL,
-builds the shallow Node Map via a single `get_metadata` call, and extracts **all** Dev Mode data
+inventories the screens and components via a single `get_metadata` call, and extracts **all** Dev Mode data
 annotations via a read-only `use_figma` call. It returns the complete `## Recursos do Figma` section
-— file info, breakpoints, Node Map, and a `### Anotações de Design` subsection — ready to drop into
+— `### Arquivos`, `### Breakpoints`, `### Telas`, `### Componentes` and `### Anotações de Design` — ready to drop into
 the design doc (template: `templates/design.md`).
 
 Annotations carry semantic intent: business rules, responsive rules, interactive-state behavior,
@@ -176,26 +197,85 @@ more. Treat them as real requirements — business rules flow into the design's 
 the rest into the relevant design sections. Carry them into the clarifying questions below so the
 user can confirm them before the design is written.
 
-No `get_screenshot` or `get_design_context` calls during the design phase — these are deferred to
-implementation, where the subagent already calls them per-task.
+No `get_screenshot` calls during the design phase — screenshots are deferred to implementation, where
+the subagent already calls them per-task. `get_design_context` is called during the design phase in
+exactly one place: the DS analysis (checklist item 5) calls it **at most once per distinct DS original,
+and only when needed** — an original that already exists in code with the required variants covered is
+resolved from the code inventory alone, with no `get_design_context` call (see the sub-skill's Step 5).
+It is never called to implement anything.
 
 **If no Figma designs:** Proceed normally. Do not include the Figma Resources section in the design doc.
 
 **Design tokens are NOT extracted during design phase.** They are deferred to implementation time — the implementer subagent will fetch them via `get_variable_defs` when needed.
 
+**Análise de Design System (only when Figma is present):**
+
+This step runs ONLY when Figma discovery produced the Telas/Componentes inventory — skip it entirely for backend/API/CLI/lib features and for UI work with no Figma. It runs **after** the requirements interrogation closes (checklist item 5) and **before** the codebase exploration.
+
+Invoke `afyapowers:analyzing-design-system`. Pass it:
+
+- the `### Componentes` entries `afyapowers:reading-figma-designs` produced — which already separate the locally-declared ones from those marked `NÃO RESOLVIDO`;
+- the `get_metadata` response already in hand, so it does not re-fetch it;
+- **every Figma URL you already have** — from the JIRA issue and from the user's initial request. These are candidate origin files; the sub-skill still validates each one, but handing them over saves the user an exchange;
+- caller mode `design`.
+
+It resolves every instance **to its original component in the file that declares it**, checks the real codebase, recommends a verdict per node (`Implementar` | `Importar` | `Atualizar` | `Derivar`), and **confirms every one of them with the user — in compact batches of up to 4 nodes per prompt, each node with its own explicit answer**. It returns the confirmed tree (with the origin fileKey + original node id per node), the validated origin map, the warnings, the skip set, and the import path of every `Importar` node.
+
+**Write the confirmed verdicts to `## Árvore de Componentes de DS`** and complete each component's `C#` entry under `### Componentes` (origin, coordinates, type, validation, declared variants) in `design.md` — the sub-skill persists each row as it is confirmed, so an interrupted session resumes instead of restarting. Omit both sections entirely when the layout uses no component instances.
+
+<HARD-GATE-ORIGENS>
+**The design phase STOPS while any component instance has no validated origin file.**
+
+An `INSTANCE` whose `COMPONENT`/`COMPONENT_SET` is not declared in the file you read means the original lives somewhere else — another page of the same file, or another file such as the design system. You cannot analyze or implement that component from its instance: an instance shows only the one variant that screen used, so building from it yields a permanently poorer duplicate of the real component.
+
+So, for **every** unresolved instance, the user must supply the **direct link to the component node**. **Check the JIRA issue and the initial request first** — the design-system links are often already there.
+
+**You do the asking, all pending components in one message.** Do not wait for the user to volunteer links. The moment pending components are detected, **interrupt the phase** and ask, openly, for every pending component's link in a single numbered list — an open question, not a multiple-choice prompt: the answers are URLs the user has to fetch from Figma. Say in the same message that they may skip any component or tell you they cannot find it, and what skipping costs. Validate each answer on arrival (matching links to components by validation, never by order), then re-ask **only** the ones that failed or are still missing.
+
+Tell them how to get it: right-click the component in Figma → **"Copy link to selection"**. The sub-skill owns this loop — see its Step 2.
+
+**Only a direct node link is accepted.** A URL without `node-id` is rejected **before any MCP call** — no `get_metadata`, no page listing, no search. A file-level link does not say *which* component it means, so resolving it would mean matching by name, and names collide (`Card` vs `Card / Legacy`, two `Card`s in different sections). Guessing which original a component maps to is the exact error this gate exists to stop. It also happens to be two clicks of work for the user versus a call per page for us.
+
+Then **validate** each accepted link: the node must be reachable, it must be a `COMPONENT` or `COMPONENT_SET`, and its name must correspond to the component you asked about. A link pointing at a frame, or at another *instance* inside the design-system file, does not count. If it resolves to a different component than the one requested, say which — do not quietly refile it. Say what failed and ask again.
+
+Do not proceed on a partial set, do not defer a component "for later", and never fall back to reading the instance. If the user genuinely cannot produce a link, the analysis stops and reports what is blocked — that is the correct outcome, not a component built from an instance.
+</HARD-GATE-ORIGENS>
+
+**Once every origin is validated, a missing component is not a blocker — it is a task:**
+
+- `Implementar` / `Derivar` → the plan phase generates a `UI Component` task, pointing at the **original** in its own file. The component gets built **inside** this feature, with plan review, code review and commits, like any other work.
+- `Atualizar` → also a task, but the additive change to a shared component was **approved by the user during this phase**, in the confirmation loop. That approval is what authorizes it; do not let an `Atualizar` reach the plan without it.
+- `Importar` → no task. The import path travels into the plan so the consuming screen imports it.
+
+Beyond the origin gate, stop and ask only where the analysis genuinely cannot resolve something: two originals sharing a name, or a tree large enough to need prioritization first.
+
+**Code Connect not configured:** if `get_code_connect_map` indicates Code Connect isn't set up for the file (rather than returning an empty/negative mapping for a specific component), do NOT treat this as "everything is missing." Tell the user Code Connect isn't configured, and fall back to the codebase search alone for the existence check — flagging every affected node as **reduced confidence** so the confirmation loop presents it as uncertain. Do not report an existence verdict as settled when the authoritative source was unavailable.
+
+**No DS components in the layout:** if the layout uses no DS library instances, omit the `## Árvore de Componentes de DS` section and continue normally.
+
 **Component Reuse Gate (always — Figma or not):**
 
-**NEVER adopt an existing codebase or design-system (DS) component into the design without the user's explicit approval — UNLESS it is the exact same component the requirement needs.** Reuse is not a default; it is a gated decision. Every time you find a component you *might* reuse, you must stop and ask the user first.
+**NEVER adopt an existing codebase or design-system (DS) component into the design without the user's explicit approval.** There is no exception. Reuse is not a default and it is not a conclusion you are allowed to reach on your own — it is a decision that belongs to the user, every single time.
 
-The **only** case where you may reuse without asking is an **exact match on all three axes**:
+Judge each candidate on three axes and **report** what you found:
 
-- **Name** — the component's name corresponds to the component the requirement/Figma calls for. A name mismatch (e.g. reusing `DropdownPicker` for a Figma "Specialty Chip") is never an exact match.
-- **Layout / visuals** — colors, shape, sizing, and states are identical to what the requirement/Figma shows.
-- **Behavior / interaction model** — runtime behavior is identical: popover vs drawer, inline vs modal, anchored vs full-screen, search vs no-search. This is the axis most often missed — a DS component can look adjustable but behave fundamentally differently.
+- **Name** — does the component's name correspond to what the requirement/Figma calls for? A name mismatch (e.g. `DropdownPicker` for a Figma "Specialty Chip") is a real difference, not a detail.
+- **Layout / visuals** — are colors, shape, sizing and states identical to what the requirement/Figma shows?
+- **Behavior / interaction model** — is runtime behavior identical: popover vs drawer, inline vs modal, anchored vs full-screen, search vs no-search? This is the axis most often missed — a DS component can look adjustable and behave fundamentally differently.
 
-Exact match on all three → reuse silently. **Anything else — a different name, any visual difference, any behavior difference, a "close enough" / "good enough" near-match, or any uncertainty — you MUST ask the user before adopting it.** Present the candidate, name every difference, and reuse only on explicit approval (e.g. "Figma shows an inline chip + anchored popover; the DS `DropdownPicker` renders a bottom drawer with a search field — reuse it anyway, or build a custom chip to match Figma?"). When in doubt, ask.
+<NO-SILENT-REUSE>
+A match on all three axes is your **recommendation**, never your authorization. Whether the three axes match is itself your judgement, and it is precisely the judgement the user needs to check — so it cannot be the thing that lets you skip asking them.
 
-Record every reuse in the `## Decisões de Reúso de Componentes` section of the design doc (template: `templates/design.md`): mark it either **exact match** (no approval needed) or the user's explicit decision. *"If it's different, it's wrong"* unless the user has explicitly accepted the divergence.
+Present every candidate: name it, state the verdict per axis, name every difference you found, and say what you recommend. Then adopt it **only on explicit approval**. One question per candidate — batched up to 4 candidates per prompt (e.g. via `AskUserQuestion`), each with its own explicit answer.
+
+Example: "Figma shows an inline chip + anchored popover; the DS `DropdownPicker` renders a bottom drawer with a search field — reuse it anyway, or build a custom chip to match Figma?"
+
+And for the case that used to pass silently: "Figma shows a Submit Button; `PrimaryButton` (DS) matches on name, visuals and interaction model as far as I can tell. Reuse it?"
+</NO-SILENT-REUSE>
+
+Record every candidate in the `## Decisões de Reúso de Componentes` section of the design doc (template: `templates/design.md`), with **both** your recommendation and the user's decision, so any divergence between the two is visible in the artifact. *"If it's different, it's wrong"* unless the user has explicitly accepted the divergence.
+
+**Division of labour with the DS analysis:** for Figma DS components, `## Árvore de Componentes de DS` is the authority — that is where the verdict and its confirmation live, and each of those nodes was already individually confirmed. This gate covers everything else: any non-DS component from the codebase you are considering adopting. Do not record the same component in both sections; if the two ever disagree about a DS component, the tree wins.
 
 **Clarifying questions — confirm AND challenge (JIRA and/or Figma-informed):**
 
@@ -217,8 +297,8 @@ When neither JIRA nor Figma is available, ask questions one at a time to underst
 
 After the baseline confirm+challenge pass, run a dedicated adversarial analysis before writing anything. This is a hard gate (see REQUIREMENTS-GATE) — the design doc may not be written while any BLOCKING item is open.
 
-1. **Dispatch @"requirements-interrogator (agent)".** Announce: "Usando o requirements-interrogator para estressar os requisitos." Paste the raw inputs only (NO codebase — exploration comes later): the user's request, the JIRA context, the Figma Node Map + verbatim annotations, and the user answers gathered so far. It returns findings across five lenses (contradictions, gaps/business rules, edge cases, ambiguities, risky assumptions), each tagged BLOCKING or non-blocking, plus a `BLOCKING items: N` count.
-2. **Drive the loop with the user.** Ask the BLOCKING questions one at a time (non-blocking ones too where cheap). Record each answer.
+1. **Dispatch @"requirements-interrogator (agent)".** Announce: "Usando o requirements-interrogator para estressar os requisitos." Paste the raw inputs only (NO codebase — exploration comes later): the user's request, the JIRA context, the Figma Telas + Componentes inventory + verbatim annotations, and the user answers gathered so far. It returns findings across five lenses (contradictions, gaps/business rules, edge cases, ambiguities, risky assumptions), each tagged BLOCKING or non-blocking, plus a `BLOCKING items: N` count.
+2. **Drive the loop with the user.** Ask **every** finding — BLOCKING and non-blocking alike — one question at a time. Record each answer. Do not filter the list by what you judge cheap or obvious: deciding an item is not worth asking is itself a decision about the requirement, and it is not yours to make. A non-blocking item the user waves off costs one exchange; a non-blocking item you drop silently costs a wrong assumption baked into the design.
 3. **Re-dispatch to catch second-order gaps.** Feed the new answers back to the interrogator; it reports only new findings the answers expose and anything still unresolved. Repeat until it returns `BLOCKING items: 0` (loop-until-dry, max 5 re-dispatches). If the loop reaches 5 re-dispatches with BLOCKING items still open, surface all remaining items to the user and ask them to resolve or explicitly defer each one before proceeding — do not keep looping.
 4. **Resolve or defer.** Every BLOCKING item must end resolved (user answered) or explicitly deferred (user chose to). Only then proceed. Reflect confirmed business rules into Requirements, and record the outcomes in the design doc's `## Casos de Borda & Estados`, `## Premissas & Riscos`, and `## Questões em Aberto` sections (Status: resolved / deferred).
 
@@ -228,7 +308,7 @@ Now — and only now — read the project: files, docs, recent commits, existing
 
 - Explore the current structure and conventions so the design fits the project.
 - Identify reuse candidates (existing components, utilities, patterns) — but treat each as a *candidate measured against the requirement*, not as the thing the design must bend toward. A candidate that doesn't match the requirement/Figma is not a fit; prefer building to the requirement over retrofitting a near-match.
-- Run the **Component Reuse Gate** above on every candidate you would reuse: unless it is an exact match (name + layout + behavior), ask the user before adopting it. Never settle on a reuse the user hasn't approved.
+- Run the **Component Reuse Gate** above on every candidate you would reuse: ask the user before adopting **any** of them, one at a time, no exceptions. Never settle on a reuse the user hasn't approved — and never conclude that a candidate is close enough that asking would be a formality.
 - Where existing code has problems that affect the work (a file grown too large, tangled responsibilities), note targeted improvements — but don't propose unrelated refactoring.
 
 **Exploring approaches:**
@@ -246,8 +326,16 @@ Now — and only now — read the project: files, docs, recent commits, existing
 - Cover all sections from the design template: problem statement, requirements, constraints, chosen approach, architecture, data flow, interfaces, error handling, testing strategy, dependencies, and the interrogation outputs — `## Casos de Borda & Estados`, `## Premissas & Riscos`, and `## Questões em Aberto` (with Status)
 - If JIRA discovery was performed, include the `## Contexto do JIRA` section with issue key, summary, acceptance criteria, and linked issues
 - If Figma discovery was performed, include the `## Recursos do Figma` section with file info, breakpoints, node map, and the `### Anotações de Design` list. Reflect the annotations in the relevant design sections too — business rules in Requirements, the rest wherever they fit (Constraints, Architecture, Error Handling, Testing Strategy) — not just the annotations list.
-- If the design reuses any existing codebase/DS component, include the `## Decisões de Reúso de Componentes` section recording each reuse, its name/layout/behavior parity verdict, and whether it was an exact match or carries the user's explicit approval (per the Component Reuse Gate above).
+- If the design reuses any existing non-DS codebase component, include the `## Decisões de Reúso de Componentes` section recording each candidate, its name/layout/behavior parity per axis, **your recommendation**, and **the user's decision** (per the Component Reuse Gate above). Every row must carry a decision the user actually made.
+- If Figma discovery ran and the layout uses DS components, include the `## Árvore de Componentes de DS` section with the confirmed tree returned by `afyapowers:analyzing-design-system` — every node's verdict, its dependencies, its confirmed code name, and the import path for `Importar` nodes. This is what the plan phase reads to derive `UI Component` tasks.
+- If Figma discovery was performed, confirm `## Contrato de Layout` is present and complete (see below); if there is no Figma reference, omit the section
 - Be ready to go back and clarify if something doesn't make sense
+
+**Layout Contract (when Figma is present):**
+
+`## Contrato de Layout` is populated by the `reading-figma-designs` skill during Figma discovery (measurements derived from `get_metadata` — container max-width, side margins, gaps, column count, min/max per piece, per breakpoint). It serves as the fidelity guide for the implementer: concrete acceptance measures to hit, per breakpoint.
+
+The design phase's job here is only to GUARANTEE that `## Contrato de Layout` is present and complete in the design doc whenever Figma discovery ran — the design-reviewer must reject the design if it is missing or incomplete in that case. If there is no Figma reference (backend/API/CLI/lib features with no UI, or UI work with no Figma), omit the section entirely (same rule as `## Recursos do Figma`).
 
 **Design for isolation and clarity:**
 
@@ -265,6 +353,13 @@ Now — and only now — read the project: files, docs, recent commits, existing
 ## Required Sub-Skills
 
 **REQUIRED:** Dispatch @"requirements-interrogator (agent)" during the Requirements Interrogation step (before exploring the codebase or writing the design) and loop until `BLOCKING items: 0`. See the Requirements Interrogation section above.
+
+**REQUIRED when Figma discovery produced the Telas/Componentes inventory:** Invoke `afyapowers:analyzing-design-system` after the interrogation closes and before exploring the codebase.
+
+- Announce: "Usando o analyzing-design-system para resolver os componentes de DS."
+- Pass it the `### Componentes` entries, the `get_metadata` response already in hand, every Figma URL you already have (JIRA + initial request), and caller mode `design`.
+- It confirms every node with the user (in compact batches, one explicit answer per node) and persists each batch as it goes. Do not confirm nodes yourself in parallel with it, and do not accept a tree with unconfirmed rows.
+- Record the returned tree in `## Árvore de Componentes de DS`, then resume the parent flow (codebase exploration).
 
 **REQUIRED:** Dispatch @"design-reviewer (agent)" after writing the design artifact.
 
@@ -308,7 +403,8 @@ Wait for the user's response. If they request changes, make them and re-run the 
 - **One question at a time** - Don't overwhelm with multiple questions
 - **Multiple choice preferred** - Easier to answer than open-ended when possible
 - **YAGNI ruthlessly** - Remove unnecessary features from all designs
-- **Never reuse a component without asking** - The only silent reuse is an exact match (name + layout + behavior). Any near-match, name/visual/behavior difference, or uncertainty → ask the user and reuse only on explicit approval
+- **Assume nothing — confirm everything** - Every substantive decision in this phase belongs to the user: which component gets adopted, every DS verdict, every derive-vs-update cut, every proposed name, every interrogation finding. You analyze and recommend; they decide. There is no confidence level, match quality, or "obvious case" that converts a decision into an assumption
+- **Never reuse a component without asking** - No exceptions, not even a perfect match on name + layout + behavior. Whether it matches is your judgement, and that judgement is exactly what the user needs to check — so it can never be the reason you skipped asking them
 - **Explore alternatives** - Always propose 2-3 approaches before settling
 - **Incremental validation** - Present design, get approval before moving on
 - **Be flexible** - Go back and clarify when something doesn't make sense

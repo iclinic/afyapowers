@@ -58,6 +58,37 @@ def review_approved(review_text):
     return False
 
 
+def unaccepted_impedimentos(concerns_text):
+    """Return blocking-concern lines from implementation-concerns.md that carry no
+    [ACCEPTED BY USER: ...] marker.
+
+    The implement phase must not advance on an unresolved divergence from the design.
+    That gate lived only in the implementing skill's prose, so a skipped step let the
+    workflow move to review with open visual/behavioral divergences. This makes it
+    deterministic, like every other phase gate.
+
+    Only the `## Impedimentos` section counts; `## Ressalvas` are non-blocking by design.
+    """
+    lines = concerns_text.splitlines()
+    in_section = False
+    pending = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("## "):
+            # Any new h2 ends the Impedimentos section.
+            in_section = "Impedimento" in stripped
+            continue
+        if not in_section:
+            continue
+        # Concern entries are list items; "### Task N:" subheadings and prose are not.
+        if not re.match(r"^\s*[-*]\s+\S", line):
+            continue
+        if "[ACCEPTED BY USER:" in line:
+            continue
+        pending.append(stripped)
+    return pending
+
+
 def emit(**fields):
     order = ["slug", "feature", "current_phase", "status",
              "valid", "next_phase", "error", "task_progress"]
@@ -114,10 +145,22 @@ def main():
             task_progress = "%d/%d" % (done, total)
             if total == 0:
                 err = "No tasks found in plan.md."
-            elif rem == 0:
-                valid = True
-            else:
+            elif rem > 0:
                 err = "%d of %d tasks still unchecked." % (rem, total)
+            else:
+                concerns_path = os.path.join(artifacts, "implementation-concerns.md")
+                pending = []
+                if os.path.isfile(concerns_path):
+                    pending = unaccepted_impedimentos(read_text(concerns_path))
+                if pending:
+                    err = (
+                        "%d blocking concern(s) in implementation-concerns.md are neither "
+                        "fixed nor accepted. Resolve each one, or record acceptance with "
+                        "[ACCEPTED BY USER: <reason>] on its line. First: %s"
+                        % (len(pending), pending[0][:120])
+                    )
+                else:
+                    valid = True
     elif phase == "review":
         review_path = os.path.join(artifacts, "review.md")
         if os.path.isfile(review_path) and review_approved(read_text(review_path)):

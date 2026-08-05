@@ -2,12 +2,12 @@
 claude:
   name: afyapowers:subagent-driven-development
   description: Use when executing implementation plans with independent tasks in the current session
-  model: claude-opus-4-6
+  model: claude-opus-5
   effort: high
 cursor:
   name: afyapowers-subagent-driven-development
   description: Use when executing implementation plans with independent tasks in the current session
-  model: claude-4-6-opus
+  model: claude-opus-5
 github-copilot:
   name: subagent-driven-development
   description: Use when executing implementation plans with independent tasks in the current session
@@ -32,7 +32,7 @@ digraph process {
     "Compute ready set" [shape=box];
     "Any tasks ready?" [shape=diamond];
     "Validate file overlap in ready set" [shape=box];
-    "Apply Figma concurrency cap\nDispatch parallel Agent calls" [shape=box];
+    "Apply Type concurrency cap\nDispatch parallel Agent calls" [shape=box];
     "Wait for all agents to return" [shape=box];
     "Process results" [shape=box];
     "Commit completed tasks (sequential)" [shape=box];
@@ -47,8 +47,8 @@ digraph process {
     "Compute ready set" -> "Any tasks ready?";
     "Any tasks ready?" -> "Write implementation-concerns.md" [label="all done"];
     "Any tasks ready?" -> "Validate file overlap in ready set" [label="yes"];
-    "Validate file overlap in ready set" -> "Apply Figma concurrency cap\nDispatch parallel Agent calls";
-    "Apply Figma concurrency cap\nDispatch parallel Agent calls" -> "Wait for all agents to return";
+    "Validate file overlap in ready set" -> "Apply Type concurrency cap\nDispatch parallel Agent calls";
+    "Apply Type concurrency cap\nDispatch parallel Agent calls" -> "Wait for all agents to return";
     "Wait for all agents to return" -> "Process results";
     "Process results" -> "Commit completed tasks (sequential)";
     "Commit completed tasks (sequential)" -> "All tasks done?";
@@ -166,25 +166,57 @@ Overlap validation covers `**Files:**` (source) paths only. **Asset files are ex
 
 ### Step 5: Dispatch
 
-**Figma-aware concurrency:** After file overlap validation, classify each task in the ready set:
-- **Figma task**: task text contains a `**Figma:**` section
-- **Non-Figma task**: no `**Figma:**` section
+**Type-aware concurrency:** After file overlap validation, classify each task in the ready set by its `**Type:**` line:
+- **MCP-capped task**: `Type` is `UI Screen` or `UI Component` — these implementers make Figma MCP calls
+- **Uncapped task**: `Type` is `UI Logic`, `Backend`, or `General` — no Figma MCP calls
+- **Legacy fallback**: if a task has NO `**Type:**` line, classify by the legacy heuristic — a task whose text contains a `**Figma:**` section counts as **MCP-capped**; otherwise **uncapped**
 
 Apply concurrency caps:
-- **Non-Figma tasks**: dispatch all (no cap)
-- **Figma tasks**: dispatch up to **4** per cycle. If more than 4 Figma tasks are ready, pick the first 4 by task number; the rest stay in the ready pool for the next cycle
+- **Uncapped tasks**: dispatch all (no cap)
+- **MCP-capped tasks**: budget by **estimated MCP calls**, not by task count. The Figma MCP rate-limits at **15 requests/minute**; target a wave of **≤12 calls** to leave headroom:
 
-> **Why 4?** The Figma MCP rate-limits at 15 requests/minute. Each Figma task makes 3 mandatory MCP calls, so 4 concurrent tasks = 12 calls — safely under the limit.
+  | Type | Implementer | MCP calls per task | Budget cost |
+  |---|---|---|---|
+  | `UI Screen` | `figma-design-implementer` | 3 mandatory (2 for skeleton tasks) + occasional `get_metadata` fallback + `download_assets` | **~4** |
+  | `UI Component` | `figma-component-implementer` | 3 mandatory + `download_assets` + fallbacks (self-review reuses data already in context — no extra calls) | **~4** |
 
-Dispatch the combined set (all non-Figma + up to 4 Figma) as parallel Subagent calls in a single message.
+  So per cycle: **3 MCP-capped tasks** of either type (≈12). Pick by task number in order; the rest stay in the ready pool for the next cycle.
 
-**Prompt routing:** Select the correct implementer agent based on the task type:
-- If the task text contains a `**Figma:**` section → dispatch @"figma-design-implementer (agent)". Include the Figma metadata (file key, node ID, breakpoints) in the agent context.
-- If the task does NOT contain a `**Figma:**` section → dispatch @"tdd-implementer (agent)" (standard TDD implementer).
+> **Why budget by calls, not tasks?** Both implementers declare 3 mandatory calls, but assets and truncation fallbacks add 1-2 more per task in practice. Four tasks concurrently can exceed 15 req/min: tasks hit 429, back off 30-60s, and the wave serializes anyway — after burning the retries. Budgeting by calls (~4 each, ≤12/wave) keeps the wave under the limit.
+
+**Figma tasks self-verify (with different mechanisms per Type).** `UI Screen` tasks (`figma-design-implementer`) run a fixed fidelity-verification step (its Step 5): after writing the code the implementer spawns a read-only `figma-token-verifier` and loops (max **2** attempts) fixing token/measure mismatches until PASS. `UI Component` tasks (`figma-component-implementer`) do **not** use `figma-token-verifier`; they self-verify via a screenshot self-review (its Step 6 — comparing against the screenshot and token data **already fetched in its Steps 1-2**; no re-fetch). Neither verification makes extra Figma calls. Consequence for you: a Figma task's `DONE` already carries a fidelity self-check, and a `DONE_WITH_CONCERNS` may carry a BLOCKING fidelity concern (e.g. "unresolved fidelity mismatch after 2 attempts", or a screenshot-mismatch concern) — handle it like any other blocking concern. This does not change wave scheduling or the commit flow.
+
+Dispatch the combined set (all uncapped + the MCP-capped tasks that fit the ≤12-call budget) as parallel Subagent calls in a single message.
+
+**Prompt routing:** Read the task's `**Type:**` line and select the implementer agent from this table:
+- `UI Screen` → dispatch @"figma-design-implementer (agent)". Include the Figma metadata (file key, node ID, breakpoints, acceptance measures) in the agent context.
+- `UI Component` → dispatch @"figma-component-implementer (agent)" (design-system-aware component implementer). Include the Figma metadata **and the full `**Design System:**` block** — see the mapping below.
+- `UI Logic` / `Backend` / `General` → dispatch @"tdd-implementer (agent)" (standard TDD implementer).
+
+**Mapping the `**Design System:**` block into the component implementer's placeholders.** This is the load-bearing part of a `UI Component` dispatch. The agent is organised entirely around its verdict, so an empty verdict changes what it builds:
+
+| Task line | Agent placeholder |
+|---|---|
+| `**Veredito:**` | `[VERDICT]` (lowercase: `implementar` / `importar` / `atualizar` / `derivar`) |
+| `**Base:**` | `[BASE_COMPONENT]` — name + resolved import path |
+| `**Compõe de:**` | `[COMPOSE_FROM]` — the list of `{ code name, import path }` children |
+| `**Variantes:**` | `[VARIANT_LIST]` — every axis the original declares |
+| task name + `**Files:**` target | `[COMPONENT_NAME]`, `[OUTPUT_DIRECTORY]` |
+| `**Anotações do Figma:**` / `**Estados a cobrir:**` | paste verbatim into the task text — interactive states, animation and a11y rules the implementer cannot see in the default frame |
+
+Also pass `[NODE_TYPE]`, `[FRAMEWORK]` and `[GENERATE_STORYBOOK]` from the task/project context.
+
+**`[FILE_KEY]` and `[NODE_ID]` on a `UI Component` task point at the ORIGINAL component, not at the instance** — and the file key may belong to a **different file** than the screen (the design-system file). Pass them exactly as the task carries them. Do not "correct" them to the screen's file key because they look inconsistent with the other tasks in the wave: that inconsistency is the point. The implementer has to read the component where it is declared, or it only ever sees the one variant that appeared on the screen.
+
+**Leaves→root ordering is already enforced by `**Depends on:**`** — the plan derives each component task's dependencies from the DS tree's `Depende de` column, so the normal ready-set rule (a task is ready only when all its deps are `completed`) dispatches bases before derivatives and children before composites. You do not need a separate ordering pass. But do sanity-check it: a `derivar` task whose `[BASE_COMPONENT]` is not among its `**Depends on:**`, or a composite whose `[COMPOSE_FROM]` children are not all dependencies, means the plan dropped an edge. Surface that instead of dispatching — the agent would find the import unresolvable and report BLOCKING anyway, after doing the work.
+
+**If the task has no `**Design System:**` block**, pass the placeholders empty and say so explicitly in the prompt. Do **not** invent a verdict to fill the gap. The agent has a defined procedure for a missing verdict — it checks whether the component already exists before building anything — and that check is the whole safeguard. Silently passing `implementar` defeats it and produces a duplicate of an existing design-system component, which is the worst outcome available here: permanent, invisible, and it looks like the task succeeded.
+
+**Legacy fallback (no `**Type:**` line):** apply the pre-Type heuristic — if the task text contains a `**Figma:**` section → dispatch @"figma-design-implementer (agent)" (include Figma metadata); otherwise → dispatch @"tdd-implementer (agent)".
 
 Each agent gets:
-- Full task text (steps, file list, code/Figma metadata) — paste directly, don't make agent read files
-- Design spec content for context
+- Full task text (steps, file list, code/Figma metadata, and the `**Design System:**` block if present) — paste directly, don't make agent read files
+- **Task-relevant design spec excerpts — not the whole spec.** Paste only the sections the task actually needs: for Figma tasks, the task's screen/section context plus — from `## Árvore de Componentes de DS` — **only the rows for this task's node and its `**Depends on:**` nodes**, and — from `## Decisões de Reúso de Componentes` — only the decisions citing those nodes (these record which components exist, their import paths, and which reuses the user approved; an implementer that can't see its rows re-derives those decisions by guessing). For `UI Screen` tasks also paste the relevant Layout Contract row(s). `tdd-implementer` tasks do NOT get the DS tree — only the spec sections describing the behavior they implement. Never paste the full design.md: every byte you paste is re-sent on all of the subagent's turns
 - File constraint: "You may ONLY modify these files: [list from task's Files: section]". **For Figma tasks, append:** "— plus you MAY create asset files (icons/images) under the project's assets directory as needed; list every asset file you create in your report."
 - Return format: status (DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED) + summary, **including the exact list of files changed**. For Figma tasks, the report must **separately list any asset files created** (the "Assets created" line) — these are usually not in the Files: section and the orchestrator needs them to stage the assets.
 
@@ -198,6 +230,7 @@ All Agent calls return together. For each result:
   - **BLOCKING concern examples (collect as blocking, do not bury):** "I reused `DropdownPicker` as instructed but its drawer+search interaction model doesn't match the Figma chip+popover", "this component assumes a bounded-height parent the host doesn't provide", "output behaves differently from the design". These do not stop the wave, but the implement phase cannot cleanly advance until the user resolves or explicitly accepts them (enforced by the `implementing` skill).
   - **Treat as BLOCKED examples:** "I couldn't get tests to pass", "Tests fail and I can't figure out why", "Core dependency is missing and I had to stub the entire integration"
   - **Non-blocking (store-and-continue) examples:** "I'm not sure this edge case is handled correctly", "The API response format might differ in production", "This works but the approach feels fragile"
+  - **A concern that defers verification is BLOCKING, never store-and-continue.** If a concern postpones checking the work to a later phase instead of checking it now — e.g. "vou validar isso na review", "will confirm later", "didn't run the tests, someone should verify before shipping" — reclassify it as **BLOCKING** regardless of how the implementer tagged it. Deferred verification is not evidence of correctness; it is the absence of evidence, and it becomes a verification requirement that only closes once the actual evidence is produced — not once someone promises to look later.
 - **NEEDS_CONTEXT**: surface question to user. Mark task `needs-retry`. Continue with other tasks — do NOT pause the entire execution
 - **BLOCKED**: assess blocker per standard SDD rules (more context, more capable model, break into pieces, or escalate). Mark task `needs-retry`
 
@@ -259,13 +292,15 @@ Ready: [5] (deps [3,4] all completed) → dispatch
 Completed: [1, 2, 3, 4, 5] → Write implementation-concerns.md → Done
 ```
 
-#### Mixed Figma / Non-Figma Example
+#### Mixed Type Example
 
 ```
-Ready: [1(std), 2(std), 3(figma), 4(figma), 5(std), 6(figma)]
-→ Classify: non-Figma = [1, 2, 5], Figma = [3, 4, 6]
-→ Apply caps: all non-Figma + first 4 Figma
-→ Dispatch: [1, 2, 5] + [3, 4, 6] = 6 parallel agents (all 3 Figma tasks fit under the cap of 4)
+Ready: [1(Backend), 2(General), 3(UI Screen), 4(UI Component), 5(UI Logic), 6(UI Component)]
+→ Classify by Type: uncapped (no MCP) = [1, 2, 5], MCP-capped = [3, 4, 6]
+→ Route: 1,2,5 → tdd-implementer; 3 → figma-design-implementer; 4,6 → figma-component-implementer
+→ Budget the MCP wave (target ≤12 calls): 3(UI Screen)≈4 + 4(UI Component)≈6 = 10 ✓; adding 6(UI Component)≈6 → 16 ✗
+→ Dispatch: [1, 2, 5] + [3, 4] = 5 parallel agents. Task 6 waits for the next cycle
+→ Next cycle: 6(UI Component)≈6 dispatches alone
 ```
 
 ### Fallback to Sequential
@@ -313,7 +348,7 @@ Implementer subagents report one of four statuses:
 
 **DONE:** Mark task `completed`, update plan checkbox. No review dispatch.
 
-**DONE_WITH_CONCERNS:** Read concerns and sort by severity (**BLOCKING** vs non-blocking **CONCERN**). Store them in separate lists and mark `completed`. If the concern indicates the task is fundamentally broken (e.g., "I couldn't get tests to pass", "Core dependency is missing and I had to stub the entire integration"), treat as `BLOCKED` instead. BLOCKING concerns (e.g. a component substitution that doesn't match Figma, an unconfirmed host-height assumption, behavior that differs from the design) are collected separately and gate the phase via the `implementing` skill. Examples of non-blocking concerns: "I'm not sure this edge case is handled correctly", "The API response format might differ in production", "This works but the approach feels fragile."
+**DONE_WITH_CONCERNS:** Read concerns and sort by severity (**BLOCKING** vs non-blocking **CONCERN**). Store them in separate lists and mark `completed`. If the concern indicates the task is fundamentally broken (e.g., "I couldn't get tests to pass", "Core dependency is missing and I had to stub the entire integration"), treat as `BLOCKED` instead. BLOCKING concerns (e.g. a component substitution that doesn't match Figma, an unconfirmed host-height assumption, behavior that differs from the design) are collected separately and gate the phase via the `implementing` skill. Examples of non-blocking concerns: "I'm not sure this edge case is handled correctly", "The API response format might differ in production", "This works but the approach feels fragile." A concern that **defers verification** to a later phase instead of performing it (e.g. "vou validar isso na review", "will check this later") is always **BLOCKING**, never non-blocking — even if the implementer filed it as a routine ressalva — because it is a verification requirement that only closes with actual evidence, not a promise to verify eventually.
 
 **NEEDS_CONTEXT:** Provide missing context and re-dispatch.
 
@@ -327,8 +362,9 @@ Implementer subagents report one of four statuses:
 
 ## Prompt Templates
 
-- @"tdd-implementer (agent)" - Dispatch standard implementer subagent (TDD workflow)
-- @"figma-design-implementer (agent)" - Dispatch Figma design implementer subagent (visual fidelity workflow)
+- @"tdd-implementer (agent)" - Dispatch standard implementer subagent (TDD workflow) — for `UI Logic` / `Backend` / `General`
+- @"figma-design-implementer (agent)" - Dispatch Figma design implementer subagent (visual fidelity workflow) — for `UI Screen`
+- @"figma-component-implementer (agent)" - Dispatch Figma component implementer subagent (design-system-aware component workflow) — for `UI Component`
 
 ## Red Flags
 
@@ -357,8 +393,9 @@ Implementer subagents report one of four statuses:
 - **implementing** (REQUIRED SUB-SKILL) — implementing loads the plan and design, then invokes SDD to execute all tasks
 
 **Subagent prompts:**
-- @"tdd-implementer (agent)" — TDD rules are embedded directly in this prompt (used for standard tasks)
-- @"figma-design-implementer (agent)" — Figma implement-design workflow (used for tasks with `**Figma:**` section)
+- @"tdd-implementer (agent)" — TDD rules are embedded directly in this prompt (used for `UI Logic` / `Backend` / `General` tasks, and legacy non-Figma tasks)
+- @"figma-design-implementer (agent)" — Figma implement-design workflow (used for `UI Screen` tasks, and legacy tasks with a `**Figma:**` section)
+- @"figma-component-implementer (agent)" — design-system-aware component workflow (used for `UI Component` tasks)
 
 **Context:** When invoked by implementing, the plan and design are already in the conversation context. Use them directly. If the plan is not in context (e.g., invoked standalone), read it from `.afyapowers/features/<feature>/artifacts/plan.md`.
 

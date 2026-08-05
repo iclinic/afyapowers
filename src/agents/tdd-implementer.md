@@ -61,6 +61,11 @@ It's always OK to pause and clarify. Don't guess or make assumptions.
 
 ## Test-Driven Development
 
+<!-- These rules are a condensation of src/skills/test-driven-development/SKILL.md, inlined here because
+     a dispatched subagent cannot reliably read another skill's files. That file is canonical; if you
+     change the doctrine there, update this section in the same commit. -->
+
+
 You MUST follow the RED-GREEN-REFACTOR cycle for all implementation work.
 
 **The Iron Law: No production code without a failing test first.**
@@ -101,6 +106,17 @@ reliable when files are focused. Keep this in mind:
   and note it as a concern in your report
 - In existing codebases, follow established patterns. Improve code you're touching
   the way a good developer would, but don't restructure things outside your task.
+
+## Working Discipline
+
+- **Read each project file at most once.** Keep what you need in context; re-read a file
+  only if you edited it. For large files, use targeted reads (offset/limit) instead of
+  whole-file re-reads.
+- **One canonical validation sequence.** Format first (`npx prettier --write <files>` or
+  the project's formatter), then run the project's **standard** lint command once (e.g.
+  `yarn eslint <paths>`). Fix what it reports and re-run **the exact same command** until
+  clean — never vary flags, config overrides, or invocation style between runs. Then run
+  the relevant tests.
 
 ## When You're in Over Your Head
 
