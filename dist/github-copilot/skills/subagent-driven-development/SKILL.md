@@ -9,6 +9,11 @@ Execute plan by dispatching subagents per task. Tasks with no mutual dependencie
 
 **Core principle:** Fresh subagent per task + self-review + concerns collection = fast iteration with deferred quality review
 
+**No separate task list here.** Other phases create a harness task list for ordering; in this phase the
+**plan.md checkboxes are the task tracking** and the wave algorithm (ready set + `**Depends on:**`) is
+the ordering enforcement. Creating a parallel list in the platform's task tool would duplicate state
+that then diverges from the plan — don't.
+
 ## The Process
 
 ```dot

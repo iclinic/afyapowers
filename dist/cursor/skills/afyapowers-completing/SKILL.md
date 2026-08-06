@@ -30,6 +30,24 @@ This is the formal declaration. The actual invocation point is Step 3.5 below.
 
 ## Process
 
+### Step 0: Create the phase task list (ordering enforcement)
+
+Before anything else, create this phase's steps as tasks in the platform's task-tracking tool
+(Claude Code: `TaskCreate` + `TaskUpdate` with `addBlockedBy`; other agents: the equivalent task/todo
+tool — without dependency support, keep the numbering and enforce the chain by protocol), each blocked
+by the previous:
+
+- **T1** Final verification (Step 1) — tests green, tree clean, verdict **Aprovado**
+- **T2** Present options + user choice (Step 2)
+- **T3** Execute choice (Step 3) — **blocked by T1 and T2**: merge/PR/discard are destructive; they
+  never run before verification passes and the user has chosen
+- **T4** Autodoc (Step 3.5)
+- **T5** Completion artifact (Step 4)
+- **T6** Complete (Step 5)
+
+Mark `in_progress` before starting, `completed` only with the exit condition met; never start a blocked
+task.
+
 ### Step 1: Final Verification
 
 1. Run the project's test suite — all tests must pass

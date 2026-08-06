@@ -45,6 +45,26 @@ Requirements are inputs to be challenged, not facts to transcribe. JIRA tickets,
 
 Every project goes through this process. A todo list, a single-function utility, a config change — all of them. "Simple" projects are where unexamined assumptions cause the most wasted work. The design can be short (a few sentences for truly simple projects), but you MUST present it and get approval.
 
+## Step 0 — Create the phase task list (ordering enforcement)
+
+Before starting item 1, **create the checklist below as tasks in the platform's task-tracking tool**
+(on Claude Code: `TaskCreate` + `TaskUpdate` with `addBlockedBy`; on other agents: the equivalent
+task/todo tool), chained so each item is blocked by the previous one. Where the tool has no dependency
+support, number the tasks (`T1`, `T2`, …) and enforce the chain by protocol. This is what keeps the
+order stable across a long session: instructions fade after 200 turns, but the task list is tracked by
+the harness, resurfaces during the session, and makes a violation mechanically visible ("T11 is still
+blocked") instead of a memory failure.
+
+- One task per checklist item (T1–T13), each blocked by the preceding item. Extra explicit edges:
+  **T11 (write design doc) additionally blocked by T5, T6 and T7** — the three that close decisions.
+- Conditional items that don't apply (no JIRA → T1; no Figma → T2, T6, T10) are marked `completed`
+  immediately with a note ("não se aplica — sem Figma"), never deleted — the chain stays intact.
+- Loops live INSIDE their task: T5 stays `in_progress` across interrogator follow-ups and only completes
+  on `BLOCKING items: 0`; T12 spans the whole review loop.
+- Protocol per task: mark `in_progress` before starting → do the work → mark `completed`. **Never start
+  a task the list shows as blocked (or, without dependency support, whose predecessor is not completed);
+  never mark one completed with its exit condition unmet.**
+
 ## Checklist
 
 You MUST complete these items in order. **Requirements first (1-4), code exploration only after (5).**

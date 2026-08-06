@@ -19,6 +19,24 @@ Otherwise (direct invocation):
 
 ## Process
 
+### Step 0: Create the phase task list (ordering enforcement)
+
+Before gathering context, create this phase's steps as tasks in the platform's task-tracking tool
+(Claude Code: `TaskCreate` + `TaskUpdate` with `addBlockedBy`; other agents: the equivalent task/todo
+tool — without dependency support, keep the numbering and enforce the chain by protocol), each blocked
+by the previous:
+
+- **T1** Gather context (Step 1)
+- **T2** Dispatch both reviewers in parallel (Step 2); stays `in_progress` until both report
+- **T3** Consolidate + fix via subagent + re-review (Step 3); only completes when every Critical/
+  Important finding and spec gap is resolved or explicitly escalated to the user
+- **T4** Produce review.md (Step 4) — **additionally blocked by T3**: the artifact is written once,
+  after the loops close, never before
+- **T5** Complete (Step 5)
+
+Mark `in_progress` before starting, `completed` only with the exit condition met; never start a blocked
+task.
+
 ### Step 1: Gather Context
 
 1. Read from `.afyapowers/features/<feature>/artifacts/design.md` the sections the spec review needs: `## Requisitos`, `## Casos de Borda & Estados`, `## Árvore de Componentes de DS`, `## Decisões de Reúso de Componentes`, `## Contrato de Layout`, `## Questões em Aberto` — **not the whole document** (the Figma inventory, JIRA transcription, and architecture prose are not spec-compliance inputs; the DS/token fidelity was already verified per task by the figma-token-verifier during implement)

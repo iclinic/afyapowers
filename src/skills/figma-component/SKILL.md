@@ -51,7 +51,10 @@ Develop a single Figma component into production code. This skill is **standalon
 
 ## Step 0 — Create Tasks
 
-**Before doing ANY work, create all 10 tasks using TaskCreate, then set up dependencies with TaskUpdate.**
+**Before doing ANY work, create all 10 tasks in the platform's task-tracking tool, then set up
+dependencies.** On Claude Code that is `TaskCreate` + `TaskUpdate` with `addBlockedBy`; on other agents,
+use the equivalent task/todo tool — and where it has no dependency support, keep the `T1`–`T10`
+numbering and enforce the chain by protocol (never start `TN` before `TN-1` is completed).
 
 Create the following tasks in order:
 

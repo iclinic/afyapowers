@@ -14,6 +14,23 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 **Announce at start:** "Estou usando a skill writing-plans para criar o plano de implementação."
 
+## Step 0 — Create the phase task list (ordering enforcement)
+
+Before any other work, create this phase's steps as tasks in the platform's task-tracking tool
+(Claude Code: `TaskCreate` + `TaskUpdate` with `addBlockedBy`; other agents: the equivalent task/todo
+tool — without dependency support, keep the numbering and enforce the chain by protocol), each blocked
+by the previous:
+
+- **T1** Phase gate + read design.md
+- **T2** Scope check + map the codebase paths the tasks will anchor to
+- **T3** Write plan.md (all chunks)
+- **T4** Plan review — all chunks dispatched in parallel; stays `in_progress` until every chunk is
+  approved (max 2 iterations per chunk)
+- **T5** Completion (state.yaml + history.yaml + announce)
+
+Mark `in_progress` before starting, `completed` only with the exit condition met; never start a blocked
+task. Loops live inside their task (T4 spans all chunk iterations).
+
 ## Phase Gate
 
 If this skill was invoked by `/afyapowers:next` (you already know the active feature slug and confirmed the phase is `plan` from the conversation context above):
