@@ -70,6 +70,20 @@ absent: say which case you believe it is and let the URL settle it.
 
 Produce the **unresolved list**: one entry per distinct `componentId`, with the instance-reported name, instance count, and the screens involved. That list is the input to the gate.
 
+<STRICT-ORDER>
+The steps run in this order, and each is a barrier for the next:
+
+1. **Origin gate + link validation** (Steps 2–3) — every entry resolved, skipped, or unreachable
+2. **Code Connect** — one `get_code_connect_map` call, only after every origin is validated
+3. **Codebase existence checks** (Step 4) — only after Code Connect
+4. **Diff + verdicts** (Steps 5–6)
+
+**No codebase read, no grep, no `get_code_connect_map` while any link is unvalidated.** An existence
+check run before the origin is confirmed anchors on a component whose identity you have not verified —
+if the link turns out to point at another node, the search was wasted and, worse, its conclusion may
+survive into the verdict. Validate first; the identity is what makes every later check meaningful.
+</STRICT-ORDER>
+
 ## Step 2 — HARD GATE: ask for the pending components' links (one batched ask)
 
 <HARD-GATE>
@@ -107,14 +121,22 @@ Ask **openly, in a single message** (not a choice widget — the answer is a set
 
 ## Step 3 — Validate every URL before trusting it
 
-A link the user typed is a claim, not a fact. For **each** URL, in order — the parse gate first, so a bad link costs zero MCP calls:
+A link the user typed is a claim, not a fact. **Validation is the cheapest check that settles the claim
+— nothing more.** One shallow `get_metadata` per link, from whose response you read only the target
+node's **type and name**. Do NOT analyze the subtree, do NOT walk the variant catalog, do NOT call
+`get_design_context`, and do NOT start comparing against the codebase here — the deep read happens later
+(Step 4), only for nodes that turn out to need building, and the catalog confirmation belongs there too.
+Exploring at validation time pays the expensive read for every link, including the ones that fail or
+resolve to `Importar` and would never have needed it.
+
+For **each** URL, in order — the parse gate first, so a bad link costs zero MCP calls:
 
 1. **Parse.** Extract `fileKey` (segment after `/design/`) and `node-id` (`X-Y` → `X:Y`). No `node-id` → reject now (no MCP call), re-ask. Present but not matching `^\d+:\d+$` → report BLOCKED rather than passing an unvalidated value into a tool call.
-2. **Reachable?** Call `get_metadata(fileKey, nodeId)`. On failure (permission, wrong key, deleted, not found) tell the user exactly what failed and ask for another link.
-3. **The original, and the right one?** Both required:
+2. **Reachable?** Call `get_metadata(fileKey, nodeId)` — one call, the response is used only for the checks in item 3. On failure (permission, wrong key, deleted, not found) tell the user exactly what failed and ask for another link.
+3. **The original, and the right one?** Both required — read from the response's root node only:
    - **Type** — must be `COMPONENT` or `COMPONENT_SET`. A `FRAME`, `GROUP`, or `INSTANCE` (the most common mistake: an instance *inside* the DS file) → say what you found, re-ask.
    - **Identity** — the node's name must correspond to the component you asked about. If `Card`'s link resolves to `Pagination`, confirm before reassigning — it usually means a wrong selection was copied.
-4. **Record two values and a type, then discard the link.** Store origin `fileKey`, node id, and type (`COMPONENT` vs `COMPONENT_SET`); clear the `Pendência` line. A filled coordinate IS the proof of validation — no separate flag, and the URL adds nothing once parsed.
+4. **Record two values and a type, then discard the link.** Store origin `fileKey`, node id, and type (`COMPONENT` vs `COMPONENT_SET`); clear the `Pendência` line. A filled coordinate IS the proof of validation — no separate flag, and the URL adds nothing once parsed. Keep the response stored: if this node later needs its subtree read in Step 4, reuse what this call already returned instead of re-fetching.
 5. **Keep unresolved anything a link did not settle**, with the `Pendência` reason updated — silently dropping an entry re-opens the gate.
 
 `COMPONENT_SET` vs `COMPONENT` changes what "all variants" means for the node — record which it is.
@@ -125,7 +147,10 @@ Only when every entry has a validated origin (or an explicit skip/unreachable) d
 
 For each original — resolved in-file (Step 1) or via URL (Step 3):
 
-**Existence gates recursion.** Run the existence check (`get_code_connect_map` + codebase search by name):
+**First, fetch Code Connect once** — a single `get_code_connect_map` call for the file(s), now that every
+origin is validated (see STRICT-ORDER). Then, per original:
+
+**Existence gates recursion.** Run the existence check (the stored Code Connect map + codebase search by name):
 
 - **Exists in code** → recommended verdict `Importar`; **stop — do not recurse into it.** Its internals are already implemented; parents just import it.
 - **Does not exist** → it must be built, so **recurse**: read the original's own subtree with `get_metadata` **in its own file**, find its `INSTANCE`s, and put each through Step 1 again (unresolved ones go back through the gate).
