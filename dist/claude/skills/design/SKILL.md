@@ -180,7 +180,7 @@ It resolves every instance **to its original component in the file that declares
 <HARD-GATE-ORIGENS>
 **The design phase STOPS while any component instance has no validated origin file.**
 
-An `INSTANCE` whose `COMPONENT`/`COMPONENT_SET` is not declared in the file you read means the original lives somewhere else — another page of the same file, or another file such as the design system. You cannot analyze or implement that component from its instance: an instance shows only the one variant that screen used, so building from it yields a permanently poorer duplicate of the real component.
+The figma-reader's full-subtree sweep already resolves most origins by itself: a **visible** instance whose original is declared **in the same file** (any page) comes back with coordinates filled — no link needed. What remains unresolved, and what this gate collects, is exactly two cases: the original lives in an **external library file** (`remote` — typically the design system), or the main component could not be resolved at all. **Hidden instances never reach this gate** — the sweep excludes them (they appear only in the `Ignorados (hidden)` line; do not ask for their links). You cannot analyze or implement a component from its instance: an instance shows only the one variant that screen used, so building from it yields a permanently poorer duplicate of the real component.
 
 So, for **every** unresolved instance, the user must supply the **direct link to the component node**. **Check the JIRA issue and the initial request first** — the design-system links are often already there.
 

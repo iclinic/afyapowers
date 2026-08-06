@@ -32,14 +32,10 @@ depth 1 = screen frame, depth 2 = component/element). From that one response bui
   depth-2 children: INSTANCE children reference their `C#` with instance node ids (collapse repeats `×N`);
   non-instance leaves get their own node id and type; mark `(subárvore não explorada)` where you did not
   descend.
-- **`### Componentes`** — one entry per distinct `componentId` referenced by an INSTANCE, labelled `C1, C2…`,
-  plus every depth-2 COMPONENT/COMPONENT_SET nothing references. Fill: name as the instance reports it,
-  `Variantes que o layout usa`, `Instâncias` (count per Tela), and the **coordinates of the original**:
-  - The `COMPONENT`/`COMPONENT_SET` with that id **is in this response** → fill `Arquivo do original`,
-    `Node ID do original`, `Tipo`.
-  - It is **not** → leave `Arquivo do original`, `Node ID do original`, `Tipo`, `Variantes que o original
-    declara` as `—` and add the line `Pendência: aguardando link direto do nó`. Never guess where an
-    unresolved component lives — another page and another file are indistinguishable at depth 2.
+- **`### Componentes`** — assembled in Step 5, **from the full-subtree instance sweep of Step 4, never
+  from this depth-2 response alone**: depth 2 misses every INSTANCE nested deeper, and a missed instance
+  here is a component whose original nobody ever asks for. Use this response only for the
+  `Variantes que o layout usa` of the depth-2 instances (`—` for deeper ones) and for cross-checking.
 
 **Every entry must be self-sufficient for fetching** — whoever reads it later must be able to fetch that
 node from the entry alone (fileKey + node id present, or explicitly `—` + `Pendência`). No
@@ -55,12 +51,16 @@ its coordinates are right there and the plan may need it.
 **Validation (run before assembling the final message):**
 1. `### Arquivos` lists every file read, with URL and `fileKey`
 2. Every depth-1 FRAME has a `T#` entry with arquivo, node id, tipo, dimensões, breakpoint
-3. Every distinct `componentId` referenced by an INSTANCE has a `C#` entry; every depth-2
-   COMPONENT/COMPONENT_SET has one too, even with zero instances
-4. Every `C#` entry has coordinates filled OR all three `—` + a `Pendência:` line — never blank, never guessed
-5. Every INSTANCE child in a `T#` `Conteúdo` references a `C#` that exists
-6. Every node with undescended children is marked `(subárvore não explorada)`
-7. No entry requires reading another section to be fetched
+3. **Every entry of the sweep's `components` output has a `C#` entry** — the sweep is full-subtree, so
+   no visible instance is missing regardless of nesting depth; every non-hidden `declaredComponents`
+   entry has one too, even with zero instances
+4. **No hidden instance or hidden declared component has a `C#` entry or a `Pendência`** — they appear
+   only in the `Ignorados (hidden)` line
+5. Every `C#` entry has coordinates filled OR all three `—` + a `Pendência:` line — never blank, never
+   guessed; `Pendência` only on `remote: true` or unresolvable mains (locals resolve by `componentId`)
+6. Every INSTANCE child in a `T#` `Conteúdo` references a `C#` that exists
+7. Every node with undescended children is marked `(subárvore não explorada)`
+8. No entry requires reading another section to be fetched
 
 ## Step 3 — Layout Contract (same response, no new call)
 
@@ -85,12 +85,15 @@ new MCP call. Emit the table from `templates/design.md` with a **captured-at** I
 |---------------------|----------------------|-------------------|------|----------------|--------------------|
 ```
 
-## Step 4 — Annotations + real texts (`use_figma`, one call per file)
+## Step 4 — Annotations + real texts + instance sweep (`use_figma`, one call per file)
 
-Dev Mode annotations and the actual rendered texts are NOT in `get_metadata`. Read both with a single
-read-only `use_figma` call. **Prerequisite:** load the `figma-use` skill first and pass it via
-`skillNames` (prefix `resource:` if loaded from an MCP resource). Run this exact read-only script
-(substitute `NODE_ID`):
+Dev Mode annotations, the actual rendered texts, and the **complete instance inventory** are NOT in
+`get_metadata`. Read all three with a single read-only `use_figma` call. The instance sweep is the
+authoritative source for `### Componentes`: it traverses the **full subtree** (no depth limit), skips
+**hidden** nodes, and resolves each instance's original via the plugin API — including whether the
+original is declared in this file (any page) or lives in an external library (`remote`).
+**Prerequisite:** load the `figma-use` skill first and pass it via `skillNames` (prefix `resource:` if
+loaded from an MCP resource). Run this exact read-only script (substitute `NODE_ID`):
 
 ```js
 // Read-only: ALL Dev Mode annotations + real rendered texts under the node.
@@ -145,17 +148,90 @@ if (typeof root.findAll === "function") {
   }
 }
 
-return { annotatedNodeCount: nodes.length, nodes, textCount: texts.length, texts };
+// Instance sweep — FULL subtree, authoritative for ### Componentes.
+// Rules: every visible INSTANCE counts, regardless of depth; an instance that is hidden
+// (itself or any ancestor with visible === false) is ignored entirely.
+const isHidden = (n) => {
+  let p = n;
+  while (p && p.type !== "PAGE") {
+    if ("visible" in p && p.visible === false) return true;
+    p = p.parent;
+  }
+  return false;
+};
+const topFrameOf = (n) => {
+  let q = n;
+  while (q && q.parent && q.parent.type !== "PAGE") q = q.parent;
+  return q ? { id: q.id, name: q.name } : null;
+};
+
+const declared = [];   // COMPONENT/COMPONENT_SET declared in this subtree (sets subsume their variants)
+const comps = {};      // distinct originals referenced by visible instances
+const hiddenInstances = [];
+if (typeof root.findAll === "function") {
+  for (const c of root.findAll(n => n.type === "COMPONENT" || n.type === "COMPONENT_SET")) {
+    if (c.type === "COMPONENT" && c.parent && c.parent.type === "COMPONENT_SET") continue;
+    declared.push({ id: c.id, name: c.name, type: c.type, hidden: isHidden(c) });
+  }
+  for (const inst of root.findAll(n => n.type === "INSTANCE")) {
+    if (isHidden(inst)) { hiddenInstances.push({ id: inst.id, name: inst.name }); continue; }
+    let main = null;
+    try { main = await inst.getMainComponentAsync(); }
+    catch (e) { try { main = inst.mainComponent; } catch (e2) { main = null; } }
+    const set = main && main.parent && main.parent.type === "COMPONENT_SET" ? main.parent : null;
+    const orig = set || main;
+    const k = orig ? orig.id : "unresolved:" + inst.name;
+    if (!comps[k]) comps[k] = {
+      componentId: orig ? orig.id : null,
+      componentName: orig ? orig.name : inst.name,
+      componentType: orig ? orig.type : null,
+      remote: orig && "remote" in orig ? orig.remote : (main && "remote" in main ? main.remote : null),
+      instances: [],
+    };
+    comps[k].instances.push({ id: inst.id, name: inst.name, topFrame: topFrameOf(inst) });
+  }
+}
+
+return {
+  annotatedNodeCount: nodes.length, nodes,
+  textCount: texts.length, texts,
+  components: Object.values(comps),
+  declaredComponents: declared,
+  hiddenInstances: hiddenInstances.slice(0, 100),
+};
 ```
 
 If it errors, STOP, read the error, fix, retry (per figma-use error-recovery). Do not fall back to
 `get_design_context`.
 
+**Building `### Componentes` from the sweep** — one `C#` entry per element of `components` (each is a
+distinct original referenced by at least one **visible** instance), plus every entry of
+`declaredComponents` with `hidden: false` that no instance references. Resolution per entry:
+
+- **`remote: false`** — the original is declared **in this file** (possibly on another page). Fill
+  `Arquivo do original` (this F# + fileKey), `Node ID do original` (= `componentId`), `Tipo`. No link
+  needed from the user, even when the original sits on a page you did not read — the coordinates are
+  complete and fetchable.
+- **`remote: true`** — the original lives in an **external library file** (the design system). Coordinates
+  stay `—` with `Pendência: original em biblioteca externa — aguardando link direto do nó`. These — and
+  only these — are what the design phase's hard gate collects links for.
+- **`componentId: null`** (main unresolvable) — `Pendência: aguardando link direto do nó`, noting the
+  instance name/ids.
+
+`Instâncias` counts come from the sweep's `instances[].topFrame`, mapped to the owning `T#`. Instances
+whose `topFrame` is not one of the `T#` screens are still counted, under `fora das telas lidas`.
+
+**Hidden nodes are excluded, not gated.** Instances reported in `hiddenInstances` (and hidden declared
+components) get no `C#` entry, never appear in `Pendência` lists, and never reach the hard gate. List
+them in one compact line (see Step 5) so the design phase can sanity-check the exclusion.
+
 ## Step 5 — Assemble and return
 
 Return, as your final message, in this order:
 
-1. `## Recursos do Figma` with `### Arquivos`, `### Breakpoints`, `### Telas`, `### Componentes`
+1. `## Recursos do Figma` with `### Arquivos`, `### Breakpoints`, `### Telas`, `### Componentes` —
+   `### Componentes` built from the Step 4 sweep per the rules above. After it, when the sweep skipped
+   anything, add one line: `Ignorados (hidden): <nome> (\`<node_id>\`), …`
 2. `### Anotações de Design` — one entry per annotated node, **verbatim**, tied to its node id and owning
    `T#`/`C#`: `- node \`<id>\` (<name>) [<category>] (dono: T1 | C1): "<label or labelMarkdown>" — pins: <types>`.
    Use `labelMarkdown` when present. Omit `[<category>]`/`— pins:` when absent. If none, write `(none)`.

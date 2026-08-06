@@ -54,14 +54,21 @@ Targeted codebase reads (props/types, Storybook `argTypes`, grep of usages) are 
 
 ## Step 1 — Find every instance whose original you cannot see
 
-Work from the `### Componentes` entries and the layout file's `get_metadata` response. Split by whether the entry already has its original's coordinates:
+Work from the `### Componentes` entries. In the design phase the figma-reader's **full-subtree sweep**
+already did the split for you, per entry:
 
-- **Resolved** — a `COMPONENT`/`COMPONENT_SET` with that node id appears in this file's metadata. Record its node id.
-- **Unresolved** — no such node appears; the original is declared elsewhere (another page, or another file).
+- **Resolved** — coordinates filled (`Arquivo do original` + `Node ID do original`): the original is
+  declared in a file that was read (any page). Record its node id.
+- **Unresolved** — a `Pendência:` line: the original lives in an **external library file** (`remote`) or
+  its main could not be resolved. Only these enter the gate.
 
-Keep a **visited-set** of resolved `componentId`s (dedup + cycle guard — never resolve or recurse the same `componentId` twice).
+Hidden instances were excluded upstream (they appear only in the reader's `Ignorados (hidden)` line) —
+never re-add them and never request links for them. Keep a **visited-set** of resolved `componentId`s
+(dedup + cycle guard — never resolve or recurse the same `componentId` twice).
 
-**Beware the depth limit.** The design-phase inventory is built at depth 2 and marks undescended subtrees `(subárvore não explorada)`. An original could be inside one of those — treat it as **unresolved**, not absent: say which case you believe it is and let the URL settle it.
+**When working from a depth-limited `get_metadata` instead** (standalone mode without a sweep): an
+original could sit inside a subtree marked `(subárvore não explorada)` — treat it as **unresolved**, not
+absent: say which case you believe it is and let the URL settle it.
 
 Produce the **unresolved list**: one entry per distinct `componentId`, with the instance-reported name, instance count, and the screens involved. That list is the input to the gate.
 
