@@ -65,7 +65,7 @@ findings (spot-check the diffs), then:
 
 ### Step 4: Produce Review Artifact
 
-Read the template from `templates/review.md`. Fill in:
+Read the template from `<plugin-root>/templates/review.md` (`<plugin-root>` = the `Plugin root:` path injected at session start; templates live at the plugin root, NOT inside the skill directory). Fill in:
 - Spec compliance findings and resolutions
 - Code quality findings and resolutions
 - **`## Conformidade de Design System`** (only when the design has `## Árvore de Componentes de DS`): one row per tree node, recording the confirmed verdict, where it landed in the code (`arquivo:linha`), and whether the code honored it. Plus the composition/variant checks and which annotations and edge-case states were actually covered. A node whose verdict was `Importar` but which appears in the diff as a **new definition** is a duplicated design-system component — record it as Critical, because it is permanent, invisible in review of the file itself, and will drift from the real component from day one

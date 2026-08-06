@@ -81,7 +81,7 @@ After the skill completes, proceed to Step 4.
 
 ### Step 4: Produce Completion Artifact
 
-Read the template from `templates/completion.md`. Fill in:
+Read the template from `<plugin-root>/templates/completion.md` (`<plugin-root>` = the `Plugin root:` path injected at session start; templates live at the plugin root, NOT inside the skill directory). Fill in:
 - Summary of what was delivered (from design + review)
 - Key files and components changed (from git diff)
 - How to test (from design's testing strategy)

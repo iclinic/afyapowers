@@ -117,18 +117,18 @@ Then go to **Write Docs**, and **Finish**.
 ### Write the files
 
 These are **living docs** — rewrite each file completely to reflect the current state of the
-code, not just the latest change. Use the templates in `templates/` as the starting structure.
+code, not just the latest change. Use the templates in `<plugin-root>/templates/` as the starting structure (`<plugin-root>` = the `Plugin root:` path injected at session start; templates live at the plugin root, NOT inside the skill directory).
 Within a file, only include sections that are relevant; drop ones that don't apply.
 
-- **`business-rules.md`** (always) — from `templates/feature-business-rules.md`. Detailed,
+- **`business-rules.md`** (always) — from `<plugin-root>/templates/feature-business-rules.md`. Detailed,
   product-level: what the feature does and why, every business rule (behaviors, validations,
   states, edge cases), and the user/actor flows.
-- **`architecture.md`** (always) — from `templates/feature-architecture.md`. The complete
+- **`architecture.md`** (always) — from `<plugin-root>/templates/feature-architecture.md`. The complete
   technical picture: tech stack and key libraries, components/abstractions and where they live
   (file paths), design patterns, integrations (external services, APIs, events, queues,
   workers, cron), data flow, and a Key Files list.
 - **`data-models.md`** (only if the feature has data models) — from
-  `templates/feature-data-models.md`. DB tables/collections/documents (fields, types,
+  `<plugin-root>/templates/feature-data-models.md`. DB tables/collections/documents (fields, types,
   relations, indexes), external request/response contracts, and event/message schemas. Skip
   this file entirely for features with no meaningful data models.
 
@@ -136,7 +136,7 @@ Within a file, only include sections that are relevant; drop ones that don't app
 
 `docs/<feature>/CHANGELOG.md` is **append-only**. **Prepend** a new dated entry at the top
 (newest first); never remove or rewrite past entries. Create the file from
-`templates/feature-changelog.md` with the first entry if it doesn't exist.
+`<plugin-root>/templates/feature-changelog.md` with the first entry if it doesn't exist.
 
 Each entry:
 

@@ -67,7 +67,7 @@ You MUST complete these items in order. **Requirements first (1-4), code explora
 8. **Propose 2-3 approaches** — with trade-offs and your recommendation
 9. **Present design** — in 2-3 blocks of related sections, get user approval per block (see Presenting the design)
 10. **Confirm the Layout Contract (when Figma is present)** — if Figma discovery ran, confirm `## Contrato de Layout` (derived by the figma-reader from `get_metadata`) is present and complete in the design doc; if there is no Figma reference, omit the section (see below)
-11. **Write design doc** — save to `.afyapowers/features/<feature>/artifacts/design.md` (only once no BLOCKING interrogation item remains open). Use **stable requirement IDs** (see Stable IDs)
+11. **Write design doc** — save to `.afyapowers/features/<feature>/artifacts/design.md` — only once **all decisions are closed**: no BLOCKING interrogation item open, every DS-tree node confirmed, and **every reuse candidate carrying the user's recorded decision** (see DECISIONS-BEFORE-WRITE). Use **stable requirement IDs** (see Stable IDs)
 12. **Design review loop** — dispatch @"design-reviewer (agent)"; fix issues and re-dispatch until approved (max 3 iterations, then surface to human — see After the Design)
 13. **User reviews written spec** — ask user to review the spec file before proceeding
 
@@ -146,7 +146,7 @@ screens and components via a single `get_metadata` call per file, extracts **all
 annotations and the **real rendered texts** via a read-only `use_figma` call, and derives the Layout
 Contract. It returns the complete `## Recursos do Figma` section — `### Arquivos`, `### Breakpoints`,
 `### Telas`, `### Componentes` and `### Anotações de Design` — plus `## Contrato de Layout`, ready to
-drop into the design doc (template: `templates/design.md`).
+drop into the design doc (template: `<plugin-root>/templates/design.md`).
 
 **Why a subagent:** the raw MCP payloads behind this step (figma-use skill + metadata + annotations)
 are ~100k+ characters. In a subagent they are read once and discarded; in the main conversation they
@@ -235,7 +235,17 @@ Example: "Figma shows an inline chip + anchored popover; the DS `DropdownPicker`
 And for the case that used to pass silently: "Figma shows a Submit Button; `PrimaryButton` (DS) matches on name, visuals and interaction model as far as I can tell. Reuse it?"
 </NO-SILENT-REUSE>
 
-Record every candidate in the `## Decisões de Reúso de Componentes` section of the design doc (template: `templates/design.md`), with **both** your recommendation and the user's decision, so any divergence between the two is visible in the artifact. *"If it's different, it's wrong"* unless the user has explicitly accepted the divergence.
+Record every candidate in the `## Decisões de Reúso de Componentes` section of the design doc (template: `<plugin-root>/templates/design.md`), with **both** your recommendation and the user's decision, so any divergence between the two is visible in the artifact. *"If it's different, it's wrong"* unless the user has explicitly accepted the divergence.
+
+<DECISIONS-BEFORE-WRITE>
+**The reuse gate closes BEFORE design.md is written — never after.** All reuse-candidate questions are
+asked during the codebase exploration (checklist item 7), and the doc is written (item 11) already
+carrying every decision. Writing the doc with undecided candidates and patching it as the answers arrive
+is a violation: the design-reviewer and the user review would run against a document changing underneath
+them, and a decision recorded as an afterthought edit is exactly the kind that skips its cross-references
+(requirements, DS tree, tasks). If a new reuse candidate is only discovered while writing, STOP the
+write, ask, then resume with the decision in hand.
+</DECISIONS-BEFORE-WRITE>
 
 **Division of labour with the DS analysis:** for Figma DS components, `## Árvore de Componentes de DS` is the authority — that is where the verdict and its confirmation live, and each of those nodes was already individually confirmed. This gate covers everything else: any non-DS component from the codebase you are considering adopting. Do not record the same component in both sections; if the two ever disagree about a DS component, the tree wins.
 
@@ -346,7 +356,7 @@ The design phase's job here is only to GUARANTEE that `## Contrato de Layout` is
 **Documentation:**
 
 - Write the validated design to `.afyapowers/features/<feature>/artifacts/design.md`
-  - Use the template from `templates/design.md`
+  - Use the template from `<plugin-root>/templates/design.md`. `<plugin-root>` is the `Plugin root:` path the session-start hook injects into the session context (e.g. `…/dist/claude`) — the `templates/` directory lives at the plugin root, **NOT inside this skill's directory**; never look for templates under `skills/`
   - Write it section by section via Write/Edit — never echo the full document back into the conversation
 - Commit the design document to git
 
