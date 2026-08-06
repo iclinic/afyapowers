@@ -111,6 +111,13 @@ Report the final verification result (verdict + attempts used + per-requirement 
 
 ## Asset Rules
 
+0. **Icons follow the task's icon strategy, when present.** If the task's `**Figma:**` block carries an
+   `Estratégia de ícones` line (the preference chain the user chose in the design phase), resolve every
+   icon by walking that chain in order — e.g. installed icon lib when the icon is **IDENTICAL** → local
+   project svg when IDENTICAL → export from Figma. "Identical" means the exact glyph (same shape/viewBox
+   artwork) — a near-match fails the hop and falls through to the next; Figma export is always the final
+   fallback. Report per icon which hop resolved it. Without a strategy line, rules 1–7 below apply as
+   written (Figma export with codebase dedup).
 1. **Always use Figma assets.** Icons, images, SVGs come from the Figma MCP server.
 2. **Every Figma asset MUST end up used in the code — as a saved project file or an exact existing one.** Per icon/image, in order:
    1. **Exact codebase match?** (same glyph/shape, same viewBox/artwork) → reference the existing file. Near-matches do NOT count.

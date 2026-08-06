@@ -62,6 +62,8 @@ its coordinates are right there and the plan may need it.
    entry has one too, even with zero instances
 4. **No hidden instance or hidden declared component has a `C#` entry or a `Pendência`** — they appear
    only in the `Ignorados (hidden)` line
+4b. **No icon has a `C#` entry or a `Pendência`** — every `icons` entry appears only in `### Ícones`
+   (unless you explicitly reclassified it as a component, with the reason stated)
 5. Every `C#` entry has coordinates filled OR all three `—` + a `Pendência:` line — never blank, never
    guessed; `Pendência` only on `remote: true` or unresolvable mains (locals resolve by `componentId`)
 6. Every INSTANCE child in a `T#` `Conteúdo` references a `C#` that exists
@@ -171,8 +173,19 @@ const topFrameOf = (n) => {
   return q ? { id: q.id, name: q.name } : null;
 };
 
+// Icon heuristic: icons are sourced by strategy (icon lib / local svg / Figma export — decided in the
+// DS analysis), never through the component-origin gate. Classify by name convention or small-square size.
+const isIconLike = (inst, orig) => {
+  const nm = (((orig && orig.name) || inst.name) || "").toLowerCase();
+  if (/(^|[\/\s_.-])(ic|icons?|glyph)([\/\s_.-]|$)/.test(nm)) return "name";
+  const w = inst.width || 0, h = inst.height || 0;
+  if (w > 0 && h > 0 && w <= 32 && h <= 32 && Math.abs(w - h) <= 4) return "size";
+  return null;
+};
+
 const declared = [];   // COMPONENT/COMPONENT_SET declared in this subtree (sets subsume their variants)
 const comps = {};      // distinct originals referenced by visible instances
+const icons = {};      // distinct icon-like originals — separate bucket, never gated
 const hiddenInstances = [];
 if (typeof root.findAll === "function") {
   for (const c of root.findAll(n => n.type === "COMPONENT" || n.type === "COMPONENT_SET")) {
@@ -187,14 +200,20 @@ if (typeof root.findAll === "function") {
     const set = main && main.parent && main.parent.type === "COMPONENT_SET" ? main.parent : null;
     const orig = set || main;
     const k = orig ? orig.id : "unresolved:" + inst.name;
-    if (!comps[k]) comps[k] = {
+    const iconWhy = isIconLike(inst, orig);
+    const bucket = iconWhy ? icons : comps;
+    if (!bucket[k]) bucket[k] = {
       componentId: orig ? orig.id : null,
       componentName: orig ? orig.name : inst.name,
       componentType: orig ? orig.type : null,
       remote: orig && "remote" in orig ? orig.remote : (main && "remote" in main ? main.remote : null),
+      iconHeuristic: iconWhy || undefined,
+      sizes: [],
       instances: [],
     };
-    comps[k].instances.push({ id: inst.id, name: inst.name, topFrame: topFrameOf(inst) });
+    const w = Math.round(inst.width || 0), h = Math.round(inst.height || 0);
+    if (iconWhy && bucket[k].sizes.indexOf(w + "x" + h) < 0) bucket[k].sizes.push(w + "x" + h);
+    bucket[k].instances.push({ id: inst.id, name: inst.name, topFrame: topFrameOf(inst) });
   }
 }
 
@@ -202,6 +221,7 @@ return {
   annotatedNodeCount: nodes.length, nodes,
   textCount: texts.length, texts,
   components: Object.values(comps),
+  icons: Object.values(icons),
   declaredComponents: declared,
   hiddenInstances: hiddenInstances.slice(0, 100),
 };
@@ -231,13 +251,24 @@ whose `topFrame` is not one of the `T#` screens are still counted, under `fora d
 components) get no `C#` entry, never appear in `Pendência` lists, and never reach the hard gate. List
 them in one compact line (see Step 5) so the design phase can sanity-check the exclusion.
 
+**Icons are inventoried, never gated.** Entries in `icons` get NO `C#` entry and NO `Pendência` — asking
+the user for an icon's origin link is noise: what matters is the **sourcing strategy** (icon library /
+local project svgs / Figma export / a fallback chain), which the DS analysis decides with the user. Emit
+them as a `### Ícones` subsection instead: one line per distinct icon with name, `iconHeuristic` (`name`
+or `size` — `size` entries are suspects the DS analysis confirms), sizes used, instance count per Tela,
+and `remote`/local origin (with node id when local, for a possible Figma export later). If an entry is
+obviously NOT an icon despite the heuristic (e.g. a 32px checkbox), keep it in `### Componentes` and say
+why — the heuristic proposes, you classify.
+
 ## Step 5 — Assemble and return
 
 Return, as your final message, in this order:
 
 1. `## Recursos do Figma` with `### Arquivos`, `### Breakpoints`, `### Telas`, `### Componentes` —
    `### Componentes` built from the Step 4 sweep per the rules above. After it, when the sweep skipped
-   anything, add one line: `Ignorados (hidden): <nome> (\`<node_id>\`), …`
+   anything, add one line: `Ignorados (hidden): <nome> (\`<node_id>\`), …` — then `### Ícones` (from the
+   sweep's `icons`; omit when empty):
+   `- <nome> [heurística: name|size] — <N> instâncias (T1 ×2, T2 ×1) — tamanhos: 24x24 — origem: remota (lib) | local (\`<node_id>\`)`
 2. `### Anotações de Design` — one entry per annotated node, **verbatim**, tied to its node id and owning
    `T#`/`C#`: `- node \`<id>\` (<name>) [<category>] (dono: T1 | C1): "<label or labelMarkdown>" — pins: <types>`.
    Use `labelMarkdown` when present. Omit `[<category>]`/`— pins:` when absent. If none, write `(none)`.

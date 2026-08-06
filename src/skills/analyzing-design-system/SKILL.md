@@ -231,6 +231,32 @@ Alongside the tree, collect **warnings**: orphan candidates, reduced confidence,
 
 **Edge cases — none abort silently:** *truly unreachable original* → report it, keep it out of the tree, name what is blocked (never build from the instance); *cyclic dependency* → the visited-set stops recursion; point at the existing row; *shared component* → a single row, referenced by every parent; *same name, different `componentId`s* → two rows, disambiguated code names; *combinatorial set* (`size × type × state`) → note that each axis becomes an independent prop, never a cartesian union.
 
+## Step 7.5 — Icon sourcing strategy (one decision, never the origin gate)
+
+Icons arrive in the reader's `### Ícones` inventory — **they never enter the DS tree, never generate
+tasks, and never pass through the origin-link gate**. Asking the user for an icon's Figma origin link is
+noise; the decision that matters is **where icons come from**, made once for the feature:
+
+1. **Confirm the classification.** Entries flagged `heurística: size` are suspects — include any doubtful
+   ones in the Step 8 batches ("isso é um ícone ou um componente?"). An entry the user reclassifies as a
+   real component goes back through Steps 1–6 (including the gate, if unresolved).
+2. **Discover the project's options** (targeted checks, no convention scanning): installed icon
+   libraries (`package.json` deps — lucide, heroicons, phosphor, tabler, react-icons, MUI icons, a DS
+   icon package…), local svg/icon asset directories, existing icon components.
+3. **Ask ONE batched question** with the sourcing strategy options, recommending based on what exists:
+   - **Lib de ícones instalada** (`<nome>`) quando houver ícone **IDÊNTICO**, senão **exportar do Figma** — o cenário mais comum
+   - **Ícones locais do projeto** (`<dir>`) primeiro, senão lib idêntica, senão exportar do Figma
+   - **Sempre exportar do Figma** (Asset Rules dos implementers)
+   - **Outra ordem** — o usuário descreve a cadeia de preferência
+   The chain is a **preference order with the IDENTICAL rule at every non-Figma hop**: a lib/local icon
+   only satisfies a hop if it is the exact glyph (same shape/viewBox artwork) — near-matches fall through
+   to the next hop. Figma export is always the final fallback (it can never fail to match).
+4. **Record the decision** in `## Estratégia de Ícones` in design.md: the ordered chain, the lib
+   name/import pattern when applicable, the local dir when applicable, and the `### Ícones` inventory
+   reference. Implementers resolve each icon per task by walking this chain (their Asset Rules).
+
+Skip this step entirely when the inventory has no icons.
+
 ## Step 8 — Confirm every decision with the user, in compact batches
 
 This step is the point of the skill. First present the **full proposed tree table** (with Paridade and recommendations) so the user sees the whole picture. Then walk it in **leaves→root** order and confirm in **batches of up to 4 nodes per prompt** — a node is only confirmed after everything it depends on is confirmed, so batch boundaries respect dependency order.
@@ -259,6 +285,9 @@ Return to the caller:
 3. **The warnings list** — unreachable originals, reduced confidence, depth-bounded nodes, deprioritized nodes.
 4. **The skip set** — nodes the user declined, and parents blocked/degraded as a result.
 5. **Import paths** for every `Importar` node.
+6. **The icon sourcing strategy** (Step 7.5) — the confirmed preference chain, lib import pattern and/or
+   local dir, already persisted to `## Estratégia de Ícones` in design.md; `none` when the inventory had
+   no icons.
 
 The caller decides what to do with this. The design phase turns it into plan tasks; the standalone skill dispatches implementers from it. **This skill never implements anything.**
 

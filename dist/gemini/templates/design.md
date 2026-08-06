@@ -130,6 +130,11 @@
      Omita se nenhum. -->
 - node `<node_id>` (<name>, dono: T1): "<characters>" [maxLines: N | truncation: X]
 
+### Ícones
+<!-- Inventário do figma-reader. Ícones NÃO entram em ### Componentes, na Árvore de DS nem no gate de
+     origem — a fonte deles é decidida em ## Estratégia de Ícones. Omita se nenhum. -->
+- <nome> [heurística: name|size] — <N> instâncias (T1 ×2) — tamanhos: 24x24 — origem: remota (lib) | local (`<node_id>`)
+
 ## Árvore de Componentes de DS
 <!-- Apenas quando há Figma com componentes. Produzida por analyzing-design-system (regras completas lá).
      Só carrega DECISÕES do usuário — coordenadas vivem em ### Componentes, via C#. Ordem folhas→raiz.
@@ -144,6 +149,18 @@
 <!-- Omita se não houver: originais inalcançáveis, confiança reduzida, nós deprioritizados/rejeitados
      (com cascata nos pais), homônimos com componentIds diferentes. -->
 - ...
+
+## Estratégia de Ícones
+<!-- Apenas quando ### Ícones não está vazio. Decidida com o usuário na análise de DS (Step 7.5).
+     Cadeia de preferência com regra de IDÊNTICO em todo elo que não seja export do Figma;
+     export do Figma é sempre o fallback final. -->
+
+**Cadeia de preferência (decisão do usuário):**
+1. <ex.: Lib `lucide-react` quando o ícone for IDÊNTICO (mesmo glyph/artwork)>
+2. <ex.: Exportar do Figma (Asset Rules do implementer)>
+
+**Import pattern da lib:** `<ex.: import { X } from 'lucide-react'>` <!-- omita se a cadeia não usa lib -->
+**Diretório de ícones locais:** `<ex.: src/assets/icons/>` <!-- omita se a cadeia não usa locais -->
 
 ## Contrato de Layout
 <!-- Apenas quando há UI + Figma. Derivado do get_metadata pelo agente figma-reader (regras em

@@ -321,6 +321,7 @@ Gerada apenas quando `## Contrato de Layout` está presente (ver Figma Task Laye
 - **Node ID:** `<id>`
 - **Breakpoints:** <breakpoint_name> (<width>px), ...
 - **Medidas de aceite:** container max-width `<valor>`, margens laterais `<valor>`, gaps `<valor>`, colunas `<n>`, min/max de `<peça>` no breakpoint `<breakpoint_name>` (do Contrato de Layout)
+- **Estratégia de ícones:** <cadeia de preferência copiada de `## Estratégia de Ícones` do design; omita a linha se o design não tem a seção>
 
 **Design System:** <!-- só em tasks UI Component, quando o design tem Árvore de Componentes de DS -->
 - **Veredito:** implementar | atualizar | derivar
@@ -345,6 +346,7 @@ Gerada apenas quando `## Contrato de Layout` está presente (ver Figma Task Laye
 - **Breakpoints:** Include only the breakpoints relevant to this task's component (not all breakpoints in the design)
 - **Medidas de aceite:** Apenas quando `## Contrato de Layout` está presente. Copie a(s) linha(s) da tabela do Contrato de Layout relevantes ao frame/breakpoints desta task (container max-width, margens laterais, gaps, nº de colunas, min/max por peça). Se `## Contrato de Layout` estiver ausente, omita esta linha — não invente medidas.
 - **Assets:** Set `<project assets dir>` to the codebase's existing asset convention when you can tell it from the design doc or project layout (e.g. `src/assets`, `public/`); otherwise leave the generic note — the implementer auto-detects and falls back to a sensible default. Never enumerate individual asset files here: which icons/images a design needs is only knowable at implement time (no Figma MCP calls at plan time). The `**Assets:**` line is a *grant + hint* that assets may be created outside the `**Files:**` list — omitting it does not block the implementer, it just loses the hint.
+- **Estratégia de ícones:** when the design has `## Estratégia de Ícones`, copy its preference chain (one line) into the `**Figma:**` block of every UI task — the implementer resolves each icon by walking that chain instead of defaulting to Figma export. Omit when the design has no icon strategy.
 
 **Mixed plans:** Figma and non-Figma tasks coexist in the same plan with standard dependency handling. A feature might have Tasks 1-2 as data models (standard TDD), Tasks 3-5 as UI components (Figma), and Task 6 as integration (standard TDD).
 

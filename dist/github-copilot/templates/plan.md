@@ -77,6 +77,7 @@
 - **Node ID:** `<node_id_do_original>`
 - **Breakpoints:** <breakpoint_name> (<width>px), ...
 - **Medidas de aceite:** container max-width `<valor>`, margens laterais `<valor>`, gaps `<valor>`, colunas `<n>`, min/max de `<peça>` no breakpoint `<breakpoint_name>` (do Contrato de Layout)
+- **Estratégia de ícones:** <cadeia de preferência copiada de `## Estratégia de Ícones` do design; omita se o design não tem a seção>
 
 **Design System:**
 <!-- Copiado da linha deste nó na `## Árvore de Componentes de DS` do design. Omita o bloco INTEIRO se o
