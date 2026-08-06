@@ -79,9 +79,11 @@ Additionally, classify each finding by **who can settle it**:
 - **`EVIDÊNCIA`** (`RESPONDÍVEL-POR-EVIDÊNCIA`) — the answer exists in an input the design thread can
   inspect without the user: the Figma file (real rendered texts, variant geometry, a node's actual
   properties), the referenced API contract, the JIRA description. Phrase it as *what to look up and
-  where*. The design thread resolves these itself before asking the user anything.
+  where*. The design thread performs the lookup and presents the result to the user as a **recommended
+  answer to confirm** (citing the evidence) — the classification changes who researches the answer,
+  never whether the user sees it.
 - **`USUÁRIO`** (`DECISÃO-DO-USUÁRIO`) — a genuine product/scope/priority decision no lookup can
-  settle. Only these become questions to the user.
+  settle. These reach the user as open questions with your recommendation.
 
 When in doubt, tag `USUÁRIO` — a wrongly-tagged `EVIDÊNCIA` item silently absorbs a decision that was
 the user's to make.
