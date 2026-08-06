@@ -8,7 +8,7 @@ allowed-tools:
   - Bash
   - mcp__figma__get_metadata
   - mcp__figma__get_code_connect_map
-model: claude-opus-5
+model: sonnet
 disable-model-invocation: true
 ---
 

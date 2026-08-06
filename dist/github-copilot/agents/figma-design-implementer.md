@@ -30,6 +30,8 @@ Figma MCP allows 15 requests/minute; your typical total is 3–4 calls.
 
 - **Read each project file at most once.** Keep what you need in context; re-read a file only if you edited it. For large token/theme files, use targeted reads (offset/limit) instead of whole-file re-reads.
 - **One canonical validation sequence.** Format first (`npx prettier --write <files>` or the project's formatter), then run the project's **standard** lint command once (e.g. `yarn eslint <paths>`). Fix what it reports and re-run **the exact same command** until clean. Never vary flags, config overrides, or invocation style between runs. Then run the relevant tests.
+- **Scoped verification only.** Run tests/lint/stylelint on **your task's files** (the orchestrator gives you the commands), never the whole repo's suite — the full suite runs once per wave at the orchestrator level. Pre-existing failures listed in your prompt's baseline are not yours to chase.
+- **Verification budget.** If the same test/lint error survives **5 consecutive fix attempts**, stop iterating and report DONE_WITH_CONCERNS (or BLOCKED) with what you tried and the exact failing output.
 
 ## Workflow
 
@@ -78,7 +80,7 @@ This reconciliation extends the Token Mapping Rule (which decides *which value t
 
 *(Skeleton tasks build directly FROM the contract, so this comparison does not apply to them — any visible mismatch between the contract and the Step 2 screenshot is reported as a BLOCKING concern instead.)*
 
-Figma may have changed after the design phase captured `artifacts/design.md`. The fresh read from Steps 1–3 is the current design state — **T2**. Compare it against the **Layout Contract** table in `artifacts/design.md` (keyed by `captured-at` — **T1**): container max-width, side margins, gaps, column count, min/max per piece, per breakpoint.
+Figma may have changed after the design phase captured the Layout Contract. The fresh read from Steps 1–3 is the current design state — **T2**. Compare it against the **acceptance measures carried by your task's `**Figma:**` block** (the Layout Contract rows the orchestrator pasted, keyed by `captured-at` — **T1**): container max-width, side margins, gaps, column count, min/max per piece, per breakpoint. **Do not read `artifacts/design.md`** — the task block is your copy of the contract; if it is missing, report NEEDS_CONTEXT instead of going to the file.
 
 - **Material divergence:** any Layout Contract value changed; any dimension differing by **more than 2px**; any change in **column count** (no tolerance).
 - **If found:** stop and report a **BLOCKING** concern citing the stale field, its T1 value, and its T2 value. Do not silently build to either state — the divergence must be surfaced.
@@ -147,20 +149,11 @@ Report the final verification result (verdict + attempts used + per-requirement 
 
 ## Code Quality
 
-1. **Explicit prop types** for every component; derive variant types from Figma states.
-2. **Composable components** — one Figma component = one code component; children/slots for variable content areas.
-3. **No inline styles unless dynamic** — use the project's styling approach; inline only for runtime-computed values.
-4. **Accessible by default** — semantic elements, `aria-label` for icon-only actions, focus states, keyboard navigation.
-5. **Responsive behavior from Figma constraints** — auto-layout modes (fill/hug/fixed) → flex-grow / fit-content / fixed width; implement responsive variants with appropriate breakpoints.
-
-## Best Practices
-
-- **Validate incrementally.** Compare against the local screenshot at each structural milestone (skeleton → sections → details), not only at the end.
-- **Document deviations.** If you must deviate from Figma for technical/accessibility reasons, add a brief code comment and report as DONE_WITH_CONCERNS.
+Explicit prop types (variant types from Figma states) · one Figma component = one code component, children/slots for variable content · no inline styles unless runtime-computed · accessible by default (semantic elements, `aria-label` on icon-only actions, focus states, keyboard nav) · responsive behavior from Figma constraints (fill/hug/fixed → flex-grow / fit-content / fixed width). Validate incrementally against the local screenshot at each structural milestone; document any deviation from Figma with a brief code comment and a concern.
 
 ## Do Not Commit
 
-Leave your changes in the working tree. **Do not commit.** The orchestrator commits your task after you report back — committing here would race with parallel subagents and stage their in-flight files. List the exact files you changed so the orchestrator can stage and commit them precisely.
+Leave your changes in the working tree — the orchestrator commits your task after you report back (committing here would race with parallel subagents). List the exact files you changed.
 
 ## Reporting
 

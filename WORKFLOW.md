@@ -761,3 +761,15 @@ python3 sync.py cursor --clean   # Limpar + agente especifico
 | 6 | `feature-architecture.md` | Auto-docs | `src/templates/feature-architecture.md` |
 | 7 | `feature-data-models.md` | Auto-docs | `src/templates/feature-data-models.md` |
 | 8 | `feature-changelog.md` | Auto-docs | `src/templates/feature-changelog.md` |
+
+---
+
+## 12. 💰 Custo & Tokens — recomendações operacionais
+
+O workflow foi otimizado para consumo de tokens (v1.7.0): subagentes de checklist/implementação em Sonnet, extração Figma via subagente (`figma-reader`), artefatos com referência em vez de cópia, perguntas em lote com decisão por exceção, reviewers em paralelo e commits encadeados por wave. Além do que o plugin controla, o **operador** da sessão deve observar:
+
+1. **Não use modelo com contexto estendido `[1m]` nas sessões do workflow.** Em medições reais, a fase de design chegou a 495k tokens de contexto por turno, com 72% dos turnos acima de 200k — cobrados com multiplicador de long-context e queimando o limite do plano ~2x mais rápido. Com as otimizações, cada fase cabe no contexto padrão de 200k com auto-compact.
+2. **Evite pausas > 1h no meio de uma fase.** O cache de prompt em planos de assinatura expira em 1 hora; retomar depois disso reprocessa o contexto inteiro (cache-write de milhões de tokens em sessões longas). Responder os lotes de perguntas de uma vez ajuda.
+3. **Monitore com `/usage`.** A seção *Attribution* mostra o custo por skill/subagente/servidor MCP; *Behavior flags* acusa long-context e cache misses quando passam de 10% do uso recente.
+4. **Effort da sessão:** o design mantém raciocínio alto por padrão; para plan/implement/review, `/effort medium` na sessão é um bom default — os subagentes já carregam seus próprios níveis no frontmatter.
+5. **Desabilite servidores MCP que a fase não usa** (`/mcp`) — Atlassian só é necessário no design; Figma no design e no implement.

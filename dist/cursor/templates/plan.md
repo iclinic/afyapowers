@@ -44,9 +44,7 @@
 - **Skeleton:** sim (o implementer faz só 2 chamadas MCP e constrói a partir das Medidas de aceite)
 - **Medidas de aceite:** container max-width `<valor>`, margens laterais `<valor>`, gaps entre seções `<valor>`, colunas `<n>` no breakpoint `<breakpoint_name>` (do Contrato de Layout — obrigatório, é o critério de aceite do container e o input do figma-token-verifier)
 
-> Esta task é a **dona do container**: largura máxima, centralização e margens laterais da página, mais o ritmo (gap) entre seções — tudo derivado da geometria do frame no Figma (ver Contrato de Layout do design). Tasks de tela/montagem (Layer 2) DEPENDEM desta task e não redefinem essas medidas.
->
-> Componentes (Layer 1) são **PROIBIDOS** de setar max-width, centralização ou margens de página — eles vivem dentro do container que o esqueleto define. Quando um componente precisa de **full-bleed** legítimo (ex: banner que ultrapassa a margem lateral), ele usa o hook de escape exposto por este esqueleto (ex: prop/slot `fullBleed` ou classe utilitária documentada aqui) — nunca sobrescreve max-width/centralização diretamente no componente.
+> Task **dona do container** (max-width, centralização, margens laterais, ritmo entre seções — do Contrato de Layout). Layer 2 depende dela e não redefine essas medidas; componentes (Layer 1) não setam layout de página e usam o hook de escape para full-bleed legítimo (regra completa na skill writing-plans, "Regra de fronteira").
 
 - [ ] Passo 1: Definir a geometria do container vazio primeiro — sem conteúdo de seções, o esqueleto já deve exibir max-width, centralização e margens laterais corretas em todos os breakpoints, conforme o Contrato de Layout do design
 - [ ] Passo 2: Implementar o container — max-width, centralização, margens laterais e ritmo entre seções, conforme o Contrato de Layout do design
@@ -88,7 +86,7 @@
 - **Base:** `<Nome>` (`<import path>`) <!-- só para derivar (base que o wrapper compõe) e atualizar (set estendido) -->
 - **Compõe de:** `<Nome>` (`<import path>`), `<Nome>` (`<import path>`) <!-- só para composto; cada filho já existe no código -->
 - **Variantes:** <todas as variantes/estados que o ORIGINAL declara>
-- **Anotações do Figma:** <anotações do Dev Mode deste nó, verbatim — estados interativos, animação, a11y, regras de conteúdo>
-- **Estados a cobrir:** <linhas de `## Casos de Borda & Estados` que este componente é dono>
+- **Anotações do Figma:** nós `<node_ids>` — ver `### Anotações de Design` do design.md <!-- referência, não cópia: o orquestrador expande o texto verbatim no prompt do implementer -->
+- **Estados a cobrir:** <IDs/títulos das linhas de `## Casos de Borda & Estados` que este componente é dono> <!-- referência; o orquestrador expande no prompt -->
 
 - [ ] Implementar usando o workflow do implementador Figma

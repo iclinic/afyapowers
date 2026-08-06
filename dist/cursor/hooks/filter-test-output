@@ -1,0 +1,74 @@
+#!/usr/bin/env python3
+"""PreToolUse(Bash) hook: filter test-runner output down to failures + summary.
+
+Implementer subagents run test suites many times per task; a full Jest/Vitest run
+can print tens of thousands of characters that land verbatim in the model context.
+This hook rewrites recognized test commands so that:
+  - on success, only the final summary lines are shown;
+  - on failure, only failure-relevant lines (plus the summary) are shown, capped.
+The command's exit code is always preserved.
+
+Safety: only rewrites commands it positively recognizes as non-interactive test
+runs with no pipes/redirects/chaining. Everything else passes through untouched.
+"""
+import json
+import re
+import sys
+
+
+def main() -> None:
+    try:
+        payload = json.load(sys.stdin)
+    except Exception:
+        print("{}")
+        return
+
+    cmd = (payload.get("tool_input") or {}).get("command") or ""
+
+    # Never touch commands that already pipe/redirect/chain or run in watch mode —
+    # rewriting those could change semantics the caller depends on.
+    if any(tok in cmd for tok in ("|", ">", "<", "&&", ";", "$(", "`")) or "--watch" in cmd:
+        print("{}")
+        return
+
+    # Recognized non-interactive test invocations (must match from the start,
+    # optionally after `cd <dir> && ...` — excluded above — or env assignments).
+    runner = re.compile(
+        r"^(?:[A-Za-z_][A-Za-z0-9_]*=\S+\s+)*"          # leading VAR=val assignments
+        r"(?:npx\s+)?"
+        r"(?:npm\s+(?:run\s+)?test|pnpm\s+(?:run\s+)?test|yarn\s+test|"
+        r"jest|vitest\s+run|vitest|pytest|go\s+test)\b"
+    )
+    if not runner.match(cmd.strip()):
+        print("{}")
+        return
+
+    # Wrap: capture full output, preserve exit code, emit only what matters.
+    # Failure patterns cover jest/vitest (FAIL, ✕, ●), pytest (FAILED, ERROR),
+    # go test (--- FAIL), tsc (error TS), and generic Error lines.
+    filtered = (
+        "__afyatest_out=$(mktemp); "
+        f"{cmd} >\"$__afyatest_out\" 2>&1; __afyatest_ec=$?; "
+        "if [ $__afyatest_ec -eq 0 ]; then "
+        "tail -n 20 \"$__afyatest_out\"; "
+        "else "
+        "grep -E -B 1 -A 12 '(FAIL|FAILED|✕|●|--- FAIL|error TS|Error:|ERROR)' "
+        "\"$__afyatest_out\" | head -n 200; "
+        "echo '--- [filter-test-output] resumo final ---'; "
+        "tail -n 15 \"$__afyatest_out\"; "
+        "fi; "
+        "rm -f \"$__afyatest_out\"; "
+        "exit $__afyatest_ec"
+    )
+
+    print(json.dumps({
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "allow",
+            "updatedInput": {"command": filtered},
+        }
+    }))
+
+
+if __name__ == "__main__":
+    main()

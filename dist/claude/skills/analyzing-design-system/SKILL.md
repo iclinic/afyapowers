@@ -1,7 +1,7 @@
 ---
 name: afyapowers:analyzing-design-system
 description: "Resolves every Figma component instance to its ORIGINAL component in the file where it is declared, emits a verdict per node (Implementar/Importar/Atualizar/Derivar), and confirms every decision with the user in compact batches. Requires an origin file URL for every instance whose component is not declared in the file being read. Invoked by the design phase and by /afyapowers:figma-component."
-model: claude-opus-5
+model: sonnet
 effort: high
 ---
 
@@ -11,7 +11,7 @@ Resolve every Figma component the layout uses to **its original component, in th
 
 This is the single design-system brain. Two callers invoke it:
 
-- **The design phase** (`afyapowers:design`) — entry points are the `### Componentes` entries (`C1`, `C2`…) produced by `afyapowers:reading-figma-designs`. Output goes back into those entries and into `design.md`.
+- **The design phase** (`afyapowers:design`) — entry points are the `### Componentes` entries (`C1`, `C2`…) produced by the @"figma-reader (agent)" subagent. Output goes back into those entries and into `design.md`.
 - **`/afyapowers:figma-component`** (standalone) — the entry point is one target `COMPONENT`/`COMPONENT_SET`. Output goes into the active feature's `artifacts/` when there is one.
 
 Neither caller reimplements these rules. If you are reading a copy of this logic somewhere else, that copy is stale.
@@ -32,7 +32,7 @@ The caller provides:
 
 - **`fileKey`** — the Figma file key of the layout being analyzed.
 - **Entry points** — a single target `nodeId` (standalone) or the `### Componentes` entries (design phase), each already carrying either its original's coordinates or a `Pendência` line.
-- **Stored responses already in hand** — any `get_metadata` and `get_code_connect_map` responses the caller already fetched. **Reuse them. Never re-fetch data the caller already holds.**
+- **Stored responses already in hand** — any `get_metadata` and `get_code_connect_map` responses the caller already fetched. **Reuse them. Never re-fetch data the caller already holds.** In the design phase the raw `get_metadata` lives only inside the figma-reader subagent — the caller hands you the structured inventory instead (`### Telas`/`### Componentes` entries carry every coordinate you need); issue your own `get_metadata` on the layout file **only** if a determination genuinely needs data the inventory does not carry.
 - **Origin file URLs already known** — from the JIRA issue, the user's request, or a previous run. Candidate origins; still validated (Step 3).
 - **Caller mode** — `design` or `standalone` (only affects where output is persisted).
 

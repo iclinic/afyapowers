@@ -17,44 +17,47 @@ Otherwise (direct invocation):
 
 ### Step 1: Gather Context
 
-1. Read `.afyapowers/features/<feature>/artifacts/design.md` — the requirements
-2. Read `.afyapowers/features/<feature>/artifacts/plan.md` — the implementation plan
+1. Read from `.afyapowers/features/<feature>/artifacts/design.md` the sections the spec review needs: `## Requisitos`, `## Casos de Borda & Estados`, `## Árvore de Componentes de DS`, `## Decisões de Reúso de Componentes`, `## Contrato de Layout`, `## Questões em Aberto` — **not the whole document** (the Figma inventory, JIRA transcription, and architecture prose are not spec-compliance inputs; the DS/token fidelity was already verified per task by the figma-token-verifier during implement)
+2. Read the plan's **task list and checkboxes** from `.afyapowers/features/<feature>/artifacts/plan.md` (headings + `**Type:**`/`**Depends on:**` lines suffice — not the task bodies)
 3. Identify the base and head commit SHAs for the feature's changes (use `git log`)
 4. Run `git diff --stat <base_sha>..<head_sha>` to get a compact summary of changed files
 5. Read `.afyapowers/features/<feature>/artifacts/implementation-concerns.md` if it exists — these are concerns flagged by implementers during the implementation phase. Note its two sections: **Impedimentos** (output diverges from the design/Figma in look or behavior) and **Ressalvas**. Each blocking concern must be verified as either fixed in the diff or explicitly accepted by the user; any that is neither forces a **Alterações Solicitadas** verdict (see Step 4). A blocking-concern line carrying an `[ACCEPTED BY USER: <reason>]` marker counts as explicitly accepted — the acceptance was recorded during implementation and needs no fresh confirmation this session.
 
 **Do NOT capture the full `git diff` output.** The review agents will read code and diffs themselves using their tool access.
 
-### Step 2: Spec Compliance Review
+### Step 2: Dispatch Both Reviewers — in parallel
 
-Dispatch @"spec-reviewer (agent)":
-- Provide the design spec content as "what was requested" — **including `## Árvore de Componentes de DS` and `## Decisões de Reúso de Componentes` when present.** Those hold the per-component verdicts the user confirmed, and verifying the code honored them is spec compliance, not a style question
+Dispatch @"spec-reviewer (agent)" and @"code-quality-reviewer (agent)" **in the same turn**. They read
+different things for different questions and neither's input depends on the other's output — serializing
+them was measured at ~25 minutes of pure waiting. A spec fix that later invalidates part of the quality
+review is the rare case; re-dispatching the quality reviewer for the affected files (its max-2 loop)
+costs less than always serializing.
+
+To @"spec-reviewer (agent)":
+- Provide the design sections gathered in Step 1 as "what was requested" — **including `## Árvore de Componentes de DS` and `## Decisões de Reúso de Componentes` when present.** Those hold the per-component verdicts the user confirmed, and verifying the code honored them is spec compliance, not a style question
 - Provide a summary of implemented changes as "what was built"
 - Provide the base and head commit SHAs and the `git diff --stat` summary (the agent will read code and diffs itself)
 - Include a "Priority Areas" section with the contents of `implementation-concerns.md` (or "No concerns were flagged." if the file doesn't exist)
 
-If the reviewer finds spec gaps:
-1. Report the findings to the user
-2. The user fixes issues (code changes happen during review phase)
-3. Re-dispatch the spec reviewer
-4. Repeat until spec-compliant (max 3 iterations)
-5. If still non-compliant after 3 iterations, report unresolved findings to the user and ask them to decide how to proceed
-
-**Gate:** Only proceed to Step 3 once the spec-reviewer reports compliance. Do not start the code quality review on code that will change due to spec issues.
-
-### Step 3: Code Quality Review
-
-Dispatch @"code-quality-reviewer (agent)":
+To @"code-quality-reviewer (agent)":
 - Provide: what was implemented, plan reference, description
 - Provide the base and head commit SHAs and the `git diff --stat` summary (the agent will read code and diffs itself)
 - Include a "Priority Areas" section with the contents of `implementation-concerns.md` (or "No concerns were flagged." if the file doesn't exist)
 
-If the reviewer finds issues:
-1. Categorize by severity (Critical, Important, Minor)
-2. Critical and Important: must be fixed before proceeding
-3. Minor: note for later, do not block
-4. Fix issues and re-dispatch (max 3 iterations)
-5. If still unresolved after 3 iterations, report remaining issues to the user and ask them to decide how to proceed
+### Step 3: Consolidate Findings and Fix — via subagent
+
+Consolidate both reports. Categorize quality findings by severity (Critical, Important, Minor): Critical
+and Important must be fixed before proceeding; Minor is noted, never blocks. Spec gaps always block.
+
+**Apply the fixes through a fix subagent, not in this conversation.** Dispatch @"tdd-implementer (agent)"
+with a synthetic task: the consolidated findings (each with file:line and the reviewer's rationale), the
+allowed file list, and the requirement that each fix keeps/extends test coverage. Applying dozens of
+Read/Edit/test turns in the orchestrator context re-sends the entire review-phase context on every one of
+them; the fix subagent does it in a small fresh context and reports back. Verify its report against the
+findings (spot-check the diffs), then:
+
+- Re-dispatch each reviewer whose findings required fixes, **scoped to the affected findings/files** (max 2 iterations per reviewer)
+- If still unresolved after 2 iterations, report remaining issues to the user and ask them to decide how to proceed
 
 ### Step 4: Produce Review Artifact
 

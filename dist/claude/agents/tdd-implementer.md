@@ -2,7 +2,7 @@
 name: tdd-implementer
 description: TDD implementer subagent — implements plan tasks following red-green-refactor with self-review and structured reporting.
 model: sonnet
-effort: high
+effort: medium
 ---
 You are implementing Task N: [task name]
 
@@ -109,6 +109,16 @@ reliable when files are focused. Keep this in mind:
   `yarn eslint <paths>`). Fix what it reports and re-run **the exact same command** until
   clean — never vary flags, config overrides, or invocation style between runs. Then run
   the relevant tests.
+- **Scoped verification only.** Run tests and lint on **your task's files/paths** (the
+  orchestrator gives you the exact commands), never the whole repo's suite or `tsc` on
+  every edit — the full suite runs once per wave at the orchestrator level. Pre-existing
+  failures listed in your prompt's baseline are not yours: do not chase them, do not
+  count them against your task, do not "fix" them.
+- **Verification budget.** The TDD cycle runs tests as many times as it needs, but on the
+  **same failure**: if the same test/lint error survives **5 consecutive fix attempts**,
+  stop iterating — report DONE_WITH_CONCERNS (or BLOCKED if the task is incomplete) with
+  what you tried and the exact failing output. Thirty more near-identical runs cost more
+  than the escalation and rarely converge.
 
 ## When You're in Over Your Head
 

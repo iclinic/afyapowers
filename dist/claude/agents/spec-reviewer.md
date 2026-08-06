@@ -1,14 +1,14 @@
 ---
 name: spec-reviewer
 description: Spec compliance reviewer — verifies implementation matches requirements by reading actual code, not trusting reports.
-model: claude-opus-5
-effort: high
+model: sonnet
+effort: medium
 ---
 You are reviewing whether an implementation matches its specification.
 
 ## What Was Requested
 
-[FULL TEXT of task requirements]
+[The requirement sections of the spec: Requisitos, Casos de Borda & Estados, Árvore de Componentes de DS, Decisões de Reúso, Contrato de Layout, Questões em Aberto — the caller excerpts these; do not re-read design.md in full from disk]
 
 ## What Implementer Claims They Built
 

@@ -1,7 +1,7 @@
 ---
 name: afyapowers:writing-plans
 description: Use when the current afyapowers phase is plan — creates implementation plans from tech specs
-model: claude-opus-5
+model: sonnet
 effort: high
 ---
 
@@ -280,16 +280,12 @@ Gerada apenas quando `## Contrato de Layout` está presente (ver Figma Task Laye
 - **Skeleton:** sim (task de esqueleto/Layer 0 — o implementer faz só 2 chamadas MCP, `get_variable_defs` + `get_screenshot`, e constrói a partir das Medidas de aceite; sem `get_design_context`)
 - **Medidas de aceite:** container max-width `<valor>`, margens laterais `<valor>`, gaps entre seções `<valor>`, colunas `<n>` no breakpoint `<breakpoint_name>` (do Contrato de Layout — obrigatório: é o critério de aceite do container e o input do figma-token-verifier)
 
-> Esta task é a **dona do container**: largura máxima, centralização e margens laterais da página, mais o ritmo (gap) entre seções — tudo derivado da geometria do frame no Figma (ver Contrato de Layout do design). Tasks de tela/montagem (Layer 2) DEPENDEM desta task e não redefinem essas medidas.
->
-> Componentes (Layer 1) são **PROIBIDOS** de setar max-width, centralização ou margens de página — eles vivem dentro do container que o esqueleto define. Quando um componente precisa de **full-bleed** legítimo (ex: banner que ultrapassa a margem lateral), ele usa o hook de escape exposto por este esqueleto (ex: prop/slot `fullBleed` ou classe utilitária documentada aqui) — nunca sobrescreve max-width/centralização diretamente no componente.
+> Task **dona do container** (max-width, centralização, margens, ritmo entre seções — ver "Regra de fronteira" acima). Layer 2 depende dela e não redefine essas medidas; componentes usam o hook de escape para full-bleed.
 
 - [ ] Passo 1: Definir a geometria do container vazio primeiro — sem conteúdo de seções, o esqueleto já deve exibir max-width, centralização e margens laterais corretas em todos os breakpoints, conforme o Contrato de Layout do design
 - [ ] Passo 2: Implementar o container — max-width, centralização, margens laterais e ritmo entre seções, conforme o Contrato de Layout do design
 - [ ] Passo 3: Expor e documentar o hook de escape para full-bleed
 ```
-
-O esqueleto vem primeiro: as tasks de Layer 2 montam seu conteúdo dentro do container que o esqueleto define, sem redefinir suas medidas.
 
 ### Layer 1 / Layer 2 — component and screen task structure
 
@@ -314,8 +310,8 @@ O esqueleto vem primeiro: as tasks de Layer 2 montam seu conteúdo dentro do con
 - **Base:** `<nome no código>` (`<import path>`) — só para `derivar` (a base que o wrapper compõe) e `atualizar` (o set estendido); omita nos outros casos
 - **Compõe de:** `<nome>` (`<import path>`), `<nome>` (`<import path>`) — só para composto (`implementar` com filhos em Depende de); omita quando não compõe nada
 - **Variantes:** <todas as variantes/estados que o ORIGINAL declara>
-- **Anotações do Figma:** <anotações do Dev Mode relevantes a este nó — estados interativos, animação, a11y, regras de conteúdo — verbatim>
-- **Estados a cobrir:** <linhas de `## Casos de Borda & Estados` que este componente é dono>
+- **Anotações do Figma:** nós `<node ids>` — ver `### Anotações de Design` do design.md (referência, não cópia; o orquestrador expande o texto verbatim no prompt do implementer)
+- **Estados a cobrir:** <IDs/títulos das linhas de `## Casos de Borda & Estados` que este componente é dono — referência; o orquestrador expande no prompt>
 
 - [ ] Implement using the Figma implementer workflow
 ```
@@ -323,7 +319,7 @@ O esqueleto vem primeiro: as tasks de Layer 2 montam seu conteúdo dentro do con
 **Building the Figma block:**
 - **Type:** `UI Component` para tasks de componente (Layer 1); `UI Screen` para tasks de tela e esqueleto (Layer 0/Layer 2). Ver "Task Type & Roteamento" acima.
 - **Bloco `**Design System:**`** — copie da linha correspondente da `## Árvore de Componentes de DS`: `Veredito`, `Nome no código`, `Depende de` (vira `Base` para `derivar`/`atualizar` e `Compõe de` para composto, cada filho com o import path que a árvore registrou), e todas as variantes que o original declara. **Omita o bloco inteiro** quando o design não tem a árvore — o implementer então executa o procedimento de veredito ausente, que checa a existência antes de construir qualquer coisa. Nunca escreva um veredito que a árvore não confirmou.
-- **Anotações do Figma / Estados a cobrir** — recorte de `### Anotações de Design` e `## Casos de Borda & Estados` só o que pertence a este nó. Sem isso, estados interativos, animações e regras de a11y confirmadas com o usuário no design não chegam a ninguém: o implementer vê apenas o frame default. Uma anotação sem task dona é informação perdida.
+- **Anotações do Figma / Estados a cobrir** — **referencie, não copie.** Liste os node ids das anotações e os IDs/títulos das linhas de `## Casos de Borda & Estados` que pertencem a este nó; o texto verbatim vive uma única vez no design.md, e o orquestrador do implement (SDD) o expande no prompt do implementer ao despachar a task. Copiar o texto em cada task infla o plano (o verbatim acabaria em 5 lugares: design → plano → prompt → reviewer → spec-reviewer) sem ganhar nada — mas a **atribuição** continua obrigatória: estados interativos, animações e regras de a11y confirmadas com o usuário precisam de uma task dona, senão o implementer vê apenas o frame default. Uma anotação sem task dona é informação perdida.
 - **File Key / Node ID — para tasks `UI Component`, use as coordenadas DO ORIGINAL.** A `## Árvore de Componentes de DS` dá o veredito e a `C#`; as coordenadas vêm da entrada `C#` correspondente em `### Componentes` (`Arquivo do original` + `Node ID do original`). **Nunca** o node-id de uma instância listada no `Conteúdo` de uma `T#`, e nunca o File Key da tela quando a entrada `C#` aponta para outro arquivo (o do DS, por exemplo).
 
   Isso é a diferença entre o implementer ler o componente e ler *uma configuração* dele. A instância mostra só a variante que aquela tela usou; o original declara todos os eixos. Apontar para a instância entrega um componente permanentemente mais pobre que o real — e como ele *funciona* na tela que originou a task, ninguém percebe.
@@ -336,50 +332,25 @@ O esqueleto vem primeiro: as tasks de Layer 2 montam seu conteúdo dentro do con
 **Mixed plans:** Figma and non-Figma tasks coexist in the same plan with standard dependency handling. A feature might have Tasks 1-2 as data models (standard TDD), Tasks 3-5 as UI components (Figma), and Task 6 as integration (standard TDD).
 
 ## Remember
-- Toda task carrega `**Type:**` (`UI Screen` | `UI Component` | `UI Logic` | `Backend` | `General`) — determina dispatch e verificação; plan sem `**Type:**` cai no heurístico legado
-- Exact file paths always
-- Describe behavior and edge cases completely (not just "add validation") — but never include code snippets
-- Exact commands with expected output
-- DRY, YAGNI, TDD-inspired (standard tasks), frequent commits
-- Figma tasks: no TDD, no code snippets, single workflow step — the subagent prompt owns the how
-- Figma tasks: include the `**Assets:**` grant line (project assets dir); never enumerate individual asset files — they're only knowable at implement time
-- When Figma resources exist: always split design (Figma task) and logic (standard task) into separate tasks. Design first, logic depends on it
-- Any task touching styling (CSS, Tailwind, layout, disposition) MUST be a Figma task when Figma resources are available
-- Quando `## Contrato de Layout` está presente: gere a task de esqueleto (Layer 0) dona do container por tela — Layer 2 DEPENDE dela, Layer 1 roda em paralelo, e o esqueleto vem primeiro
-- Componentes (Layer 1) são PROIBIDOS de setar max-width, centralização ou margens de página — regra imposta em runtime pelo implementer e checada pelo `code-quality-reviewer`
-- **Toda** task de UI (Layer 0/Layer 1/Layer 2) carrega no bloco `**Figma:**` as Medidas de aceite (do Contrato de Layout) para os breakpoints relevantes — Layer 0 incluída
-- A `## Árvore de Componentes de DS` é a autoridade sobre quais componentes precisam de task: `Importar` **não** gera task (vira import path na task de tela); `Implementar`/`Atualizar`/`Derivar` geram task `UI Component` com o bloco `**Design System:**` preenchido
-- Toda task `UI Component` carrega veredito, base/compõe-de com import paths, variantes e fonte do catálogo — sem isso o implementer não sabe se deve importar, estender, derivar ou construir, e construir do zero um componente que já existe é o pior resultado possível
-- Anotações do Figma e casos de borda são recortados por nó nas tasks de UI — o que não tem task dona não é implementado por ninguém
-
-## Required Sub-Skills
-
-**REQUIRED:** Dispatch @"plan-reviewer (agent)" after writing each plan chunk.
-
-- Announce: "Usando o plan-reviewer para validar o plano."
-- Dispatch @"plan-reviewer (agent)":
-  - Paste the **full chunk content** and the **spec sections relevant to that chunk** (the requirements/telas/componentes the chunk implements) directly into the prompt
-  - Instruct explicitly: "Review only from the content pasted here — do NOT re-read design.md or plan.md from disk." (Each chunk reviewer that re-ingests both full artifacts costs hundreds of KB of redundant reads.)
-- If issues found: fix and re-dispatch (max 5 iterations, then surface to human)
-- After approval: proceed to next chunk or completion
+- Toda task carrega `**Type:**` — determina dispatch e verificação; plan sem `**Type:**` cai no heurístico legado
+- Exact file paths, exact commands with expected output; describe behavior and edge cases completely — never code snippets
+- DRY, YAGNI, TDD-inspired (standard tasks); Figma tasks são um único passo de workflow
+- As regras de Figma (split design/logic, Layer 0/1/2, Medidas de aceite, árvore de DS como autoridade, anotações por referência com task dona) estão nas seções acima e na **Figma task validation** — rode a validação antes de finalizar; ela é o checklist canônico
 
 ## Plan Review Loop
 
-After completing each chunk of the plan:
+After completing the plan, dispatch @"plan-reviewer (agent)" **per chunk, all chunks in parallel** — chunks are independent by construction, so serializing their reviews only adds wall-clock time.
 
-1. Dispatch @"plan-reviewer (agent)":
-   - Provide: chunk content pasted inline + the spec sections relevant to the chunk (not file paths to re-read)
-2. If Issues Found:
-   - Fix the issues in the chunk
-   - Re-dispatch reviewer for that chunk
-   - Repeat until Approved
-3. If Approved: proceed to next chunk (or completion if last chunk)
+- Announce: "Usando o plan-reviewer para validar o plano."
+- Per chunk, paste into the prompt: the **full chunk content** + the **spec sections relevant to that chunk** (the requirements/telas/componentes the chunk implements)
+- Instruct explicitly: "Review only from the content pasted here — do NOT re-read design.md or plan.md from disk." (Each chunk reviewer that re-ingests both full artifacts costs hundreds of KB of redundant reads.)
+- If issues found: fix the chunk and re-dispatch **that chunk's** reviewer (max 2 iterations per chunk — observed convergence is initial round + revalidation; then surface to human)
+- Approved on all chunks → completion
 
 **Chunk boundaries:** Use `## Chunk N: <name>` headings to delimit chunks. Each chunk should be ≤1000 lines and logically self-contained.
 
 **Review loop guidance:**
 - Same agent that wrote the plan fixes it (preserves context)
-- If loop exceeds 5 iterations, surface to human for guidance
 - Reviewers are advisory - explain disagreements if you believe feedback is incorrect
 
 ## Completion

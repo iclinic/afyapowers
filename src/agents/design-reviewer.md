@@ -2,12 +2,12 @@
 claude:
   name: design-reviewer
   description: Design document reviewer — validates that a design spec is complete, consistent, and ready for implementation planning.
-  model: claude-opus-5
-  effort: high
+  model: sonnet
+  effort: medium
 cursor:
   name: afyapowers-design-reviewer
   description: Design document reviewer — validates that a design spec is complete, consistent, and ready for implementation planning.
-  model: claude-opus-5
+  model: sonnet
 github-copilot:
   name: design-reviewer
   description: Design document reviewer — validates that a design spec is complete, consistent, and ready for implementation planning.

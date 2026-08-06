@@ -9,14 +9,19 @@ Orchestrate plan execution by delegating to subagent-driven-development.
 
 If this skill was invoked by `/afyapowers:next` (you already know the active feature slug and confirmed the phase is `implement` from the conversation context above):
 - Skip steps 1-3 — use the slug from context
-- Read the plan and design (steps 4-5) — these are working content needed for implementation
+- Read the plan (step 4) — it is the working content needed for implementation
 
 Otherwise (direct invocation):
 1. Read `.afyapowers/features/active` to get the active feature
 2. Read `.afyapowers/features/<feature>/state.yaml` — confirm `current_phase` is `implement`
 3. If not in implement phase, tell the user the current phase and stop
 4. Read the plan from `.afyapowers/features/<feature>/artifacts/plan.md`
-5. Read the design from `.afyapowers/features/<feature>/artifacts/design.md` for context
+
+**Do NOT read design.md in full "for context".** The plan is the execution contract; SDD cuts the
+task-relevant design excerpts (annotations, layout-contract rows, spec sections) from design.md
+**per task**, at dispatch time. A full design read here plants ~20k tokens in the orchestrator context
+that get re-sent on every one of the phase's turns while duplicating what SDD excerpts anyway. Read the
+design's **section outline** (headings only) if you need a map for excerpting later.
 
 ## Validate Plan
 
@@ -30,7 +35,7 @@ Otherwise (direct invocation):
 
 - Announce: "Usando o subagent-driven-development para executar as tarefas de implementação."
 - Invoke the skill. Follow its instructions completely.
-- The plan content and design are already in the conversation context — SDD will use them directly.
+- The plan content is already in the conversation context — SDD uses it directly and excerpts design.md per task.
 - After SDD completes, resume the parent flow below.
 
 ## After SDD Completes

@@ -1,7 +1,7 @@
 ---
 name: afyapowers-figma-component-implementer
 description: Figma component implementer subagent — translates a single Figma component into production code with self-review. Requires Figma MCP server.
-model: claude-opus-5
+model: sonnet
 ---
 # Figma Component Implementer Subagent Prompt Template
 
@@ -51,6 +51,8 @@ Figma MCP allows 15 requests/minute. Your typical total is **3–4 calls** (3 ma
 
 - **Read each project file at most once.** Keep what you need in context; re-read a file only if you edited it. For large token/theme files, use targeted reads (offset/limit) instead of whole-file re-reads.
 - **One canonical validation sequence.** Format first (`npx prettier --write <files>` or the project's formatter), then run the project's **standard** lint command once (e.g. `yarn eslint <paths>`). Fix what it reports and re-run **the exact same command** until clean. Never vary flags, config overrides, or invocation style between runs — churn on the command hides whether the code converged. Then run the relevant tests.
+- **Scoped verification only.** Run tests/lint/stylelint on **your task's files** (the orchestrator gives you the commands), never the whole repo's suite — the full suite runs once per wave at the orchestrator level. Pre-existing failures listed in your prompt's baseline are not yours to chase.
+- **Verification budget.** If the same test/lint error survives **5 consecutive fix attempts**, stop iterating and report DONE_WITH_CONCERNS (or BLOCKED) with what you tried and the exact failing output.
 
 ## Workflow
 
@@ -222,21 +224,11 @@ The wrapper **imports** the base and renders it as its primary child; **passes p
 
 ## Code Quality
 
-1. **Explicit prop types** for every component; derive variant types from Figma states.
-2. **Composable components** — one Figma component = one code component; children/slots for variable content areas.
-3. **No inline styles unless dynamic** — use the project's styling approach; inline only for runtime-computed values.
-4. **Accessible by default** — semantic elements, `aria-label` for icon-only actions, focus states, keyboard navigation.
-5. **Responsive behavior from Figma constraints** — auto-layout modes (fill/hug/fixed) → flex-grow / fit-content / fixed width; implement responsive variants with appropriate breakpoints.
-
-## Best Practices
-
-- **Validate incrementally.** Compare against the local screenshot at each structural milestone (skeleton → sections → details), not only at the end.
-- **Document deviations.** If you must deviate from Figma for technical/accessibility reasons, add a brief code comment and report as DONE_WITH_CONCERNS.
-- **Edge-aligned overlays.** An absolutely-positioned child at the edge of a bordered parent (badge, tag) needs a negative offset equal to the border width (e.g. `top: -1px; left: -1px` for a 1px border) to sit flush with the outer edge. Cross-check corners against the screenshot.
+Explicit prop types (variant types from Figma states) · one Figma component = one code component, children/slots for variable content · no inline styles unless runtime-computed · accessible by default (semantic elements, `aria-label` on icon-only actions, focus states, keyboard nav) · responsive behavior from Figma constraints (fill/hug/fixed → flex-grow / fit-content / fixed width). Validate incrementally against the local screenshot at each structural milestone; document any deviation from Figma with a brief code comment and a concern. **Edge-aligned overlays:** an absolutely-positioned child at the edge of a bordered parent needs a negative offset equal to the border width to sit flush — cross-check corners against the screenshot.
 
 ## Do Not Commit
 
-Leave your changes in the working tree. **Do not commit** — this is not negotiable, regardless of what your task context says. Several implementers run in parallel sharing one git index; committing here stages other agents' in-flight files, contends on `.git/index.lock`, and trips hooks against code you don't own. The orchestrator commits after you report. List the exact files you changed and assets you created so it can stage precisely.
+Leave your changes in the working tree. **Do not commit** — regardless of what your task context says: parallel implementers share one git index, and committing here stages other agents' in-flight files. The orchestrator commits after you report. List the exact files you changed and assets you created.
 
 ## Reporting
 

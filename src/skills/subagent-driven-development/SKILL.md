@@ -2,12 +2,12 @@
 claude:
   name: afyapowers:subagent-driven-development
   description: Use when executing implementation plans with independent tasks in the current session
-  model: claude-opus-5
+  model: sonnet
   effort: high
 cursor:
   name: afyapowers-subagent-driven-development
   description: Use when executing implementation plans with independent tasks in the current session
-  model: claude-opus-5
+  model: sonnet
 github-copilot:
   name: subagent-driven-development
   description: Use when executing implementation plans with independent tasks in the current session
@@ -125,6 +125,19 @@ When no conventions are detected:
 
 Store this block — you will use it when committing completed tasks in Step 6.5.
 
+### Step 0.5: Baseline the Test Suite (once)
+
+Before dispatching anything, run the project's test suite **once** and record which suites/tests already
+fail. This is the phase's baseline. Two uses:
+
+- **Pass it to every implementer** ("suites already failing before this feature: <list> — do not chase
+  them, do not count them against your task").
+- **Post-Wave Verification compares against it** — a wave is green when it introduces no NEW failures,
+  not when the whole repo is green.
+
+Discovering a pre-existing red suite mid-wave costs several turns of investigation at the worst time and
+tempts implementers into out-of-scope fixes; establishing it up front costs one command.
+
 ### Step 1: Parse Tasks
 
 Read the plan and extract all tasks. For each task, record:
@@ -215,7 +228,8 @@ Also pass `[NODE_TYPE]`, `[FRAMEWORK]` and `[GENERATE_STORYBOOK]` from the task/
 **Legacy fallback (no `**Type:**` line):** apply the pre-Type heuristic — if the task text contains a `**Figma:**` section → dispatch @"figma-design-implementer (agent)" (include Figma metadata); otherwise → dispatch @"tdd-implementer (agent)".
 
 Each agent gets:
-- Full task text (steps, file list, code/Figma metadata, and the `**Design System:**` block if present) — paste directly, don't make agent read files
+- Full task text (steps, file list, code/Figma metadata, and the `**Design System:**` block if present) — paste directly, don't make agent read files. **Expand plan references before pasting:** when the task's `**Anotações do Figma:**` / `**Estados a cobrir:**` lines carry node ids / row references instead of text (the plan references; the verbatim lives once in design.md), cut the referenced annotation texts and edge-case rows from design.md and paste them verbatim in place of the reference — the implementer must receive the actual text, never a pointer it cannot follow
+- **Scoped verification commands + the Step 0.5 baseline:** the exact commands to run tests/lint on the task's own files (e.g. `pnpm test <task paths>`, `eslint <task paths>`), plus the list of pre-existing failing suites. The implementer verifies its own scope; the full suite runs once per wave in Post-Wave Verification, not once per task
 - **Task-relevant design spec excerpts — not the whole spec.** Paste only the sections the task actually needs: for Figma tasks, the task's screen/section context plus — from `## Árvore de Componentes de DS` — **only the rows for this task's node and its `**Depends on:**` nodes**, and — from `## Decisões de Reúso de Componentes` — only the decisions citing those nodes (these record which components exist, their import paths, and which reuses the user approved; an implementer that can't see its rows re-derives those decisions by guessing). For `UI Screen` tasks also paste the relevant Layout Contract row(s). `tdd-implementer` tasks do NOT get the DS tree — only the spec sections describing the behavior they implement. Never paste the full design.md: every byte you paste is re-sent on all of the subagent's turns
 - File constraint: "You may ONLY modify these files: [list from task's Files: section]". **For Figma tasks, append:** "— plus you MAY create asset files (icons/images) under the project's assets directory as needed; list every asset file you create in your report."
 - Return format: status (DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED) + summary, **including the exact list of files changed**. For Figma tasks, the report must **separately list any asset files created** (the "Assets created" line) — these are usually not in the Files: section and the orchestrator needs them to stage the assets.
@@ -241,10 +255,26 @@ returned `DONE` or `DONE_WITH_CONCERNS` this wave — **one commit per task, str
 sequentially** (never in parallel). Sequential commits are what eliminate the
 index-lock races and cross-task contamination that parallel committing causes.
 
-For each completed task, in order:
+**Chain the whole wave into as few Bash commands as possible.** One `git add`/`git commit`/verify
+round-trip per task was measured at ~3 orchestrator turns per task — ~50-70 turns per feature, each
+re-sending the full orchestrator context. Instead: run one command that surveys the tree
+(`git status --short`), then one chained command that stages+commits every completed task in order:
+
+```
+git add -- <task A files> && git commit -m "<msg A>" && \
+git add -- <task B files> && git commit -m "<msg B>" && \
+...
+git log --oneline -<n> && git status --short
+```
+
+The chain preserves everything sequential commits guarantee (per-task staging, per-task messages, hooks
+run per commit) at ~2 turns per wave. `&&` makes a failure stop the chain at the failing task — then fall
+back to the per-task procedure below **from that task onward**.
+
+Per task (inside the chain, or individually on fallback):
 
 1. **Stage only that task's files** — `git add -- <files from the task's **Files:** section (Create/Modify/Test)> <asset files from the task's "Assets created" report line>`. Never `git add .` or `git add -A`; that would sweep in other tasks' changes. For Figma tasks, the reported asset files are a legitimate, expected part of the task's output — stage them alongside the source files.
-2. **Verify staging** — run `git diff --cached --name-only` and confirm only this task's files are staged. The task's Files: entries **and** its reported "Assets created" paths are expected. If any *other* file appears (outside the Files list AND not a reported asset — e.g. an agent edited outside its constraint), stop and surface it to the user instead of committing.
+2. **Verify staging** — the initial `git status --short` survey plus the final `git log`/`git status` check replace the per-task `git diff --cached` inspection: if the survey shows files no task's report accounts for (an agent edited outside its constraint), stop and surface it to the user **before** starting the chain.
 3. **Commit** — write a message following the `## Commit Conventions` block from Step 0, with the subject derived from the task name (`### Task N:` heading).
 4. **Handle hook failures** (safe to retry now, since commits are sequential):
    - Commitlint rejection → rewrite the message to match the format, retry.
@@ -314,8 +344,15 @@ If a plan has all tasks depending on the previous one (linear chain), the wave e
 After each wave's tasks are committed (Step 6.5):
 1. **Review each agent's summary** — understand what changed
 2. **Check for conflicts** — did any agents edit the same code despite file validation?
-3. **Run the test suite** — verify all changes work together
+3. **Run the test suite** — compare against the Step 0.5 baseline: green = no NEW failures
 4. **Spot check** — agents can make systematic errors, especially in parallel
+
+**Verify reports by exception, not exhaustively.** Independently verify (read the code, run the check,
+query Figma) every **BLOCKING concern**, every claim that **contradicts the design/plan**, and every
+report that asserts something you can cheaply falsify was skipped (e.g. "no stylelint config exists").
+Plain `DONE` reports with passing scoped tests are covered by this post-wave pass — re-verifying each one
+individually in the orchestrator context doubles the per-task turn cost for findings the wave-level suite
+would catch anyway.
 
 ## Agent Prompt Best Practices
 
@@ -344,11 +381,9 @@ Use the least powerful model that can handle each role to conserve cost and incr
 
 ## Handling Implementer Status
 
-Implementer subagents report one of four statuses:
-
-**DONE:** Mark task `completed`, update plan checkbox. No review dispatch.
-
-**DONE_WITH_CONCERNS:** Read concerns and sort by severity (**BLOCKING** vs non-blocking **CONCERN**). Store them in separate lists and mark `completed`. If the concern indicates the task is fundamentally broken (e.g., "I couldn't get tests to pass", "Core dependency is missing and I had to stub the entire integration"), treat as `BLOCKED` instead. BLOCKING concerns (e.g. a component substitution that doesn't match Figma, an unconfirmed host-height assumption, behavior that differs from the design) are collected separately and gate the phase via the `implementing` skill. Examples of non-blocking concerns: "I'm not sure this edge case is handled correctly", "The API response format might differ in production", "This works but the approach feels fragile." A concern that **defers verification** to a later phase instead of performing it (e.g. "vou validar isso na review", "will check this later") is always **BLOCKING**, never non-blocking — even if the implementer filed it as a routine ressalva — because it is a verification requirement that only closes with actual evidence, not a promise to verify eventually.
+Implementer subagents report one of four statuses. **DONE** and **DONE_WITH_CONCERNS** are handled
+exactly as defined in Step 6 — including the BLOCKING/non-blocking split, the treat-as-BLOCKED cases,
+and the rule that deferred verification is always BLOCKING. That definition is not repeated here.
 
 **NEEDS_CONTEXT:** Provide missing context and re-dispatch.
 
@@ -390,14 +425,14 @@ Implementer subagents report one of four statuses:
 ## Integration
 
 **Invoked by:**
-- **implementing** (REQUIRED SUB-SKILL) — implementing loads the plan and design, then invokes SDD to execute all tasks
+- **implementing** (REQUIRED SUB-SKILL) — implementing loads the plan, then invokes SDD to execute all tasks
 
 **Subagent prompts:**
 - @"tdd-implementer (agent)" — TDD rules are embedded directly in this prompt (used for `UI Logic` / `Backend` / `General` tasks, and legacy non-Figma tasks)
 - @"figma-design-implementer (agent)" — Figma implement-design workflow (used for `UI Screen` tasks, and legacy tasks with a `**Figma:**` section)
 - @"figma-component-implementer (agent)" — design-system-aware component workflow (used for `UI Component` tasks)
 
-**Context:** When invoked by implementing, the plan and design are already in the conversation context. Use them directly. If the plan is not in context (e.g., invoked standalone), read it from `.afyapowers/features/<feature>/artifacts/plan.md`.
+**Context:** When invoked by implementing, the plan is already in the conversation context — use it directly. If the plan is not in context (e.g., invoked standalone), read it from `.afyapowers/features/<feature>/artifacts/plan.md`. The design is **not** held in context: cut task-relevant excerpts from `design.md` at dispatch time (Step 5), reading only the sections each task needs.
 
 ## Concerns Collection
 

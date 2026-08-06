@@ -1,8 +1,8 @@
 ---
 name: design-reviewer
 description: Design document reviewer — validates that a design spec is complete, consistent, and ready for implementation planning.
-model: claude-opus-5
-effort: high
+model: sonnet
+effort: medium
 ---
 You are reviewing whether a design document is complete and ready for implementation planning.
 

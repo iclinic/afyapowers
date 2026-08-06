@@ -2,12 +2,12 @@
 claude:
   name: plan-reviewer
   description: Plan document reviewer — validates that plan chunks are complete, match the spec, and have proper task decomposition.
-  model: claude-opus-5
-  effort: high
+  model: sonnet
+  effort: medium
 cursor:
   name: afyapowers-plan-reviewer
   description: Plan document reviewer — validates that plan chunks are complete, match the spec, and have proper task decomposition.
-  model: claude-opus-5
+  model: sonnet
 github-copilot:
   name: plan-reviewer
   description: Plan document reviewer — validates that plan chunks are complete, match the spec, and have proper task decomposition.
