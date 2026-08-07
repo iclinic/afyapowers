@@ -10,6 +10,7 @@
     "filePrefix": "afyapowers-"
   },
   "templates": true,
+  "scripts": true,
   "hooks": true,
   "pluginManifest": {
     "from": "src/manifests/cursor/.cursor-plugin",

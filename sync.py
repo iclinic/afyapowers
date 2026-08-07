@@ -24,6 +24,7 @@ class AgentConfig:
     skills_ref_prefix: str
     agents_file_prefix: str
     templates: bool
+    scripts: bool
     hooks: bool
     plugin_manifest: Optional[dict]
 
@@ -54,6 +55,7 @@ def parse_agent_config(config_path: Path, repo_root: Path) -> AgentConfig:
         skills_ref_prefix=skills.get("refPrefix", default_ref_prefix),
         agents_file_prefix=data.get("agents", {}).get("filePrefix", ""),
         templates=bool(data.get("templates", False)),
+        scripts=bool(data.get("scripts", False)),
         hooks=bool(data.get("hooks", False)),
         plugin_manifest=data.get("pluginManifest"),
     )
@@ -257,6 +259,26 @@ def process_templates(
     return sum(1 for _ in templates_out.rglob("*") if _.is_file())
 
 
+def process_scripts(
+    config: AgentConfig, src_dir: Path, output_dir: Path
+) -> Optional[int]:
+    """Copy `src/scripts/` verbatim — no frontmatter parsing, no prefixing.
+
+    Agents and skills reference these by a plugin-root-relative path
+    (`scripts/<file>`), so the location must be identical for every agent.
+    """
+    if not config.scripts:
+        return None
+    scripts_src = src_dir / "scripts"
+    if not scripts_src.is_dir():
+        return None
+    scripts_out = output_dir / "scripts"
+    if scripts_out.is_dir():
+        shutil.rmtree(scripts_out)
+    shutil.copytree(scripts_src, scripts_out)
+    return sum(1 for _ in scripts_out.rglob("*") if _.is_file())
+
+
 def process_hooks(
     config: AgentConfig, src_dir: Path, output_dir: Path
 ) -> Optional[int]:
@@ -377,6 +399,9 @@ def sync_agent(
     print(
         f"  Templates: {result} files" if result is not None else "  Templates: skipped"
     )
+
+    result = process_scripts(config, src_dir, config.output_dir)
+    print(f"  Scripts: {result} files" if result is not None else "  Scripts: skipped")
 
     result = process_hooks(config, src_dir, config.output_dir)
     print(f"  Hooks: {result} files" if result is not None else "  Hooks: skipped")
