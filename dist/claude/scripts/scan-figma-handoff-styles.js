@@ -14,7 +14,7 @@ const CONFIG = {
   capPerNode: 6,
   vectorClusterThreshold: 5
 };
-const RULES_VERSION = '1.3';
+const RULES_VERSION = '1.4';
 const page = figma.currentPage;
 const VECTOR_TYPES = ['VECTOR', 'BOOLEAN_OPERATION', 'LINE', 'STAR', 'POLYGON', 'ELLIPSE'];
 const PADDING_SIDES = [['paddingTop', 'top'], ['paddingRight', 'right'], ['paddingBottom', 'bottom'], ['paddingLeft', 'left']];

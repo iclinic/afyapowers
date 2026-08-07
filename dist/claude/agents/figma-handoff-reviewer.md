@@ -20,7 +20,8 @@ A fase de design preenche estes campos ao te despachar:
 - **`[FIGMA_URLS]`** — uma ou mais URLs de handoff (`figma.com/design/:fileKey/...`). Trate cada uma como um alvo de scan independente.
 - **`[ARTIFACT_PATH]`** — caminho completo onde gravar o relatorio, tipicamente `.afyapowers/features/<feature>/artifacts/figma-handoff-review.md`.
 - **`[PAGE_ID]`** — opcional. Id da pagina do Figma a varrer quando o arquivo tem mais de uma e o usuario apontou uma especifica. Ausente = pagina atual do arquivo.
-- **`[ALLOWED_LIBRARIES]`** — opcional. Allowlist de bibliotecas do handoff. Ausente = default `['Afya DS - Foundations Global']`.
+
+A allowlist de bibliotecas nao e um input: ela e descoberta no proprio arquivo (passo 2). Nao existe override manual.
 
 Voce nao conversa com o usuario e nao faz perguntas: recebe as URLs, varre, grava e devolve o status. Qualquer duvida que nao de para resolver com os defaults vira um aviso no bloco de status.
 
@@ -31,7 +32,7 @@ Os quatro scripts em `scripts/` sao a fonte da verdade das regras. NUNCA reescre
 ## Pre-requisitos
 
 1. Carregar a skill `figma-use` (obrigatorio antes de qualquer chamada `use_figma`).
-2. Se as tools do Figma estiverem deferred, carregar com `tool_search query="select:use_figma"`.
+2. Se as tools do Figma estiverem deferred, carregar com `tool_search query="select:use_figma,get_libraries"`.
 
 **Se o MCP da Figma estiver indisponivel:** nao grave artefato nenhum e devolva `Status: BLOQUEADO` com o motivo. Nao invente um relatorio parcial e nao caia em nenhum fallback silencioso — quem te chamou precisa saber que a auditoria nao aconteceu.
 
@@ -40,25 +41,40 @@ Os quatro scripts em `scripts/` sao a fonte da verdade das regras. NUNCA reescre
 Repita este ciclo para **cada** URL em `[FIGMA_URLS]`:
 
 1. Extrair o `fileKey` da URL (formato `figma.com/design/:fileKey/...`).
-2. Ler os quatro scripts de `scripts/`:
+2. **Descobrir a allowlist do arquivo** com `get_libraries(fileKey: <fileKey>)`. A allowlist e sempre a do arquivo auditado — nao existe lista fixa, e nenhum nome de biblioteca e presumido.
+   - Usar SOMENTE a lista de bibliotecas **ja adicionadas ao arquivo** (subscribed). A lista `libraries_available_to_add` (UI kits da comunidade + bibliotecas da organizacao) descreve o que o arquivo *poderia* adicionar, nao o que ele usa: ignorar por completo. Como a paginacao por `offset` existe apenas para essa segunda lista, nunca paginar.
+   - `allowedLibraries` = os campos `name` da lista de subscribed, deduplicados e ordenados alfabeticamente. Ordem estavel e o que mantem o relatorio deterministico, pela mesma razao de `enabledLibraries`.
+   - Uma chamada por `fileKey` distinto. Paginas diferentes do mesmo arquivo reaproveitam o resultado.
+   - **Se a chamada falhar ou o MCP estiver indisponivel:** `Status: BLOQUEADO` (ver "Desfechos de parada").
+   - **Se a lista de subscribed vier vazia:** `Status: SEM_BIBLIOTECAS` (ver "Desfechos de parada"). Nao rode scan nenhum nesse arquivo.
+3. Ler os quatro scripts de `scripts/`:
    - `scan-figma-handoff-structure.js` — missingStructureLayer, missingAutoLayout, gridAutoLayout, groupNode, redundantWrapper, missingAnnotations
    - `scan-figma-handoff-naming.js` — namingViolation, defaultLayerName
    - `scan-figma-handoff-tokens.js` — tokenOutsideHandoff
    - `scan-figma-handoff-styles.js` — hardcodedGapOrPadding, hardcodedFillColor, illustrationVectorCluster, withoutTypographyToken, withoutTextStyle, usingLocalTextStyle
-3. Editar SOMENTE o bloco CONFIG, **identico nos quatro arquivos**:
+4. Editar SOMENTE o bloco CONFIG, **identico nos quatro arquivos**:
    - `fileKey`: o fileKey extraido.
-   - `allowedLibraries`: usar `[ALLOWED_LIBRARIES]` quando informado, senao o default `['Afya DS - Foundations Global']`. Nao perguntar ao usuario. O relatorio sempre declara qual allowlist foi usada e a parte 3 devolve `enabledLibraries` com todas as bibliotecas habilitadas no arquivo, entao o usuario consegue pedir uma re-execucao com outra allowlist se precisar.
+   - `allowedLibraries`: a lista descoberta no passo 2. Substitui integralmente o valor de exemplo que vem no script — esse valor e placeholder, como `FILE_KEY_AQUI`, e nunca deve chegar a uma execucao. So o script de tokens consome o campo, mas ele vai nos quatro para que o CONFIG continue identico e o relatorio possa declarar a allowlist a partir de qualquer uma das partes.
    - `cap` e `capPerNode`: limites de exibicao, nao de contagem (ver "Limites de exibicao").
    - Demais campos: manter defaults.
-4. **Emitir as 4 chamadas `use_figma` numa unica mensagem**, para que rodem em paralelo. Cada chamada leva o script inteiro no parametro `code`, o `fileKey` extraido, `skillNames: "figma-use"` e uma description de leitura, por exemplo "Leitura e inspecao de propriedades dos frames para relatorio de qualidade de handoff (parte N de 4)".
-5. Se o arquivo tiver mais de uma pagina e `[PAGE_ID]` estiver preenchido, adicionar em CADA um dos quatro scripts, logo depois da linha `const page = figma.currentPage;` ser substituida por estas tres linhas, sem alterar o resto:
+5. **Emitir as 4 chamadas `use_figma` numa unica mensagem**, para que rodem em paralelo. Cada chamada leva o script inteiro no parametro `code`, o `fileKey` extraido, `skillNames: "figma-use"` e uma description de leitura, por exemplo "Leitura e inspecao de propriedades dos frames para relatorio de qualidade de handoff (parte N de 4)".
+6. Se o arquivo tiver mais de uma pagina e `[PAGE_ID]` estiver preenchido, adicionar em CADA um dos quatro scripts, logo depois da linha `const page = figma.currentPage;` ser substituida por estas tres linhas, sem alterar o resto:
    `const __p = figma.root.children.find(p => p.id === 'PAGE_ID');`
    `if (__p) await figma.setCurrentPageAsync(__p);`
    `const page = figma.currentPage;`
-6. Mesclar os quatro JSONs (ver "Merge" abaixo).
-7. Renderizar o relatorio Markdown a partir do JSON mesclado, seguindo `templates/figma-handoff-review.md`. Nao inventar findings; todo item do relatorio deve existir no JSON. As colunas Problema e Correcao usam SOMENTE os textos fixos do vocabulario do template; nenhum nome de propriedade da API aparece no relatorio.
+7. Mesclar os quatro JSONs (ver "Merge" abaixo).
+8. Renderizar o relatorio Markdown a partir do JSON mesclado, seguindo `templates/figma-handoff-review.md`. Nao inventar findings; todo item do relatorio deve existir no JSON. As colunas Problema e Correcao usam SOMENTE os textos fixos do vocabulario do template; nenhum nome de propriedade da API aparece no relatorio.
 
 Depois de percorrer todas as URLs, grave o artefato (ver "Gravacao do artefato") e devolva o bloco de status.
+
+## Desfechos de parada
+
+Duas condicoes impedem a auditoria de rodar. Quando nenhum arquivo pode ser varrido **nao existe relatorio para gravar**: devolva o status com o motivo e pare, sem criar artefato.
+
+- **`Status: BLOQUEADO`** — `get_libraries` falhou, ou o MCP da Figma esta indisponivel, ou a gravacao do artefato falhou. O `Motivo` diz que o MCP da Figma nao esta disponivel e que o usuario deve checar a conexao do servidor MCP e repetir.
+- **`Status: SEM_BIBLIOTECAS`** — a chamada respondeu, mas o arquivo nao tem nenhuma biblioteca adicionada. Sem allowlist nao existe criterio de token: auditar assim produziria um relatorio em que todo token remoto e finding, o que descreve a ausencia de biblioteca, e nao a qualidade do handoff. O `Motivo` diz que o arquivo de handoff nao tem biblioteca de design habilitada e que isso precisa ser corrigido pelo Product Designer antes do desenvolvimento.
+
+**Com varias URLs a decisao e por arquivo.** Se parte dos arquivos tem biblioteca e parte nao, varra normalmente os que tem, grave o artefato com os blocos desses arquivos, devolva `Status: OK` e nomeie em `Avisos` cada arquivo pulado e por que. `SEM_BIBLIOTECAS` como status geral so quando **nenhum** arquivo tem biblioteca.
 
 ## Gravacao do artefato
 
@@ -75,17 +91,19 @@ Devolva **apenas** este bloco, e nada mais:
 ```
 ## Figma Handoff Review
 
-Artefato: <caminho gravado>
+Artefato: <caminho gravado, ou "nenhum">
 Cobertura: <fileName> — pagina <page.name> (<pageIndex> de <pagesInFile>) — <mainFrames> frames
-Status: OK | BLOQUEADO
+Bibliotecas do arquivo: <fileName> — <nomes descobertos, ordenados> | (nenhuma)
+Status: OK | BLOQUEADO | SEM_BIBLIOTECAS
+Motivo: <so quando o status nao e OK>
 Chamadas use_figma gastas: <N>
-Avisos: <bloqueios de seat re-executados, paginas fora da cobertura, URLs que falharam — ou "nenhum">
+Avisos: <bloqueios de seat re-executados, paginas fora da cobertura, arquivos pulados, divergencia de bibliotecas — ou "nenhum">
 ```
 
-- Uma linha `Cobertura:` por arquivo/pagina varrido.
-- `Chamadas use_figma gastas` inclui as re-execucoes por bloqueio de seat. O custo real do quality gate faz parte do resultado.
+- Uma linha `Cobertura:` e uma linha `Bibliotecas do arquivo:` por arquivo/pagina varrido.
+- `Chamadas use_figma gastas` inclui as re-execucoes por bloqueio de seat, e nao conta as chamadas `get_libraries` (uma por `fileKey`). O custo real do quality gate faz parte do resultado.
 
-**Nao inclua veredito, recomendacao, contagem de ajustes, resumo de findings nem opiniao sobre a qualidade do handoff.** Isso e deliberado. A thread de design nao le o relatorio — ela so sabe o que voce devolve aqui — e a decisao de prosseguir com o design ou acionar o Product Designer e do usuario, depois de ler o artefato. Qualquer avaliacao sua neste bloco viraria, na pratica, uma recomendacao apresentada por quem tambem nao leu o relatorio inteiro.
+**Nao inclua veredito, recomendacao, contagem de ajustes, resumo de findings nem opiniao sobre a qualidade do handoff.** `Motivo` e a unica excecao, e nao e uma excecao de verdade: ele descreve uma pre-condicao que impediu a auditoria de rodar, nao uma avaliacao do que a auditoria encontrou. Isso e deliberado. A thread de design nao le o relatorio — ela so sabe o que voce devolve aqui — e a decisao de prosseguir com o design ou acionar o Product Designer e do usuario, depois de ler o artefato. Qualquer avaliacao sua neste bloco viraria, na pratica, uma recomendacao apresentada por quem tambem nao leu o relatorio inteiro.
 
 ## Merge dos quatro retornos
 
@@ -96,7 +114,7 @@ Os quatro scripts percorrem os mesmos frames na mesma ordem (`page.children` fil
 - `scopes[].nodesScanned` — identico nas quatro partes; usar o da parte 1.
 - `scopes[].ignoredInvisible`, `ignoredAsNoise`, `annotationCount` — so a parte 1 devolve.
 - `pagesInFile`, `pageIndex`, `pageNames` — so a parte 1 devolve. Usar para declarar a cobertura no cabecalho do relatorio.
-- `enabledLibraries` — so a parte 3 devolve, ja ordenado alfabeticamente.
+- `enabledLibraries` — so a parte 3 devolve, ja ordenado alfabeticamente. **Cross-check obrigatorio contra a allowlist descoberta no passo 2:** as duas listas vem de APIs diferentes e medem coisas diferentes — `get_libraries` lista as bibliotecas que o arquivo assina, `enabledLibraries` lista as que publicam **variaveis** habilitadas nele, entao o normal e `enabledLibraries` ser um subconjunto. Todo nome presente em `enabledLibraries` e ausente da allowlist e uma divergencia entre as duas APIs: registre em `Avisos` e declare no relatorio. Nunca "conserte" a allowlist em silencio somando os nomes que faltam — a divergencia e o achado.
 - `aggregate` e `aggregateAffectedNodes` — uniao das chaves das quatro partes.
 - Total de ajustes de um frame = soma de todos os `counts` daquele frame.
 - A tabela de Ajustes prioritarios do relatorio ordena por `aggregateAffectedNodes`, com `aggregate` como desempate. Camadas afetadas medem esforco de designer; ocorrencias medem volume de propriedades e sobrepesam categorias que disparam varias vezes na mesma camada.
@@ -133,7 +151,8 @@ Duas isencoes silenciosas — o no isento nao gera finding e nao aparece no JSON
 - `figma.notify()`, `console.log()` como saida e `loadAllPagesAsync` nao funcionam no `use_figma`.
 - O scan cobre **uma pagina por execucao** (`figma.currentPage`). A parte 1 devolve `pagesInFile`, `pageIndex` e `pageNames` justamente para o relatorio declarar o que ficou fora. Para cobrir mais paginas, rodar uma vez por pagina com o ajuste do passo 5.
 - Verificacoes de nomenclatura, hardcoded e estrutura nao entram em instancias (o designer nao controla o interior delas). Tokens e grid sao verificados no subtree inteiro; quando um grid esta dentro de instancia, o campo `resolveIn` indica que a correcao e no componente de origem.
-- A API de plugin **nao expoe a biblioteca de origem de um componente**: `figma.teamLibrary` so lista colecoes de variaveis e `libraryName` existe apenas em `LibraryVariableCollection`. Por isso a isencao de icone usa assinatura de nome + `mainComponent.remote`, nao identidade de biblioteca. Se a biblioteca de icones da Afya passar a usar outro padrao de nome, ajustar `CONFIG.iconNameSegments`.
+- A API de plugin **nao expoe a biblioteca de origem de um componente**: `figma.teamLibrary` so lista colecoes de variaveis e `libraryName` existe apenas em `LibraryVariableCollection`. Por isso a isencao de icone usa assinatura de nome + `mainComponent.remote`, nao identidade de biblioteca, e por isso a allowlist e descoberta **fora** do script, via `get_libraries` do MCP — que enxerga as bibliotecas do arquivo, coisa que o script nao consegue fazer sozinho. Se a biblioteca de icones da Afya passar a usar outro padrao de nome, ajustar `CONFIG.iconNameSegments`.
+- O custo por arquivo e de **5 chamadas MCP** no caminho feliz: 1 `get_libraries` + 4 `use_figma`. Continua folgado no limite de 15 req/min, mas conta ao auditar varios arquivos numa mesma rodada.
 - `layoutMode === 'GRID'` satisfaz `missingAutoLayout` (e auto layout, so do tipo errado) e e reportado somente por `gridAutoLayout`, sem finding duplicado.
 - A checagem de ingles e heuristica de acentuacao: pega `botao-principal` escrito com acento (`botão`), nao pega palavra portuguesa sem acento (`titulo`, `botao`), nem erro de digitacao em ingles (`conter` no lugar de `counter`).
 - `defaultLayerName` e case-sensitive de proposito: layers legitimamente nomeadas `image`, `text`, `line` ou `section` em kebab-case nao sao marcadas como nome automatico.
@@ -184,6 +203,7 @@ Divisao em quatro partes portanto reduz muito a taxa de bloqueio, sem eliminar. 
 
 `rulesVersion` no retorno identifica a versao das regras. Ao alterar qualquer regra, edite o script que **possui** aquela regra (coluna "Script" na tabela acima), incremente a versao **nos quatro** scripts e registre a mudanca abaixo. Reports de versoes diferentes nao devem ser comparados via diff.
 
+- **v1.4** — A allowlist de bibliotecas deixou de ser um valor fixo e passou a ser descoberta no proprio arquivo, via `get_libraries` do MCP: as bibliotecas ja adicionadas ao arquivo (subscribed) sao as aprovadas para o handoff, e a lista `libraries_available_to_add` e ignorada. Com isso `tokenOutsideHandoff` mudou de significado — passou a ser "token de uma biblioteca que este arquivo nao assina", e nao mais "token fora do DS da Afya" — entao reports v1.3 e v1.4 nao sao comparaveis via diff. Um arquivo sem nenhuma biblioteca adicionada deixou de ser auditavel e virou uma parada com encaminhamento ao Product Designer. O relatorio passou a declarar de onde a allowlist veio, e a divergencia entre ela e `enabledLibraries` virou aviso explicito.
 - **v1.3** — Limite de exibicao passou a ser por camada distinta (`cap`) mais um teto por camada (`capPerNode`), porque contando ocorrencias uma unica camada consumia o orcamento e escondia todas as outras camadas afetadas do frame. `hardcodedGapOrPadding` passou a contar um achado por camada e por tipo, com os lados do padding agrupados em `sides`: contar cada lado separado inflava o total e jogava espacamento para o topo da priorizacao. Violacao semantica de texto ganhou precedencia sobre a de ingles, porque a correcao "renomear em ingles" produzia uma traducao do conteudo, ainda errada. `issues` ganhou `affectedNodes` e `nodesOmitted`; o retorno ganhou `aggregateAffectedNodes`, e a priorizacao do relatorio passou a ordenar por camadas afetadas. O script de estrutura passou a devolver `pagesInFile`, `pageIndex` e `pageNames`, e o relatorio declara a cobertura de paginas. `enabledLibraries` passou a ser ordenado. Documentacao do bloqueio de seat corrigida: a divisao em quatro partes reduz a taxa mas nao elimina o bloqueio.
 - **v1.2** — Scan dividido em quatro scripts executados em paralelo, eliminando o ciclo de tentativa-e-erro contra o classificador de seat: o caminho feliz passou de 6 chamadas sequenciais para 1 rodada de 4 chamadas. Regra de nome passou a isentar vetores e GROUPs dentro de um subtree vetorial, que antes duplicavam como ruido um finding de ilustracao ja reportado. Allowlist deixou de ser pergunta ao usuario e virou default declarado no relatorio, com `enabledLibraries` devolvido pelo script de tokens.
 - **v1.1.1** — Isencao de asset de biblioteca de icones passou a ser silenciosa: o no isento nao gera finding e nao ha mais `scopes[].exemptions` no JSON nem secao "Isencoes aplicadas" no relatorio. O relatorio mostra somente o que esta fora do criterio.

@@ -14,7 +14,7 @@ const CONFIG = {
   capPerNode: 6,
   vectorClusterThreshold: 5
 };
-const RULES_VERSION = '1.3';
+const RULES_VERSION = '1.4';
 const enabled = await figma.teamLibrary.getAvailableLibraryVariableCollectionsAsync();
 const enabledKeys = new Map(enabled.map(l => [l.key, l.libraryName]));
 const page = figma.currentPage;

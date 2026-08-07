@@ -14,7 +14,7 @@ const CONFIG = {
   capPerNode: 6,
   vectorClusterThreshold: 5
 };
-const RULES_VERSION = '1.3';
+const RULES_VERSION = '1.4';
 const pageNames = figma.root.children.map(p => p.name);
 const page = figma.currentPage;
 const pageIndex = figma.root.children.findIndex(p => p.id === page.id) + 1;

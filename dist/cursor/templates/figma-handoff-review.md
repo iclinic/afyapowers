@@ -31,7 +31,7 @@ Nunca complete dados ausentes.
 |---|---|
 | Página avaliada | {{page.name}} ({{pageIndex}} de {{pagesInFile}}) |
 | Versão das regras | v{{rulesVersion}} |
-| Biblioteca utilizada | `{{config.allowedLibraries}}` |
+| Bibliotecas do handoff | `{{config.allowedLibraries}}` |
 | Frames avaliados | {{mainFrames}} |
 | Ajustes antes do desenvolvimento | {{soma de todos os counts}} |
 
@@ -39,9 +39,13 @@ Quando {{pagesInFile}} for maior que 1, escrever abaixo da tabela:
 
 Esta análise cobre apenas a página {{page.name}}. As demais páginas do arquivo não foram avaliadas: {{pageNames sem a página avaliada}}.
 
-Em seguida, sempre declarar as bibliotecas habilitadas:
+Em seguida, sempre declarar as bibliotecas do arquivo e de onde a lista veio:
 
-Bibliotecas habilitadas neste arquivo: {{enabledLibraries}}. Apenas {{config.allowedLibraries}} foi considerada aprovada para este handoff.
+Bibliotecas adicionadas a este arquivo: {{config.allowedLibraries}} — descobertas no próprio arquivo e consideradas aprovadas para este handoff. Bibliotecas que publicam variáveis habilitadas no arquivo: {{enabledLibraries}}.
+
+Quando houver nome em {{enabledLibraries}} que não apareça em {{config.allowedLibraries}}, declarar a divergência logo abaixo, nomeando as bibliotecas:
+
+Divergência: {{nomes}} publica(m) variáveis habilitadas neste arquivo, mas não consta(m) entre as bibliotecas adicionadas a ele. Os tokens dessas bibliotecas aparecem como fora do handoff.
 
 ---
 

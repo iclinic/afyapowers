@@ -14,7 +14,7 @@ const CONFIG = {
   capPerNode: 6,
   vectorClusterThreshold: 5
 };
-const RULES_VERSION = '1.3';
+const RULES_VERSION = '1.4';
 const page = figma.currentPage;
 const KEBAB = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const PASCAL_KEBAB = /^[A-Z][A-Za-z0-9]*(-[a-z0-9]+)*$/;

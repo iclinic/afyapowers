@@ -47,7 +47,7 @@ You MUST complete these items in order. **Requirements first (1-6), code explora
 
 1. **JIRA discovery (offer-based)** — offer the user the chance to provide a JIRA issue key; if provided, fetch and summarize the issue (see below)
 2. **Figma discovery (trigger-based)** — check user request against trigger keywords (see below); if match, ask about Figma and collect the URL(s)
-3. **Revisão de handoff do Figma (REQUIRED quando há URLs)** — dispatch @"figma-handoff-reviewer (agent)"; it writes `figma-handoff-review.md` into the feature's artifacts and returns only a status block. The phase then STOPS until the user reviews the report and decides whether to continue or talk to the Product Designer (see HARD-GATE-HANDOFF)
+3. **Revisão de handoff do Figma (REQUIRED quando há URLs)** — dispatch @"figma-handoff-reviewer (agent)"; it discovers the file's own design libraries via `get_libraries`, writes `figma-handoff-review.md` into the feature's artifacts and returns only a status block. On `BLOQUEADO` (Figma MCP down) or `SEM_BIBLIOTECAS` (file has no library enabled) the phase stops with no artifact. On `OK` the phase STOPS until the user reviews the report and decides whether to continue or talk to the Product Designer (see HARD-GATE-HANDOFF)
 4. **Ler os designs do Figma** — invoke `{{skill:reading-figma-designs}}` to produce `## Recursos do Figma` and `## Contrato de Layout` (only after the user chose to continue)
 5. **Ask clarifying questions** — confirm **and challenge** the inputs (see below); one question at a time
 6. **Interrogate requirements (REQUIRED)** — dispatch @"requirements-interrogator (agent)" on the gathered inputs, then drive a question loop with the user until every BLOCKING contradiction / gap / edge case / ambiguity / risky assumption is resolved or explicitly deferred (see REQUIREMENTS-GATE)
@@ -222,12 +222,25 @@ Figma has already been paid twice.
    - `[PAGE_ID]` — only if the user pointed at a specific page
    The agent writes the report itself and returns **only** a status block (artifact path, coverage,
    status, MCP calls spent, warnings). The report never enters this thread.
-3. Record the artifact immediately: add `figma-handoff-review.md` to the design phase's artifacts list
-   in `state.yaml` and append an `artifact_created` event to `history.yaml`. Do this before the gate —
-   a phase paused at the gate must still leave a trace.
-4. If the status block says `Status: BLOQUEADO` (Figma MCP unavailable, or the write failed), warn the
-   user and **stop the Figma flow**. Do not fall back silently — the user provided Figma URLs, so
-   proceeding without the audit would undermine the purpose. Suggest checking the MCP connection and retrying.
+3. Route on the status. Two of the three outcomes stop the phase, and in both cases **no artifact was
+   written** — there is no report for the user to review, so neither the recording below nor the gate
+   applies:
+   - **`Status: BLOQUEADO`** (Figma MCP unavailable, `get_libraries` failed, or the write failed) —
+     warn the user that the Figma MCP server is not available, ask them to check the connection and
+     retry, and **stop the Figma flow**. Do not fall back silently: the user provided Figma URLs, so
+     proceeding without the audit would undermine the purpose.
+   - **`Status: SEM_BIBLIOTECAS`** — the handoff file has no design library enabled, so the token
+     audit has no criterion to run against. Tell the user exactly that, and that it needs the Product
+     Designer to fix before development. **Stop the design phase** — same outcome as the "falar com o
+     PD" branch below, and do NOT invoke `{{skill:reading-figma-designs}}`.
+   - **`Status: OK`** — continue.
+
+   Relaying a `Motivo` here does **not** violate `<HARD-GATE-HANDOFF>`. That rule governs the
+   *report's findings*, which never enter this thread. A precondition that stopped the audit from
+   running is a fact stated in the status block, not an assessment of what the audit found.
+4. On `Status: OK`, record the artifact immediately: add `figma-handoff-review.md` to the design
+   phase's artifacts list in `state.yaml` and append an `artifact_created` event to `history.yaml`.
+   Do this before the gate — a phase paused at the gate must still leave a trace.
 
 <HARD-GATE-HANDOFF>
 **The design phase STOPS once the handoff review is written, until the user decides.**
@@ -432,7 +445,8 @@ invoking `{{skill:reading-figma-designs}}` — it is the first thing that happen
 - Announce: "Usando o figma-handoff-reviewer para auditar o handoff."
 - Pass every Figma URL you have (initial request + JIRA) and `[ARTIFACT_PATH]` = `.afyapowers/features/<feature>/artifacts/figma-handoff-review.md`.
 - It writes the report itself and returns only a status block — the report does not enter this thread.
-- Record `figma-handoff-review.md` in `state.yaml` / `history.yaml`, then apply `<HARD-GATE-HANDOFF>`: present the artifact path, ask the user to review it, and ask how they want to proceed — **without opining on a report you did not read**.
+- Two statuses stop the phase before any gate, with no artifact written: `BLOQUEADO` (Figma MCP unavailable / `get_libraries` failed — tell the user to check the connection and retry) and `SEM_BIBLIOTECAS` (the handoff file has no design library enabled — this needs the Product Designer).
+- On `OK`: record `figma-handoff-review.md` in `state.yaml` / `history.yaml`, then apply `<HARD-GATE-HANDOFF>`: present the artifact path, ask the user to review it, and ask how they want to proceed — **without opining on a report you did not read**.
 - Only after the user chooses to continue do you invoke `{{skill:reading-figma-designs}}`.
 
 **REQUIRED:** Dispatch @"requirements-interrogator (agent)" during the Requirements Interrogation step (before exploring the codebase or writing the design) and loop until `BLOCKING items: 0`. See the Requirements Interrogation section above.
