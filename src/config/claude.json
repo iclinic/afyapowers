@@ -9,6 +9,7 @@
     "filePrefix": ""
   },
   "templates": true,
+  "scripts": true,
   "hooks": true,
   "pluginManifest": {
     "from": "src/manifests/claude/.claude-plugin",

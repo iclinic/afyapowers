@@ -35,22 +35,24 @@ Every project goes through this process. A todo list, a single-function utility,
 
 ## Checklist
 
-You MUST complete these items in order. **Requirements first (1-4), code exploration only after (5).**
+You MUST complete these items in order. **Requirements first (1-6), code exploration only after (7).**
 
 1. **JIRA discovery (offer-based)** — offer the user the chance to provide a JIRA issue key; if provided, fetch and summarize the issue (see below)
-2. **Figma discovery (trigger-based)** — check user request against trigger keywords (see below); if match, ask about Figma and run discovery
-3. **Ask clarifying questions** — confirm **and challenge** the inputs (see below); one question at a time
-4. **Interrogate requirements (REQUIRED)** — dispatch @"requirements-interrogator (agent)" on the gathered inputs, then drive a question loop with the user until every BLOCKING contradiction / gap / edge case / ambiguity / risky assumption is resolved or explicitly deferred (see REQUIREMENTS-GATE)
-5. **Análise de Design System (só quando há Figma)** — invoke `afyapowers:analyzing-design-system` on the `### Componentes` entries. **HARD GATE:** every component instance whose original is not declared in the file you read requires a direct node link from the user. Check JIRA and the initial request first, then ask for **all** pending components in one open-question message (validating each answer on arrival, re-asking only failures); the phase stops until all are resolved. Then confirm **every** node's verdict with the user — in compact batches of up to 4 nodes per prompt, one explicit answer per node — and record the completed `### Componentes` entries + `## Árvore de Componentes de DS`. Skip entirely when there is no Figma (see below)
-6. **Explore the codebase** — ONLY now, with the requirement locked. Read files, docs, recent commits. Identify reuse candidates and evaluate each against the requirement/Figma — never let existing code become the starting point (see REQUIREMENTS-BEFORE-CODE). Apply the **Component Reuse Gate**: ask the user before adopting **any** candidate, without exception
-7. **Propose 2-3 approaches** — with trade-offs and your recommendation
-8. **Present design** — in sections scaled to their complexity, get user approval after each section
-9. **Confirm the Layout Contract (when Figma is present)** — if Figma discovery ran, confirm `## Contrato de Layout` (derived by `reading-figma-designs` from `get_metadata`) is present and complete in the design doc; if there is no Figma reference, omit the section (see below)
-10. **Write design doc** — save to `.afyapowers/features/<feature>/artifacts/design.md` (only once no BLOCKING interrogation item remains open)
-11. **Design review loop** — dispatch @"design-reviewer (agent)"; fix issues and re-dispatch until approved (max 5 iterations, then surface to human)
-12. **User reviews written spec** — ask user to review the spec file before proceeding
+2. **Figma discovery (trigger-based)** — check user request against trigger keywords (see below); if match, ask about Figma and collect the URL(s)
+3. **Revisão de handoff do Figma (REQUIRED quando há URLs)** — dispatch @"figma-handoff-reviewer (agent)"; it discovers the file's own design libraries via `get_libraries`, writes `figma-handoff-review.md` into the feature's artifacts and returns only a status block. On `BLOQUEADO` (Figma MCP down) or `SEM_BIBLIOTECAS` (file has no library enabled) the phase stops with no artifact. On `OK` the phase STOPS until the user reviews the report and decides whether to continue or talk to the Product Designer (see HARD-GATE-HANDOFF)
+4. **Ler os designs do Figma** — invoke `afyapowers:reading-figma-designs` to produce `## Recursos do Figma` and `## Contrato de Layout` (only after the user chose to continue)
+5. **Ask clarifying questions** — confirm **and challenge** the inputs (see below); one question at a time
+6. **Interrogate requirements (REQUIRED)** — dispatch @"requirements-interrogator (agent)" on the gathered inputs, then drive a question loop with the user until every BLOCKING contradiction / gap / edge case / ambiguity / risky assumption is resolved or explicitly deferred (see REQUIREMENTS-GATE)
+7. **Análise de Design System (só quando há Figma)** — invoke `afyapowers:analyzing-design-system` on the `### Componentes` entries. **HARD GATE:** every component instance whose original is not declared in the file you read requires a direct node link from the user. Check JIRA and the initial request first, then ask for **all** pending components in one open-question message (validating each answer on arrival, re-asking only failures); the phase stops until all are resolved. Then confirm **every** node's verdict with the user — in compact batches of up to 4 nodes per prompt, one explicit answer per node — and record the completed `### Componentes` entries + `## Árvore de Componentes de DS`. Skip entirely when there is no Figma (see below)
+8. **Explore the codebase** — ONLY now, with the requirement locked. Read files, docs, recent commits. Identify reuse candidates and evaluate each against the requirement/Figma — never let existing code become the starting point (see REQUIREMENTS-BEFORE-CODE). Apply the **Component Reuse Gate**: ask the user before adopting **any** candidate, without exception
+9. **Propose 2-3 approaches** — with trade-offs and your recommendation
+10. **Present design** — in sections scaled to their complexity, get user approval after each section
+11. **Confirm the Layout Contract (when Figma is present)** — if Figma discovery ran, confirm `## Contrato de Layout` (derived by `reading-figma-designs` from `get_metadata`) is present and complete in the design doc; if there is no Figma reference, omit the section (see below)
+12. **Write design doc** — save to `.afyapowers/features/<feature>/artifacts/design.md` (only once no BLOCKING interrogation item remains open)
+13. **Design review loop** — dispatch @"design-reviewer (agent)"; fix issues and re-dispatch until approved (max 5 iterations, then surface to human)
+14. **User reviews written spec** — ask user to review the spec file before proceeding
 
-**Why the DS analysis comes after the interrogation (item 5, not item 3):** it reads the codebase to
+**Why the DS analysis comes after the interrogation (item 7, not item 5):** it reads the codebase to
 decide what already exists. Requirements must be locked first, or the requirement gets anchored on
 whatever the code happens to contain — the same reason as REQUIREMENTS-BEFORE-CODE. A missing DS
 component is a code-inventory fact; it must never block requirements gathering.
@@ -64,7 +66,11 @@ digraph design {
     "Fetch JIRA issue" [shape=box];
     "Trigger keywords match?" [shape=diamond];
     "Ask Figma question" [shape=box];
-    "Figma discovery" [shape=box];
+    "Revisar handoff (agent)" [shape=box];
+    "Relatório gravado — usuário revisa" [shape=box];
+    "Prosseguir com o design?" [shape=diamond];
+    "PARAR: contatar o Product Designer" [shape=doublecircle];
+    "Ler designs (reading-figma-designs)" [shape=box];
     "Confirm + challenge questions" [shape=box];
     "Standard clarifying questions" [shape=box];
     "Interrogate requirements (agent + user loop)" [shape=box];
@@ -91,9 +97,13 @@ digraph design {
     "Fetch JIRA issue" -> "Trigger keywords match?";
     "Trigger keywords match?" -> "Ask Figma question" [label="yes"];
     "Trigger keywords match?" -> "Standard clarifying questions" [label="no"];
-    "Ask Figma question" -> "Figma discovery" [label="user provides URLs"];
+    "Ask Figma question" -> "Revisar handoff (agent)" [label="user provides URLs"];
     "Ask Figma question" -> "Standard clarifying questions" [label="no Figma designs"];
-    "Figma discovery" -> "Confirm + challenge questions";
+    "Revisar handoff (agent)" -> "Relatório gravado — usuário revisa";
+    "Relatório gravado — usuário revisa" -> "Prosseguir com o design?";
+    "Prosseguir com o design?" -> "PARAR: contatar o Product Designer" [label="não — falar com o PD"];
+    "Prosseguir com o design?" -> "Ler designs (reading-figma-designs)" [label="sim"];
+    "Ler designs (reading-figma-designs)" -> "Confirm + challenge questions";
     "Confirm + challenge questions" -> "Interrogate requirements (agent + user loop)";
     "Standard clarifying questions" -> "Interrogate requirements (agent + user loop)";
     "Interrogate requirements (agent + user loop)" -> "BLOCKING items resolved?";
@@ -187,7 +197,74 @@ If a keyword matches but the request is clearly not UI work (e.g., "write unit t
 
 If no keywords match, skip Figma discovery and proceed to clarifying questions.
 
-If the user provides Figma URL(s), invoke `afyapowers:reading-figma-designs`. It parses each URL,
+If the user provides Figma URL(s), the **handoff review runs first** (next section). Only once the user
+has chosen to continue do you read the designs.
+
+**Revisão de handoff do Figma (REQUIRED quando há URLs do Figma):**
+
+Before anything reads the *content* of the file, audit its *quality as a handoff*. A file with frames
+missing Auto Layout, spacing and colors off-token, or no dev annotations produces a design doc that
+looks complete and an implementation that cannot be faithful — and by then the cost of fixing it in
+Figma has already been paid twice.
+
+1. Announce: "Usando o figma-handoff-reviewer para auditar o handoff."
+2. Dispatch @"figma-handoff-reviewer (agent)", passing:
+   - `[FIGMA_URLS]` — **every** Figma URL you already have (initial request + JIRA)
+   - `[ARTIFACT_PATH]` — `.afyapowers/features/<feature>/artifacts/figma-handoff-review.md`
+   - `[PAGE_ID]` — only if the user pointed at a specific page
+   The agent writes the report itself and returns **only** a status block (artifact path, coverage,
+   status, MCP calls spent, warnings). The report never enters this thread.
+3. Route on the status. Two of the three outcomes stop the phase, and in both cases **no artifact was
+   written** — there is no report for the user to review, so neither the recording below nor the gate
+   applies:
+   - **`Status: BLOQUEADO`** (Figma MCP unavailable, `get_libraries` failed, or the write failed) —
+     warn the user that the Figma MCP server is not available, ask them to check the connection and
+     retry, and **stop the Figma flow**. Do not fall back silently: the user provided Figma URLs, so
+     proceeding without the audit would undermine the purpose.
+   - **`Status: SEM_BIBLIOTECAS`** — the handoff file has no design library enabled, so the token
+     audit has no criterion to run against. Tell the user exactly that, and that it needs the Product
+     Designer to fix before development. **Stop the design phase** — same outcome as the "falar com o
+     PD" branch below, and do NOT invoke `afyapowers:reading-figma-designs`.
+   - **`Status: OK`** — continue.
+
+   Relaying a `Motivo` here does **not** violate `<HARD-GATE-HANDOFF>`. That rule governs the
+   *report's findings*, which never enter this thread. A precondition that stopped the audit from
+   running is a fact stated in the status block, not an assessment of what the audit found.
+4. On `Status: OK`, record the artifact immediately: add `figma-handoff-review.md` to the design
+   phase's artifacts list in `state.yaml` and append an `artifact_created` event to `history.yaml`.
+   Do this before the gate — a phase paused at the gate must still leave a trace.
+
+<HARD-GATE-HANDOFF>
+**The design phase STOPS once the handoff review is written, until the user decides.**
+
+Present exactly this — and nothing beyond it:
+
+> "Revisão de handoff gravada em `.afyapowers/features/<feature>/artifacts/figma-handoff-review.md`
+> (cobertura: <arquivos/páginas do bloco de status>). Revise o relatório e me diga como prefere seguir."
+
+Then ask a choice question with two options: **Prosseguir com o design** | **Falar com o Product
+Designer responsável**.
+
+**You have NOT read the report and you MUST NOT opine on it.** Do not recommend either option, do not
+rate the severity of the findings, do not summarize findings, and do not infer anything from counts or
+coverage. The report's content lives in the artifact, not in your context — any assessment you offer
+would be a guess dressed as analysis, and the user would reasonably read it as informed. The decision
+is theirs, after they read the artifact.
+</HARD-GATE-HANDOFF>
+
+**If the user chooses to continue:** proceed to reading the designs (below).
+
+**If the user chooses to talk to the Product Designer:** do NOT invoke `afyapowers:reading-figma-designs`.
+The feature stays in the design phase. Tell them:
+
+> "Fase design pausada. Quando o Product Designer ajustar o arquivo, rode `/afyapowers:design`
+> novamente — a revisão de handoff roda de novo e sobrescreve o relatório."
+
+Then stop. Do not continue to clarifying questions, do not start the design, do not advance the phase.
+
+**Ler os designs do Figma (after the gate clears):**
+
+Invoke `afyapowers:reading-figma-designs`. It parses each URL,
 inventories the screens and components via a single `get_metadata` call, and extracts **all** Dev Mode data
 annotations via a read-only `use_figma` call. It returns the complete `## Recursos do Figma` section
 — `### Arquivos`, `### Breakpoints`, `### Telas`, `### Componentes` and `### Anotações de Design` — ready to drop into
@@ -201,7 +278,7 @@ user can confirm them before the design is written.
 
 No `get_screenshot` calls during the design phase — screenshots are deferred to implementation, where
 the subagent already calls them per-task. `get_design_context` is called during the design phase in
-exactly one place: the DS analysis (checklist item 5) calls it **at most once per distinct DS original,
+exactly one place: the DS analysis (checklist item 7) calls it **at most once per distinct DS original,
 and only when needed** — an original that already exists in code with the required variants covered is
 resolved from the code inventory alone, with no `get_design_context` call (see the sub-skill's Step 5).
 It is never called to implement anything.
@@ -212,7 +289,7 @@ It is never called to implement anything.
 
 **Análise de Design System (only when Figma is present):**
 
-This step runs ONLY when Figma discovery produced the Telas/Componentes inventory — skip it entirely for backend/API/CLI/lib features and for UI work with no Figma. It runs **after** the requirements interrogation closes (checklist item 5) and **before** the codebase exploration.
+This step runs ONLY when Figma discovery produced the Telas/Componentes inventory — skip it entirely for backend/API/CLI/lib features and for UI work with no Figma. It runs **after** the requirements interrogation closes (checklist item 7) and **before** the codebase exploration.
 
 Invoke `afyapowers:analyzing-design-system`. Pass it:
 
@@ -354,6 +431,16 @@ The design phase's job here is only to GUARANTEE that `## Contrato de Layout` is
 
 ## Required Sub-Skills
 
+**REQUIRED when the user provides Figma URL(s):** Dispatch @"figma-handoff-reviewer (agent)" **before**
+invoking `afyapowers:reading-figma-designs` — it is the first thing that happens once URLs are in hand.
+
+- Announce: "Usando o figma-handoff-reviewer para auditar o handoff."
+- Pass every Figma URL you have (initial request + JIRA) and `[ARTIFACT_PATH]` = `.afyapowers/features/<feature>/artifacts/figma-handoff-review.md`.
+- It writes the report itself and returns only a status block — the report does not enter this thread.
+- Two statuses stop the phase before any gate, with no artifact written: `BLOQUEADO` (Figma MCP unavailable / `get_libraries` failed — tell the user to check the connection and retry) and `SEM_BIBLIOTECAS` (the handoff file has no design library enabled — this needs the Product Designer).
+- On `OK`: record `figma-handoff-review.md` in `state.yaml` / `history.yaml`, then apply `<HARD-GATE-HANDOFF>`: present the artifact path, ask the user to review it, and ask how they want to proceed — **without opining on a report you did not read**.
+- Only after the user chooses to continue do you invoke `afyapowers:reading-figma-designs`.
+
 **REQUIRED:** Dispatch @"requirements-interrogator (agent)" during the Requirements Interrogation step (before exploring the codebase or writing the design) and loop until `BLOCKING items: 0`. See the Requirements Interrogation section above.
 
 **REQUIRED when Figma discovery produced the Telas/Componentes inventory:** Invoke `afyapowers:analyzing-design-system` after the interrogation closes and before exploring the codebase.
@@ -396,7 +483,7 @@ Wait for the user's response. If they request changes, make them and re-run the 
 
 **Completion:**
 
-- Update `state.yaml` to add `design.md` to the design phase's artifacts list
+- Update `state.yaml` to add `design.md` to the design phase's artifacts list (when Figma discovery ran, `figma-handoff-review.md` is already there — it was recorded at the handoff gate)
 - Append `artifact_created` event to `history.yaml`
 - Tell the user: "Fase design concluída. Rode `/afyapowers:next` para avançar para **plan**."
 

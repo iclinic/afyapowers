@@ -31,7 +31,9 @@ All canonical content lives in `src/`. The `sync.py` script transforms it into a
 
 - **`src/config/<agent>.json`** — Per-agent config controlling prefixes, output paths, and which features to include
 - **`src/skills/*/SKILL.md`** — Skills with embedded multi-agent frontmatter (workflow commands and phase skills alike)
+- **`src/agents/*.md`** — Subagents with embedded multi-agent frontmatter, one flat `.md` per agent (no subdirectories — the processor only globs `*.md`)
 - **`src/templates/*.md`** — Markdown artifact templates (copied as-is)
+- **`src/scripts/`** — Supporting scripts copied verbatim to `dist/<agent>/scripts/`. Referenced from skills and agents by the plugin-root-relative path `scripts/<file>`, which is identical for every agent (no prefixing, no frontmatter parsing)
 - **`src/hooks/`** — Session-start hook for context restoration (copied with execute permissions preserved)
 - **`src/manifests/<agent>/`** — Plugin manifests per IDE
 
