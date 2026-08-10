@@ -4,6 +4,8 @@ claude:
   description: "Resolves every Figma component instance to its ORIGINAL component in the file where it is declared, emits a verdict per node (Implementar/Importar/Atualizar/Derivar), and confirms every decision with the user in compact batches. Requires an origin file URL for every instance whose component is not declared in the file being read. Invoked by the design phase and by /afyapowers:figma-component."
   model: claude-opus-5
   effort: high
+  context: fork
+  background: false
 cursor:
   name: afyapowers-analyzing-design-system
   description: "Resolves every Figma component instance to its ORIGINAL component in the file where it is declared, emits a verdict per node (Implementar/Importar/Atualizar/Derivar), and confirms every decision with the user in compact batches. Requires an origin file URL for every instance whose component is not declared in the file being read. Invoked by the design phase and by /afyapowers:figma-component."

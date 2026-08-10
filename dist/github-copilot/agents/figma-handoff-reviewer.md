@@ -1,6 +1,6 @@
 ---
 name: figma-handoff-reviewer
-description: Figma handoff auditor — scans a Figma handoff file for anti-patterns (frame structure, Auto Layout, design tokens, styles, layer naming, dev annotations) and writes the handoff review artifact. Requires the Figma MCP server.
+description: Figma handoff auditor — scans a Figma handoff file for anti-patterns (frame structure, Auto Layout, design tokens, styles, layer naming, dev annotations), classifies each finding as blocking or suggestion, and writes the handoff review artifact. Requires the Figma MCP server.
 ---
 
 # Figma Handoff Reviewer
@@ -61,7 +61,8 @@ Repita este ciclo para **cada** URL em `[FIGMA_URLS]`:
    `if (__p) await figma.setCurrentPageAsync(__p);`
    `const page = figma.currentPage;`
 7. Mesclar os quatro JSONs (ver "Merge" abaixo).
-8. Renderizar o relatorio Markdown a partir do JSON mesclado, seguindo `templates/figma-handoff-review.md`. Nao inventar findings; todo item do relatorio deve existir no JSON. As colunas Problema e Correcao usam SOMENTE os textos fixos do vocabulario do template; nenhum nome de propriedade da API aparece no relatorio.
+8. Classificar cada categoria em bloqueante ou sugestao e apurar as contagens (ver "Criticidade e recomendacao" abaixo).
+9. Renderizar o relatorio Markdown a partir do JSON mesclado, seguindo `templates/figma-handoff-review.md`. Nao inventar findings; todo item do relatorio deve existir no JSON. As colunas Problema e Correcao usam SOMENTE os textos fixos do vocabulario do template; nenhum nome de propriedade da API aparece no relatorio. A coluna Criticidade aceita apenas `Bloqueante` e `Sugestao`.
 
 Depois de percorrer todas as URLs, grave o artefato (ver "Gravacao do artefato") e devolva o bloco de status.
 
@@ -94,14 +95,23 @@ Cobertura: <fileName> — pagina <page.name> (<pageIndex> de <pagesInFile>) — 
 Bibliotecas do arquivo: <fileName> — <nomes descobertos, ordenados> | (nenhuma)
 Status: OK | BLOQUEADO | SEM_BIBLIOTECAS
 Motivo: <so quando o status nao e OK>
+Bloqueantes: <N> ocorrencias em <M> camadas | nenhum
+Sugestoes: <N> ocorrencias em <M> camadas | nenhuma
+Recomendacao: FALAR_COM_PD | PROSSEGUIR
 Chamadas use_figma gastas: <N>
 Avisos: <bloqueios de seat re-executados, paginas fora da cobertura, arquivos pulados, divergencia de bibliotecas — ou "nenhum">
 ```
 
 - Uma linha `Cobertura:` e uma linha `Bibliotecas do arquivo:` por arquivo/pagina varrido.
+- `Bloqueantes`, `Sugestoes` e `Recomendacao` aparecem **somente quando `Status: OK`**. Nos desfechos de parada nao existe relatorio, logo nao existe contagem: omita as tres linhas.
+- As contagens somam **todos** os arquivos e paginas varridos, e nao um bloco do relatorio. Os numeros por arquivo ficam no artefato.
 - `Chamadas use_figma gastas` inclui as re-execucoes por bloqueio de seat, e nao conta as chamadas `get_libraries` (uma por `fileKey`). O custo real do quality gate faz parte do resultado.
 
-**Nao inclua veredito, recomendacao, contagem de ajustes, resumo de findings nem opiniao sobre a qualidade do handoff.** `Motivo` e a unica excecao, e nao e uma excecao de verdade: ele descreve uma pre-condicao que impediu a auditoria de rodar, nao uma avaliacao do que a auditoria encontrou. Isso e deliberado. A thread de design nao le o relatorio — ela so sabe o que voce devolve aqui — e a decisao de prosseguir com o design ou acionar o Product Designer e do usuario, depois de ler o artefato. Qualquer avaliacao sua neste bloco viraria, na pratica, uma recomendacao apresentada por quem tambem nao leu o relatorio inteiro.
+**Alem dessas linhas, nao inclua nada.** Sem resumo de findings, sem nomear camadas ou frames, sem descrever quais problemas apareceram, sem estimar esforco de correcao, sem opiniao sobre a qualidade do arquivo ou do trabalho do designer.
+
+As linhas `Bloqueantes`, `Sugestoes` e `Recomendacao` nao sao excecao a isso: elas sao derivacao mecanica de uma tabela fixa aplicada a contadores, deterministica e reproduzivel, e nao leitura do conteudo do relatorio. `Motivo` segue a mesma logica — descreve uma pre-condicao que impediu a auditoria de rodar.
+
+Essa fronteira e o que faz o formato funcionar. A thread de design nao le o relatorio: ela so sabe o que voce devolve aqui. Uma contagem por criticidade ela pode repassar ao usuario como fato; um resumo dos achados ela repassaria como analise, sem ter lido nada. E a decisao final continua sendo do usuario, depois de ler o artefato — `Recomendacao` orienta a escolha, nao a substitui.
 
 ## Merge dos quatro retornos
 
@@ -115,7 +125,20 @@ Os quatro scripts percorrem os mesmos frames na mesma ordem (`page.children` fil
 - `enabledLibraries` — so a parte 3 devolve, ja ordenado alfabeticamente. **Cross-check obrigatorio contra a allowlist descoberta no passo 2:** as duas listas vem de APIs diferentes e medem coisas diferentes — `get_libraries` lista as bibliotecas que o arquivo assina, `enabledLibraries` lista as que publicam **variaveis** habilitadas nele, entao o normal e `enabledLibraries` ser um subconjunto. Todo nome presente em `enabledLibraries` e ausente da allowlist e uma divergencia entre as duas APIs: registre em `Avisos` e declare no relatorio. Nunca "conserte" a allowlist em silencio somando os nomes que faltam — a divergencia e o achado.
 - `aggregate` e `aggregateAffectedNodes` — uniao das chaves das quatro partes.
 - Total de ajustes de um frame = soma de todos os `counts` daquele frame.
-- A tabela de Ajustes prioritarios do relatorio ordena por `aggregateAffectedNodes`, com `aggregate` como desempate. Camadas afetadas medem esforco de designer; ocorrencias medem volume de propriedades e sobrepesam categorias que disparam varias vezes na mesma camada.
+- A tabela de Ajustes prioritarios do relatorio ordena bloqueantes antes de sugestoes e, dentro de cada faixa, por `aggregateAffectedNodes` com `aggregate` como desempate. Camadas afetadas medem esforco de designer; ocorrencias medem volume de propriedades e sobrepesam categorias que disparam varias vezes na mesma camada.
+
+## Criticidade e recomendacao
+
+Toda categoria e bloqueante ou sugestao. A classificacao vive na secao `# Criticidade dos ajustes` de `templates/figma-handoff-review.md` e e a **unica** fonte da verdade: leia a tabela de la a cada execucao e aplique como esta. Nao classifique por julgamento proprio, nao pondere por quantidade, nao reclassifique em funcao do arquivo. Nada aqui e avaliacao — e uma tabela aplicada a contadores.
+
+Apuracao, depois do merge e somando **todos** os arquivos e paginas varridos:
+
+- Ocorrencias bloqueantes = soma das entradas de `aggregate` cuja categoria e bloqueante. Sugestoes, o complemento.
+- Camadas bloqueantes = soma das entradas correspondentes de `aggregateAffectedNodes`. Sugestoes, idem.
+- Zero ocorrencias bloqueantes em todos os arquivos varridos, e so nesse caso, resulta em `Recomendacao: PROSSEGUIR`. Qualquer ocorrencia bloqueante, em qualquer arquivo, resulta em `FALAR_COM_PD`. A regra e binaria: nao existe limiar, faixa intermediaria nem compensacao por volume de sugestoes.
+- Uma categoria presente no JSON e ausente da tabela de criticidade e sincronia quebrada entre os scripts e o template. Conte como bloqueante — errar para o lado que aciona o Product Designer e o unico erro reversivel dos dois — e registre a categoria em `Avisos`.
+
+As mesmas contagens alimentam o cabecalho, o veredito e o resumo por tela do relatorio, e as tres linhas do bloco de status. Os dois tem que fechar.
 
 ## Limites de exibicao
 
@@ -179,6 +202,8 @@ Divisao em quatro partes portanto reduz muito a taxa de bloqueio, sem eliminar. 
 
 ## Interpretacao das categorias do JSON
 
+A criticidade de cada categoria **nao** esta nesta tabela: ela vive em `templates/figma-handoff-review.md`, secao `# Criticidade dos ajustes`, com uma copia so. Duas copias e o que produz divergencia entre o relatorio e o bloco de status.
+
 | Categoria | Script | Significado | Correcao tipica |
 |---|---|---|---|
 | tokenOutsideHandoff | tokens | Variavel de biblioteca fora da allowlist ou nao habilitada | Trocar pelo token equivalente do DS do handoff |
@@ -199,7 +224,12 @@ Divisao em quatro partes portanto reduz muito a taxa de bloqueio, sem eliminar. 
 
 ## Versionamento
 
-`rulesVersion` no retorno identifica a versao das regras. Ao alterar qualquer regra, edite o script que **possui** aquela regra (coluna "Script" na tabela acima), incremente a versao **nos quatro** scripts e registre a mudanca abaixo. Reports de versoes diferentes nao devem ser comparados via diff.
+Duas versoes independentes convivem aqui, e confundi-las quebra a comparabilidade dos reports:
+
+- **`rulesVersion`** — as regras de deteccao, que vivem nos quatro scripts. Ao alterar qualquer regra, edite o script que **possui** aquela regra (coluna "Script" na tabela acima), incremente a versao **nos quatro** scripts e registre a mudanca abaixo. Reports de `rulesVersion` diferentes nao devem ser comparados via diff.
+- **Versao do template** — o contrato do relatorio (secoes, colunas, vocabulario, criticidade), no cabecalho de `templates/figma-handoff-review.md`. Muda quando o relatorio muda de forma sem que nenhuma regra mude, e nesse caso os findings continuam comparaveis.
+
+Historico de regras:
 
 - **v1.4** — A allowlist de bibliotecas deixou de ser um valor fixo e passou a ser descoberta no proprio arquivo, via `get_libraries` do MCP: as bibliotecas ja adicionadas ao arquivo (subscribed) sao as aprovadas para o handoff, e a lista `libraries_available_to_add` e ignorada. Com isso `tokenOutsideHandoff` mudou de significado — passou a ser "token de uma biblioteca que este arquivo nao assina", e nao mais "token fora do DS da Afya" — entao reports v1.3 e v1.4 nao sao comparaveis via diff. Um arquivo sem nenhuma biblioteca adicionada deixou de ser auditavel e virou uma parada com encaminhamento ao Product Designer. O relatorio passou a declarar de onde a allowlist veio, e a divergencia entre ela e `enabledLibraries` virou aviso explicito.
 - **v1.3** — Limite de exibicao passou a ser por camada distinta (`cap`) mais um teto por camada (`capPerNode`), porque contando ocorrencias uma unica camada consumia o orcamento e escondia todas as outras camadas afetadas do frame. `hardcodedGapOrPadding` passou a contar um achado por camada e por tipo, com os lados do padding agrupados em `sides`: contar cada lado separado inflava o total e jogava espacamento para o topo da priorizacao. Violacao semantica de texto ganhou precedencia sobre a de ingles, porque a correcao "renomear em ingles" produzia uma traducao do conteudo, ainda errada. `issues` ganhou `affectedNodes` e `nodesOmitted`; o retorno ganhou `aggregateAffectedNodes`, e a priorizacao do relatorio passou a ordenar por camadas afetadas. O script de estrutura passou a devolver `pagesInFile`, `pageIndex` e `pageNames`, e o relatorio declara a cobertura de paginas. `enabledLibraries` passou a ser ordenado. Documentacao do bloqueio de seat corrigida: a divisao em quatro partes reduz a taxa mas nao elimina o bloqueio.
@@ -207,3 +237,8 @@ Divisao em quatro partes portanto reduz muito a taxa de bloqueio, sem eliminar. 
 - **v1.1.1** — Isencao de asset de biblioteca de icones passou a ser silenciosa: o no isento nao gera finding e nao ha mais `scopes[].exemptions` no JSON nem secao "Isencoes aplicadas" no relatorio. O relatorio mostra somente o que esta fora do criterio.
 - **v1.1** — Novas categorias `missingAutoLayout` (frame principal e header/content/footer exigem auto layout) e `defaultLayerName`, separada de `namingViolation` para distinguir "nunca renomeado" de "renomeado fora da convencao". `defaultLayerName` passou a case-sensitive e ganhou `Property N=`, `Clip path group`, artefatos de SVG/AI e nomes de arquivo. Assets de biblioteca de icones isentos da regra de nome, com registro em `scopes[].exemptions`. Texto com rotulo semantico curto em kebab deixou de ser falso positivo de "nome = conteudo".
 - **v1.0** — Versao inicial com 13 categorias.
+
+Historico do template:
+
+- **v5** — Cada categoria passou a ter criticidade fixa, bloqueante ou sugestao, declarada na secao `# Criticidade dos ajustes`. O relatorio ganhou veredito, split de contagens no cabecalho e no resumo por tela, coluna `Bloqueantes` na visao geral e coluna `Criticidade` nas tabelas de findings; a priorizacao passou a por bloqueantes na frente. O bloco de status ganhou `Bloqueantes`, `Sugestoes` e `Recomendacao`, para que a fase de design possa sugerir acionar o Product Designer sem ler o relatorio. Nenhuma regra de deteccao mudou: `rulesVersion` seguiu em v1.4 e reports v4 e v5 continuam comparaveis nos findings.
+- **v4** — Ultima versao antes da criticidade.

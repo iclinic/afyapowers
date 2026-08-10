@@ -1,4 +1,4 @@
-# Template do Relatório de Handoff (v4)
+# Template do Relatório de Handoff (v5)
 
 Renderize o relatório abaixo utilizando exclusivamente os dados presentes no JSON retornado pelo scanner.
 
@@ -9,6 +9,7 @@ O relatório é destinado a Product Designers que trabalham diariamente no Figma
 Seu objetivo é facilitar a revisão do handoff antes da implementação, destacando rapidamente:
 
 - o estado geral do arquivo;
+- quais ajustes bloqueiam o início do desenvolvimento e quais são sugestões;
 - quais frames concentram mais ajustes;
 - quais ajustes possuem maior impacto;
 - quais ações devem ser priorizadas.
@@ -33,9 +34,21 @@ Nunca complete dados ausentes.
 | Versão das regras | v{{rulesVersion}} |
 | Bibliotecas do handoff | `{{config.allowedLibraries}}` |
 | Frames avaliados | {{mainFrames}} |
-| Ajustes antes do desenvolvimento | {{soma de todos os counts}} |
+| Ajustes bloqueantes | {{soma dos counts das categorias bloqueantes}} |
+| Sugestões | {{soma dos counts das categorias de sugestão}} |
+| Total de ajustes | {{soma de todos os counts}} |
 
-Quando {{pagesInFile}} for maior que 1, escrever abaixo da tabela:
+Logo abaixo da tabela, escrever o veredito. Ele possui dois textos fixos; use o que corresponde à contagem e não parafraseie nenhum dos dois.
+
+Quando houver pelo menos um ajuste bloqueante:
+
+Este handoff tem {{ocorrências bloqueantes}} ajustes bloqueantes em {{camadas afetadas por categorias bloqueantes}} camadas. Recomenda-se alinhar com o Product Designer antes de iniciar o desenvolvimento.
+
+Quando não houver nenhum ajuste bloqueante:
+
+Nenhum ajuste bloqueante encontrado. Os {{total de ajustes}} ajustes listados são sugestões e não impedem o desenvolvimento.
+
+Quando {{pagesInFile}} for maior que 1, escrever abaixo do veredito:
 
 Esta análise cobre apenas a página {{page.name}}. As demais páginas do arquivo não foram avaliadas: {{pageNames sem a página avaliada}}.
 
@@ -53,8 +66,8 @@ Divergência: {{nomes}} publica(m) variáveis habilitadas neste arquivo, mas nã
 
 Esta seção deve permitir identificar rapidamente onde estão concentrados os ajustes do arquivo.
 
-| Frame | Estrutura e Auto Layout | Tokens do Design System | Organização das camadas | Documentação para desenvolvimento | Total |
-|---|---:|---:|---:|---:|---:|
+| Frame | Estrutura e Auto Layout | Tokens do Design System | Organização das camadas | Documentação para desenvolvimento | Bloqueantes | Total |
+|---|---:|---:|---:|---:|---:|---:|
 
 {{uma linha por scope}}
 
@@ -62,13 +75,15 @@ Nome do frame deve utilizar scope.deepLink.
 
 Caso um grupo não possua ocorrências, renderizar 0.
 
+As quatro colunas de área de revisão somam o Total. A coluna Bloqueantes recorta o mesmo Total por criticidade e por isso não soma com as demais.
+
 ---
 
 # Ajustes prioritários
 
 Esta seção deve orientar o designer sobre quais correções deixam o handoff mais pronto para desenvolvimento.
 
-Ordenar por `aggregateAffectedNodes`, utilizando `aggregate` como desempate.
+Ordenar primeiro por criticidade: toda ação de categoria bloqueante vem antes de qualquer sugestão. Dentro de cada faixa, ordenar por `aggregateAffectedNodes`, utilizando `aggregate` como desempate.
 
 Camadas afetadas medem o esforço real de ajuste. Ocorrências medem volume de propriedades e sobrepesam categorias que disparam várias vezes na mesma camada.
 
@@ -78,8 +93,8 @@ Máximo de três ações.
 
 Omitir caso não existam pelo menos duas ações claras.
 
-| Prioridade | Ação recomendada | Impacto |
-|---|---|---|
+| Prioridade | Criticidade | Ação recomendada | Impacto |
+|---|---|---|---|
 
 Exemplos:
 
@@ -99,7 +114,7 @@ Visualizar no Figma
 
 {{nodesScanned}} camadas verificadas
 
-{{totalIssues}} ajustes antes do desenvolvimento
+{{totalIssues}} ajustes antes do desenvolvimento, sendo {{bloqueantes}} bloqueantes
 
 ---
 
@@ -112,6 +127,13 @@ Visualizar no Figma
 | Organização das camadas | {{count}} |
 | Documentação para desenvolvimento | {{count}} |
 
+| Criticidade | Ajustes |
+|---|---:|
+| Bloqueantes | {{count}} |
+| Sugestões | {{count}} |
+
+As duas tabelas recortam o mesmo conjunto de ajustes, por área de revisão e por criticidade. Os totais devem coincidir.
+
 ---
 
 ## Estrutura e Auto Layout
@@ -120,8 +142,8 @@ Renderizar somente se existirem findings.
 
 ### Organização da tela
 
-| Camada | O que foi encontrado | Detalhes | Como ajustar |
-|---|---|---|---|
+| Camada | Criticidade | O que foi encontrado | Detalhes | Como ajustar |
+|---|---|---|---|---|
 
 {{uma linha por finding}}
 
@@ -145,8 +167,8 @@ Ordem sugerida:
 
 Cada grupo possui sua própria tabela.
 
-| Camada | O que foi encontrado | Detalhes | Como ajustar |
-|---|---|---|---|
+| Camada | Criticidade | O que foi encontrado | Detalhes | Como ajustar |
+|---|---|---|---|---|
 
 ---
 
@@ -154,8 +176,8 @@ Cada grupo possui sua própria tabela.
 
 Renderizar somente se existirem findings.
 
-| Camada | O que foi encontrado | Detalhes | Como ajustar |
-|---|---|---|---|
+| Camada | Criticidade | O que foi encontrado | Detalhes | Como ajustar |
+|---|---|---|---|---|
 
 ---
 
@@ -163,8 +185,8 @@ Renderizar somente se existirem findings.
 
 Renderizar somente se existirem findings.
 
-| Camada | O que foi encontrado | Detalhes | Como ajustar |
-|---|---|---|---|
+| Camada | Criticidade | O que foi encontrado | Detalhes | Como ajustar |
+|---|---|---|---|---|
 
 ---
 
@@ -206,11 +228,38 @@ vectorClusterThreshold
 
 ---
 
+# Criticidade dos ajustes
+
+Toda categoria tem exatamente uma criticidade, definida nesta tabela. Ela é a única fonte da verdade: o relatório, as contagens e a recomendação devolvida pelo agente saem daqui.
+
+**Bloqueante** — impede uma implementação fiel do design. O desenvolvimento não deveria começar antes do ajuste.
+
+**Sugestão** — melhora a qualidade do handoff, mas não impede o desenvolvimento da feature.
+
+| Criticidade | Categorias |
+|---|---|
+| Bloqueante | missingAutoLayout, tokenOutsideHandoff, hardcodedGapOrPadding, hardcodedFillColor, withoutTypographyToken, namingViolation, defaultLayerName, missingAnnotations |
+| Sugestão | missingStructureLayer, gridAutoLayout, groupNode, redundantWrapper, illustrationVectorCluster, withoutTextStyle, usingLocalTextStyle |
+
+As duas listas cobrem exatamente as 15 categorias, sem sobreposição e sem sobra.
+
+Algumas fronteiras não são óbvias e por isso ficam registradas:
+
+- `gridAutoLayout` tem Auto Layout, apenas do tipo errado, e é sugestão; `missingAutoLayout` é a ausência de Auto Layout e é bloqueante.
+- `withoutTypographyToken` é tipografia inteiramente definida à mão, então cai na mesma regra dos demais valores sem token e é bloqueante. `withoutTextStyle` (já tem token, falta o Text Style) e `usingLocalTextStyle` (o Text Style existe, mas é local) são sugestões.
+- `missingStructureLayer` trata de como a tela foi organizada, e não de valor sem token nem de nome fora do padrão: é sugestão.
+
+A criticidade não depende do arquivo, da quantidade de ocorrências nem do contexto do finding. Nunca reclassifique.
+
+---
+
 # Vocabulário do relatório
 
 As colunas "O que foi encontrado" e "Como ajustar" devem utilizar exclusivamente os textos desta tabela.
 
 A coluna "Detalhes" deve apenas complementar as informações utilizando os valores presentes no JSON.
+
+A coluna "Criticidade" aceita exclusivamente os valores `Bloqueante` e `Sugestão`, conforme a tabela de criticidade. Nunca acrescentar comentário, ressalva ou grau intermediário nessa coluna.
 
 Nunca utilizar nomes internos da API.
 
@@ -334,7 +383,13 @@ Dev Mode
 
 Documentação para desenvolvimento
 
+Bloqueante
+
+Sugestão
+
 Para a ligação de uma propriedade a uma variável do Figma, prefira “token” no texto destinado ao designer. Use “variável” apenas ao descrever uma configuração do arquivo quando essa precisão for indispensável.
+
+Para criticidade, existem apenas os termos “bloqueante” e “sugestão”. Nunca escrever “crítico”, “grave”, “obrigatório”, “opcional”, “desejável” ou “nice to have” no lugar deles.
 
 Nunca alternar entre sinônimos durante o relatório.
 
@@ -363,3 +418,7 @@ Nunca alternar entre sinônimos durante o relatório.
 10. A linguagem deve ser consistente do início ao fim.
 
 11. Declarar sempre a cobertura de páginas e as bibliotecas habilitadas no arquivo.
+
+12. A criticidade de cada finding vem exclusivamente da tabela `# Criticidade dos ajustes`. Nunca classificar por julgamento próprio e nunca reclassificar em função do contexto do arquivo.
+
+13. O veredito, as contagens do cabeçalho, o resumo por tela e a coluna Criticidade devem ser consistentes entre si. Um ajuste bloqueante contado no cabeçalho tem que aparecer marcado como Bloqueante na tabela da tela correspondente.

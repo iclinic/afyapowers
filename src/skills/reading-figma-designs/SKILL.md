@@ -4,6 +4,8 @@ claude:
   description: "Reads Figma designs during the afyapowers design phase — parses Figma URLs, builds the Telas + Componentes inventory via a single get_metadata, and extracts ALL Dev Mode data annotations via use_figma. Use when a Figma URL is provided during the design phase."
   model: claude-opus-5
   effort: high
+  context: fork
+  background: false
 cursor:
   name: afyapowers-reading-figma-designs
   description: "Reads Figma designs during the afyapowers design phase — parses Figma URLs, builds the Telas + Componentes inventory via a single get_metadata, and extracts ALL Dev Mode data annotations via use_figma. Use when a Figma URL is provided during the design phase."
