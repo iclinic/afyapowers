@@ -73,10 +73,11 @@ git diff {BASE_SHA}..{HEAD_SHA}
 
 **Design-system conformance is NOT your check.** Verdict compliance (`Importar`/`Atualizar`/`Derivar`/composição, cartesian-product props, interaction-states-as-props, recorded reuse decisions) is owned by the **spec-reviewer** — do not re-verify it here; duplicated findings cost review cycles. If you incidentally notice a DS violation, mention it in one line and move on.
 
-**Skeleton ↔ component boundary (only when the plan has a skeleton/Layer 0 task):**
-- Components (Layer 1) must **not** set page-level `max-width`, page centering (`margin: 0 auto` or equivalent), or page-level side margins — those responsibilities belong exclusively to the skeleton (Layer 0), which owns the page container per the design's Contrato de Layout.
-- Any component that takes on those responsibilities itself — duplicating or conflicting with the skeleton's container — is a boundary violation and should be reported as an Issue, even if the final layout happens to look correct by coincidence.
-- Legitimate full-bleed content must use the skeleton's designated escape hook (e.g. a `fullBleed`/`data-full-bleed` prop, wrapper, or slot), never a page-level `max-width`/margin override on the component.
+**Page-layout boundary (when the diff contains UI screens/components):**
+- Page-level geometry — container `max-width`, page centering (`margin: 0 auto` or equivalent), page-level side margins — belongs to the screen's page layout, which is normally the layout the project already has. Components must **not** set it.
+- Any component that takes on those responsibilities itself — duplicating or conflicting with the page layout — is a boundary violation and should be reported as an Issue, even if the final layout happens to look correct by coincidence.
+- A screen that introduced a **new** page container while the project already had one (a layout/route shell/wrapper the other screens use) is duplicated layout — report it as an Issue naming the existing layout it should have reused. Same for speculative escape API added with no consumer: a `fullBleed` prop, slot, or utility class created "just in case" is unused abstraction, not layout.
+- Legitimate full-bleed content should use whatever mechanism the project already has, never a page-level `max-width`/margin override on the component.
 
 ## Output Format
 

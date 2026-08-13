@@ -167,7 +167,7 @@ Apply concurrency caps:
 
   | Type | Implementer | MCP calls per task | Budget cost |
   |---|---|---|---|
-  | `UI Screen` | `figma-design-implementer` | 3 mandatory (2 for skeleton tasks) + occasional `get_metadata` fallback + `download_assets` | **~4** |
+  | `UI Screen` | `figma-design-implementer` | 3 mandatory + occasional `get_metadata` fallback + `download_assets` | **~4** |
   | `UI Component` | `figma-component-implementer` | 3 mandatory + `download_assets` + fallbacks (self-review reuses data already in context — no extra calls) | **~4** |
 
   So per cycle: **3 MCP-capped tasks** of either type (≈12). Pick by task number in order; the rest stay in the ready pool for the next cycle.

@@ -41,9 +41,7 @@ Before defining Figma tasks, check if the design doc contains a `## Recursos do 
 
 **If Figma Resources are present**, read `### Telas`, `### Componentes` and `## Árvore de Componentes de DS`, and infer task layers directly — no Figma MCP calls at planning time:
 
-1. **Layer 0 — Esqueleto (container):** Quando o design doc tem uma seção `## Contrato de Layout`, gere uma task de esqueleto por tela (uma por entrada `T#` de `### Telas` que representa uma tela completa). Esta task é a **dona do container**: largura máxima, centralização, margens laterais e o ritmo (gap) entre seções — tudo derivado da geometria do frame nas linhas do Contrato de Layout correspondentes a essa tela. `**Depends on:** none`. Se `## Contrato de Layout` estiver ausente, não gere task de esqueleto — prossiga direto para Layer 1/Layer 2.
-
-2. **Layer 1 — Componentes:** **a `## Árvore de Componentes de DS` decide quais componentes viram task.** Quando o design tem essa seção, ela é a autoridade sobre quais componentes precisam de task — cada nó já foi resolvido contra o código real e confirmado pelo usuário na fase design:
+1. **Layer 1 — Componentes:** **a `## Árvore de Componentes de DS` decide quais componentes viram task.** Quando o design tem essa seção, ela é a autoridade sobre quais componentes precisam de task — cada nó já foi resolvido contra o código real e confirmado pelo usuário na fase design:
 
    | Veredito na árvore | Gera task Layer 1? | O que o plano faz |
    |---|---|---|
@@ -56,23 +54,25 @@ Before defining Figma tasks, check if the design doc contains a `## Recursos do 
 
    **Sem `## Árvore de Componentes de DS`** (layout sem componentes de DS): cada entrada `C#` de `### Componentes` com origem local vira uma task Layer 1 com seu node ID. Um `INSTANCE` externo (definição fora do arquivo) **não** vira task por padrão — na ausência da árvore você não tem como saber se ele já existe no código, e o custo de errar é assimétrico: uma task a menos é uma dependência faltando que aparece na review, enquanto uma task a mais é um componente de DS duplicado que ninguém vê. Registre-o como import a confirmar e diga isso no plano.
 
-   Layer 1 não tem dependência do esqueleto — roda **em paralelo** com a task de Layer 0, porque componentes não são donos da geometria do container. Se nenhum nó da árvore tem task e `### Componentes` está vazio, não há tasks Layer 1.
+   Se nenhum nó da árvore tem task e `### Componentes` está vazio, não há tasks Layer 1.
 
-3. **Layer 2 — Screens:** Each `T#` entry in `### Telas` becomes a Layer 2 task, taking its `Arquivo` and `Node ID` straight from that entry. Depends on the Layer 1 tasks of every `C#` listed in that `T#`'s `Conteúdo` — **e também** na task de esqueleto (Layer 0) daquela tela, quando existir. O esqueleto vem primeiro: seu Passo 1 define a geometria do container vazio (max-width, centralização, margens, sem conteúdo de seções), e as tasks de tela/montagem (Layer 2) montam seu conteúdo dentro desse container.
+2. **Layer 2 — Screens:** Each `T#` entry in `### Telas` becomes a Layer 2 task, taking its `Arquivo` and `Node ID` straight from that entry. Depends on the Layer 1 tasks of every `C#` listed in that `T#`'s `Conteúdo`.
 
 **Granularity rule:** If a node is typed COMPONENT/COMPONENT_SET, it MUST be its own Layer 1 task. Do not merge it into a parent section's task.
 
-**Regra de fronteira (Layer 1 vs Layer 0):** componentes (Layer 1) são **PROIBIDOS** de setar max-width, centralização ou margens de página — essas medidas pertencem exclusivamente à task de esqueleto (Layer 0). A regra é imposta em runtime pelo implementer do componente/tela e checada pelo `code-quality-reviewer`. Quando um componente precisa de **full-bleed** legítimo (ultrapassar a margem lateral), a task do componente deve usar o hook de escape exposto pelo esqueleto — nunca redefinir max-width/centralização diretamente no componente.
+**Layout de página — dono: a task de tela.** Não gere task separada para o container de página. A task de tela (Layer 2) é dona da largura máxima, centralização, margens laterais e ritmo entre seções, derivados das linhas do `## Contrato de Layout` daquela tela quando essa seção existe.
 
-**Medidas de aceite em tasks de UI:** **toda** task de UI — Layer 0, Layer 1 e Layer 2 — deve anexar, no bloco `**Figma:**`, as **Medidas de aceite** extraídas do `## Contrato de Layout`, apenas para os breakpoints relevantes a essa task.
+Ao escrever a task, **identifique o padrão de layout de página que o projeto já usa** — o mesmo wrapper/layout/shell de rota das outras telas — e registre-o no bloco `**Layout de página:**` da task, para que o implementer o reuse em vez de inventar um. Escreva `nenhum` só quando o projeto realmente não tiver nenhum; aí a task cria o mínimo necessário seguindo a convenção do projeto, sem API especulativa: nada de props, slots ou classes de escape criadas "por precaução".
 
-Isso **inclui a task de esqueleto (Layer 0)**, e é justamente a que mais precisa: ela é a dona do container (max-width, centralização, margens laterais), então as medidas do Contrato de Layout são literalmente o critério de aceite dela. Descrevê-las só no corpo da task não basta — Layer 0 é `Type: UI Screen`, roteia para o `figma-design-implementer`, cujo passo de verificação de fidelidade é obrigatório, e o `figma-token-verifier` lê as medidas **do bloco `**Figma:**`**. Sem elas ali ele retorna falha de pré-flight (`FAIL`), a task queima as 2 tentativas do loop e termina com um BLOCKING garantido — na única task que não podia falhar, porque todas as tasks de tela dependem dela.
+**Regra de fronteira (componentes vs. layout de página):** componentes (Layer 1) são **PROIBIDOS** de setar max-width de página, centralização de página ou margens laterais de página — essas medidas pertencem ao layout de página da tela. A regra é imposta em runtime pelos implementers e checada pelo `code-quality-reviewer`. Quando um componente precisa de **full-bleed** legítimo (ultrapassar a margem lateral), ele usa o mecanismo que o projeto já tem para isso; se o projeto não tiver nenhum, o implementer reporta CONCERN em vez de inventar layout de página dentro do componente.
+
+**Medidas de aceite em tasks de UI:** **toda** task de UI — Layer 1 e Layer 2 — deve anexar, no bloco `**Figma:**`, as **Medidas de aceite** extraídas do `## Contrato de Layout`, apenas para os breakpoints relevantes a essa task. Elas não bastam no corpo da task: o `figma-token-verifier` lê as medidas **do bloco `**Figma:**`**, e sem elas ali ele retorna falha de pré-flight (`FAIL`), a task queima as 2 tentativas do loop e termina em BLOCKING.
 
 Each Figma task uses the Figma Task Structure format (see below), taking its coordinates from the `T#` entry (screens) or the `C#` entry (components) and its breakpoints from `### Breakpoints`.
 
 #### Example
 
-Given this design doc (assumindo `## Contrato de Layout` presente para as duas telas):
+Given this design doc:
 
 ```
 ### Telas
@@ -92,12 +92,10 @@ Given this design doc (assumindo `## Contrato de Layout` presente para as duas t
 
 Correct task output:
 ```
-Task 1: Hero Section — Esqueleto (Layer 0) (Figma)     — T1, F1 `pqrs`, node `1:2`,  depends on: none
-Task 2: Pricing Section — Esqueleto (Layer 0) (Figma)  — T2, F1 `pqrs`, node `2:1`,  depends on: none
-Task 3: CTA Button (Figma)      — C1, F1 `pqrs`,   node `1:4`,  depends on: none
-Task 4: Pricing Tier (Figma)    — C2, F1 `pqrs`,   node `2:10`, depends on: none
-Task 5: Hero Section (Figma)    — T2… → T1, F1 `pqrs`, node `1:2`, depends on: Task 1, Task 3, Task 4
-Task 6: Pricing Section (Figma) — T2, F1 `pqrs`,   node `2:1`,  depends on: Task 2, Task 4
+Task 1: CTA Button (Figma)      — C1, F1 `pqrs`, node `1:4`,  depends on: none
+Task 2: Pricing Tier (Figma)    — C2, F1 `pqrs`, node `2:10`, depends on: none
+Task 3: Hero Section (Figma)    — T1, F1 `pqrs`, node `1:2`,  depends on: Task 1, Task 2
+Task 4: Pricing Section (Figma) — T2, F1 `pqrs`, node `2:1`,  depends on: Task 2
 ```
 
 ↑ Note three things. **C3 has no task** — its verdict is `Importar`, so the screen task that uses it just
@@ -111,12 +109,15 @@ Wrong output — DO NOT do this:
 Task 1: Hero Section (Figma)       — merges CTA Button into the screen task
 Task 2: Search Field (Figma)       — builds a component whose verdict was Importar
 Task 3: Search Field (Figma)       — File Key `pqrs` (the screen's) instead of `AbC123` (the original's)
+Task 4: Hero Section — Container   — a separate task owning page max-width/margins
 ```
 ↑ The first merges a component that must be its own Layer 1 task. The second duplicates a component that
 already exists in code. The third points the implementer at the screen's file, where the original is not
-declared — so it would read an instance and ship only the variant that screen used.
+declared — so it would read an instance and ship only the variant that screen used. The fourth invents a
+page container the project probably already has: page layout belongs to the screen task, which reuses the
+project's existing layout — it is never a task of its own.
 
-When there are no components at all (e sem `## Contrato de Layout` aplicável neste exemplo):
+When there are no components at all:
 ```
 Task 1: Hero Section (Figma)       — T1, node `1:2`, depends on: none
 Task 2: Pricing Section (Figma)    — T2, node `2:1`, depends on: none
@@ -127,8 +128,8 @@ Task 2: Pricing Section (Figma)    — T2, node `2:1`, depends on: none
 2. Every entry in **Telas** has a corresponding Layer 2 task with its node ID
 3. No Layer 2 task includes implementation work for a component that has its own Layer 1 task
 4. Layer 2 tasks depend on Layer 1 tasks whose components were originally children of that frame (extracted COMPONENT/COMPONENT_SET or INSTANCE references)
-5. Se `## Contrato de Layout` está presente, existe uma task de esqueleto (Layer 0) para cada frame raiz de tela, e a task de Layer 2 correspondente depende dela (trivially passes se Contrato de Layout estiver ausente)
-6. **Toda** task de UI (Layer 0, Layer 1 e Layer 2) carrega no bloco `**Figma:**` os breakpoints e as **Medidas de aceite** — Layer 0 incluída, sem exceção
+5. Nenhuma task separada de container/esqueleto de página existe. Toda task `UI Screen` diz qual layout de página existente do projeto ela reusa — ou registra explicitamente que o projeto não tem nenhum e que essa task vai criá-lo
+6. **Toda** task de UI (Layer 1 e Layer 2) carrega no bloco `**Figma:**` os breakpoints e as **Medidas de aceite** (quando `## Contrato de Layout` está presente)
 7. As dependências (`**Depends on:**`) das tasks de componente reproduzem a coluna **Depende de** da árvore, na ordem folhas→raiz: nenhuma task aparece antes de algo de que ela depende. Para `derivar`, a base é a primeira dependência; para composto, todos os filhos são dependências
 8. Toda task `UI Component` derivada da árvore carrega o bloco `**Design System:**` com `Veredito` preenchido, e toda task `atualizar` lista o arquivo do componente base em `**Files:** Modify`
 9. Toda anotação de `### Anotações de Design` e toda linha de `## Casos de Borda & Estados` tem ao menos uma task dona. Uma anotação sem dono é um requisito confirmado com o usuário que ninguém vai implementar
@@ -208,7 +209,7 @@ Toda task carrega uma linha obrigatória `**Type:**` (junto de `**Files:**`/`**D
 
 | Type | O que é | Dispatch | Verificação | MCP · cap |
 |---|---|---|---|---|
-| **UI Screen** | Página/tela/view ou esqueleto de layout de página; composição de componentes | `figma-design-implementer` | staleness vs Contrato de Layout + `figma-token-verifier` (máx 2 tentativas) | Sim · budget ~12 calls/wave |
+| **UI Screen** | Página/tela/view; composição de componentes dentro do layout de página do projeto | `figma-design-implementer` | staleness vs Contrato de Layout + `figma-token-verifier` (máx 2 tentativas) | Sim · budget ~12 calls/wave |
 | **UI Component** | Um componente/`COMPONENT_SET`: primitivo, genérico de DS ou derivado; todas as variantes, isolado, exportado | `figma-component-implementer` | self-review contra o screenshot/tokens já em contexto (sem re-fetch) | Sim · budget ~12 calls/wave |
 | **UI Logic** | Comportamento/estado no cliente sem nova superfície visual (hooks, estado, validação, fetch/binding, rota, animação) | `tdd-implementer` | testes (TDD) | Não · sem cap |
 | **Backend** | Servidor: endpoints, serviços, models, migrations, regras de negócio, integrações | `tdd-implementer` | testes (TDD) | Não · sem cap |
@@ -259,39 +260,7 @@ Use this format for tasks that implement UI components with Figma designs. The d
 
 **No TDD, no code snippets.** Figma tasks describe what to achieve — the implementer subagent uses the Figma MCP tools and the Figma implementer workflow to determine how.
 
-### Layer 0 — Esqueleto (skeleton) task structure
-
-Gerada apenas quando `## Contrato de Layout` está presente (ver Figma Task Layer Inference acima). Uma task por frame raiz de tela.
-
-```markdown
-### Task N: [Nome da Tela] — Esqueleto (Layer 0) (Figma)
-
-**Files:**
-- Create: `caminho/exato/do/esqueleto` (o layout que envolve as seções da tela)
-
-**Type:** UI Screen
-
-**Depends on:** none
-
-**Figma:**
-- **File Key:** `<file_key>`
-- **Node ID:** `<id>` (frame raiz da tela)
-- **Breakpoints:** <breakpoint_name> (<width>px), ...
-- **Skeleton:** sim (task de esqueleto/Layer 0 — o implementer faz só 2 chamadas MCP, `get_variable_defs` + `get_screenshot`, e constrói a partir das Medidas de aceite; sem `get_design_context`)
-- **Medidas de aceite:** container max-width `<valor>`, margens laterais `<valor>`, gaps entre seções `<valor>`, colunas `<n>` no breakpoint `<breakpoint_name>` (do Contrato de Layout — obrigatório: é o critério de aceite do container e o input do figma-token-verifier)
-
-> Esta task é a **dona do container**: largura máxima, centralização e margens laterais da página, mais o ritmo (gap) entre seções — tudo derivado da geometria do frame no Figma (ver Contrato de Layout do design). Tasks de tela/montagem (Layer 2) DEPENDEM desta task e não redefinem essas medidas.
->
-> Componentes (Layer 1) são **PROIBIDOS** de setar max-width, centralização ou margens de página — eles vivem dentro do container que o esqueleto define. Quando um componente precisa de **full-bleed** legítimo (ex: banner que ultrapassa a margem lateral), ele usa o hook de escape exposto por este esqueleto (ex: prop/slot `fullBleed` ou classe utilitária documentada aqui) — nunca sobrescreve max-width/centralização diretamente no componente.
-
-- [ ] Passo 1: Definir a geometria do container vazio primeiro — sem conteúdo de seções, o esqueleto já deve exibir max-width, centralização e margens laterais corretas em todos os breakpoints, conforme o Contrato de Layout do design
-- [ ] Passo 2: Implementar o container — max-width, centralização, margens laterais e ritmo entre seções, conforme o Contrato de Layout do design
-- [ ] Passo 3: Expor e documentar o hook de escape para full-bleed
-```
-
-O esqueleto vem primeiro: as tasks de Layer 2 montam seu conteúdo dentro do container que o esqueleto define, sem redefinir suas medidas.
-
-### Layer 1 / Layer 2 — component and screen task structure
+### Component and screen task structure
 
 ```markdown
 ### Task N: [Nome do Componente de UI] (Figma)
@@ -317,18 +286,22 @@ O esqueleto vem primeiro: as tasks de Layer 2 montam seu conteúdo dentro do con
 - **Anotações do Figma:** <anotações do Dev Mode relevantes a este nó — estados interativos, animação, a11y, regras de conteúdo — verbatim>
 - **Estados a cobrir:** <linhas de `## Casos de Borda & Estados` que este componente é dono>
 
+**Layout de página:** <!-- só em tasks UI Screen -->
+- **Reusar:** `<caminho do layout de página existente no projeto>` — o mesmo wrapper/layout que as outras telas usam | nenhum: o projeto não tem layout de página, esta task cria um seguindo a convenção do projeto
+
 - [ ] Implement using the Figma implementer workflow
 ```
 
 **Building the Figma block:**
-- **Type:** `UI Component` para tasks de componente (Layer 1); `UI Screen` para tasks de tela e esqueleto (Layer 0/Layer 2). Ver "Task Type & Roteamento" acima.
+- **Type:** `UI Component` para tasks de componente (Layer 1); `UI Screen` para tasks de tela (Layer 2). Ver "Task Type & Roteamento" acima.
+- **Bloco `**Layout de página:**`** — só em tasks `UI Screen`. Aponte o layout de página que o projeto já usa; as Medidas de aceite são o critério de aceite dele. Escreva `nenhum` apenas quando o projeto realmente não tem nenhum — e então a task cria o mínimo necessário seguindo a convenção do projeto, sem props/slots de escape especulativos. Nunca gere uma task separada só para o container.
 - **Bloco `**Design System:**`** — copie da linha correspondente da `## Árvore de Componentes de DS`: `Veredito`, `Nome no código`, `Depende de` (vira `Base` para `derivar`/`atualizar` e `Compõe de` para composto, cada filho com o import path que a árvore registrou), e todas as variantes que o original declara. **Omita o bloco inteiro** quando o design não tem a árvore — o implementer então executa o procedimento de veredito ausente, que checa a existência antes de construir qualquer coisa. Nunca escreva um veredito que a árvore não confirmou.
 - **Anotações do Figma / Estados a cobrir** — recorte de `### Anotações de Design` e `## Casos de Borda & Estados` só o que pertence a este nó. Sem isso, estados interativos, animações e regras de a11y confirmadas com o usuário no design não chegam a ninguém: o implementer vê apenas o frame default. Uma anotação sem task dona é informação perdida.
 - **File Key / Node ID — para tasks `UI Component`, use as coordenadas DO ORIGINAL.** A `## Árvore de Componentes de DS` dá o veredito e a `C#`; as coordenadas vêm da entrada `C#` correspondente em `### Componentes` (`Arquivo do original` + `Node ID do original`). **Nunca** o node-id de uma instância listada no `Conteúdo` de uma `T#`, e nunca o File Key da tela quando a entrada `C#` aponta para outro arquivo (o do DS, por exemplo).
 
   Isso é a diferença entre o implementer ler o componente e ler *uma configuração* dele. A instância mostra só a variante que aquela tela usou; o original declara todos os eixos. Apontar para a instância entrega um componente permanentemente mais pobre que o real — e como ele *funciona* na tela que originou a task, ninguém percebe.
 
-- **File Key / Node ID — para tasks `UI Screen`** (Layer 0 e Layer 2): aí sim são os da tela, do `## Recursos do Figma`, porque o alvo é o frame.
+- **File Key / Node ID — para tasks `UI Screen`** (Layer 2): aí sim são os da tela, do `## Recursos do Figma`, porque o alvo é o frame.
 - **Breakpoints:** Include only the breakpoints relevant to this task's component (not all breakpoints in the design)
 - **Medidas de aceite:** Apenas quando `## Contrato de Layout` está presente. Copie a(s) linha(s) da tabela do Contrato de Layout relevantes ao frame/breakpoints desta task (container max-width, margens laterais, gaps, nº de colunas, min/max por peça). Se `## Contrato de Layout` estiver ausente, omita esta linha — não invente medidas.
 - **Assets:** Set `<project assets dir>` to the codebase's existing asset convention when you can tell it from the design doc or project layout (e.g. `src/assets`, `public/`); otherwise leave the generic note — the implementer auto-detects and falls back to a sensible default. Never enumerate individual asset files here: which icons/images a design needs is only knowable at implement time (no Figma MCP calls at plan time). The `**Assets:**` line is a *grant + hint* that assets may be created outside the `**Files:**` list — omitting it does not block the implementer, it just loses the hint.
@@ -345,9 +318,9 @@ O esqueleto vem primeiro: as tasks de Layer 2 montam seu conteúdo dentro do con
 - Figma tasks: include the `**Assets:**` grant line (project assets dir); never enumerate individual asset files — they're only knowable at implement time
 - When Figma resources exist: always split design (Figma task) and logic (standard task) into separate tasks. Design first, logic depends on it
 - Any task touching styling (CSS, Tailwind, layout, disposition) MUST be a Figma task when Figma resources are available
-- Quando `## Contrato de Layout` está presente: gere a task de esqueleto (Layer 0) dona do container por tela — Layer 2 DEPENDE dela, Layer 1 roda em paralelo, e o esqueleto vem primeiro
-- Componentes (Layer 1) são PROIBIDOS de setar max-width, centralização ou margens de página — regra imposta em runtime pelo implementer e checada pelo `code-quality-reviewer`
-- **Toda** task de UI (Layer 0/Layer 1/Layer 2) carrega no bloco `**Figma:**` as Medidas de aceite (do Contrato de Layout) para os breakpoints relevantes — Layer 0 incluída
+- Layout de página é da task de tela, nunca uma task separada: ela reusa o layout que o projeto já usa (bloco `**Layout de página:**`) e só cria um quando não existe nenhum — seguindo a convenção do projeto, sem API de escape especulativa
+- Componentes (Layer 1) são PROIBIDOS de setar max-width, centralização ou margens de página — regra imposta em runtime pelos implementers e checada pelo `code-quality-reviewer`
+- **Toda** task de UI (Layer 1/Layer 2) carrega no bloco `**Figma:**` as Medidas de aceite (do Contrato de Layout) para os breakpoints relevantes
 - A `## Árvore de Componentes de DS` é a autoridade sobre quais componentes precisam de task: `Importar` **não** gera task (vira import path na task de tela); `Implementar`/`Atualizar`/`Derivar` geram task `UI Component` com o bloco `**Design System:**` preenchido
 - Toda task `UI Component` carrega veredito, base/compõe-de com import paths, variantes e fonte do catálogo — sem isso o implementer não sabe se deve importar, estender, derivar ou construir, e construir do zero um componente que já existe é o pior resultado possível
 - Anotações do Figma e casos de borda são recortados por nó nas tasks de UI — o que não tem task dona não é implementado por ninguém

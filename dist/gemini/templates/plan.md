@@ -28,32 +28,6 @@
 
 > O commit é feito pelo orquestrador após a conclusão da tarefa — não adicione um passo de commit.
 
-### Task 2: [Nome da Tela] — Esqueleto (Layer 0) (Figma)
-
-**Files:**
-- Create: `caminho/exato/do/esqueleto` (o layout que envolve as seções da tela)
-
-**Type:** UI Screen
-
-**Depends on:** none
-
-**Figma:**
-- **File Key:** `<file_key>`
-- **Node ID:** `<id>` (frame raiz da tela)
-- **Breakpoints:** <breakpoint_name> (<width>px), ...
-- **Skeleton:** sim (o implementer faz só 2 chamadas MCP e constrói a partir das Medidas de aceite)
-- **Medidas de aceite:** container max-width `<valor>`, margens laterais `<valor>`, gaps entre seções `<valor>`, colunas `<n>` no breakpoint `<breakpoint_name>` (do Contrato de Layout — obrigatório, é o critério de aceite do container e o input do figma-token-verifier)
-
-> Esta task é a **dona do container**: largura máxima, centralização e margens laterais da página, mais o ritmo (gap) entre seções — tudo derivado da geometria do frame no Figma (ver Contrato de Layout do design). Tasks de tela/montagem (Layer 2) DEPENDEM desta task e não redefinem essas medidas.
->
-> Componentes (Layer 1) são **PROIBIDOS** de setar max-width, centralização ou margens de página — eles vivem dentro do container que o esqueleto define. Quando um componente precisa de **full-bleed** legítimo (ex: banner que ultrapassa a margem lateral), ele usa o hook de escape exposto por este esqueleto (ex: prop/slot `fullBleed` ou classe utilitária documentada aqui) — nunca sobrescreve max-width/centralização diretamente no componente.
-
-- [ ] Passo 1: Definir a geometria do container vazio primeiro — sem conteúdo de seções, o esqueleto já deve exibir max-width, centralização e margens laterais corretas em todos os breakpoints, conforme o Contrato de Layout do design
-- [ ] Passo 2: Implementar o container — max-width, centralização, margens laterais e ritmo entre seções, conforme o Contrato de Layout do design
-- [ ] Passo 3: Expor e documentar o hook de escape para full-bleed
-
-> O commit é feito pelo orquestrador após a conclusão da tarefa — não adicione um passo de commit.
-
 ### Task N: [Nome do Componente de UI] (Figma)
 
 **Files:**
@@ -90,5 +64,42 @@
 - **Variantes:** <todas as variantes/estados que o ORIGINAL declara>
 - **Anotações do Figma:** <anotações do Dev Mode deste nó, verbatim — estados interativos, animação, a11y, regras de conteúdo>
 - **Estados a cobrir:** <linhas de `## Casos de Borda & Estados` que este componente é dono>
+
+- [ ] Implementar usando o workflow do implementador Figma
+
+> O commit é feito pelo orquestrador após a conclusão da tarefa — não adicione um passo de commit.
+
+### Task N: [Nome da Tela] (Figma)
+
+**Files:**
+- Create: `caminho/exato/da/tela`
+<!-- Se a task reusa um layout de página existente e precisa ajustá-lo, liste-o como Modify: -->
+<!-- - Modify: `caminho/do/layout/existente` -->
+
+**Assets:** `<diretório de assets do projeto>/` — o implementador pode baixar & criar arquivos de ícone/imagem aqui conforme necessário (arquivos exatos desconhecidos no momento do plano)
+
+**Type:** UI Screen
+
+**Depends on:** Task X, Task Y
+<!-- As tasks UI Component de todo C# listado no Conteúdo desta T#. -->
+
+**Figma:**
+<!-- Em task UI Screen, File Key e Node ID são os DA TELA (entrada T# em ### Telas) — o alvo é o frame. -->
+- **File Key:** `<file_key>`
+- **Node ID:** `<id>` (frame raiz da tela)
+- **Breakpoints:** <breakpoint_name> (<width>px), ...
+- **Medidas de aceite:** container max-width `<valor>`, margens laterais `<valor>`, gaps entre seções `<valor>`, colunas `<n>` no breakpoint `<breakpoint_name>` (do Contrato de Layout — input do figma-token-verifier)
+
+**Layout de página:**
+<!-- NÃO existe task separada de container/esqueleto. O layout de página é desta task, e a regra é reusar
+     o que o projeto já tem — o mesmo wrapper/layout que as outras telas usam. Escreva `nenhum` só quando o
+     projeto realmente não tiver nenhum; aí esta task cria o mínimo necessário seguindo a convenção do
+     projeto, sem props/slots de escape criados "por precaução". -->
+- **Reusar:** `<caminho do layout de página existente>` | nenhum (o projeto não tem — esta task cria seguindo a convenção do projeto)
+
+- **Anotações do Figma:** <anotações do Dev Mode desta tela, verbatim>
+- **Estados a cobrir:** <linhas de `## Casos de Borda & Estados` que esta tela é dona>
+
+> Componentes são **PROIBIDOS** de setar max-width de página, centralização de página ou margens laterais de página — essas medidas são do layout de página desta tela. Conteúdo full-bleed usa o mecanismo que o projeto já tem para isso.
 
 - [ ] Implementar usando o workflow do implementador Figma
