@@ -1,0 +1,524 @@
+#!/usr/bin/env python3
+"""afyapowers OTLP context emitter.
+
+Enriches Claude Code's OpenTelemetry data with dynamic per-session context that
+the native telemetry cannot carry. `env` in settings.json is strictly static (no
+interpolation, no command substitution) and no hook can export env vars back into
+the Claude Code process, so values like the current git branch can never reach
+`OTEL_RESOURCE_ATTRIBUTES`. Instead this hook emits its own OTLP log records to
+the same collector, tagged with `session.id` and `prompt.id` — the standard
+attributes on every native `claude_code.*` event — so the backend can join them.
+
+Two modes, so nothing on the prompt's critical path touches git or the network:
+
+  (default)  Hook entrypoint. Resolves config, and if telemetry is on, spawns a
+             detached child with {config, payload} on stdin. Returns immediately.
+  --emit     The detached child. Collects git attributes, encodes the OTLP
+             payload, POSTs it, exits silently.
+
+Speaks both `http/protobuf` (the OTel default, and what collectors that reject
+JSON require) and `http/json`, selected from OTEL_EXPORTER_OTLP_LOGS_PROTOCOL.
+The protobuf encoder is hand-rolled because the plugin is stdlib-only.
+
+Contract: this is observability only. It must NEVER block a session or crash a
+host. Any error -> exit 0. It must also NEVER write to stdout: on
+`UserPromptSubmit` a hook's stdout is injected as context into the user's prompt.
+
+Set AFYAPOWERS_OTEL_DEBUG=1 to trace what was sent (or why it wasn't) into
+`.afyapowers/otel-debug.jsonl`, since failures are otherwise invisible.
+"""
+
+import json
+import os
+import struct
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.parse
+import urllib.request
+from pathlib import Path
+
+GIT_TIMEOUT = 5
+HTTP_TIMEOUT = 5
+SCOPE_NAME = "afyapowers"
+EVENT_NAME = "afyapowers.git_context"
+DEFAULT_SERVICE_NAME = "afyapowers"
+DEFAULT_PROTOCOL = "http/protobuf"  # matches the OTel spec default
+SEVERITY_INFO = 9  # SEVERITY_NUMBER_INFO
+
+
+# --------------------------------------------------------------------------- #
+# Config resolution
+# --------------------------------------------------------------------------- #
+
+def parse_kv(raw):
+    """Parse an OTel `k=v,k=v` list. Values are percent-decoded per spec."""
+    out = {}
+    if not raw:
+        return out
+    for item in raw.split(","):
+        if "=" not in item:
+            continue
+        key, _, value = item.partition("=")
+        key = key.strip()
+        if not key:
+            continue
+        out[key] = urllib.parse.unquote(value.strip())
+    return out
+
+
+def managed_settings_path():
+    if sys.platform == "darwin":
+        return Path("/Library/Application Support/ClaudeCode/managed-settings.json")
+    if os.name == "nt":
+        return Path(r"C:\Program Files\ClaudeCode\managed-settings.json")
+    return Path("/etc/claude-code/managed-settings.json")
+
+
+def settings_env(cwd):
+    """Merge the `env` blocks of the settings files, honoring Claude Code's
+    precedence (managed > project local > project > user).
+
+    This is a fallback tier below the process environment, so the hook works
+    whether or not settings-defined env vars are inherited by hook subprocesses.
+    """
+    candidates = [Path.home() / ".claude" / "settings.json"]
+    if cwd:
+        candidates.append(Path(cwd) / ".claude" / "settings.json")
+        candidates.append(Path(cwd) / ".claude" / "settings.local.json")
+    candidates.append(managed_settings_path())
+
+    merged = {}
+    for path in candidates:  # later files win
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        env = data.get("env") if isinstance(data, dict) else None
+        if isinstance(env, dict):
+            merged.update({k: str(v) for k, v in env.items() if v is not None})
+    return merged
+
+
+def resolve_config(payload):
+    """Build the emitter config, or return (None, reason) when telemetry is off
+    or unroutable.
+
+    Resolution reads a single merged map — settings-file `env` blocks overlaid by
+    the process environment — so for any given variable name the real environment
+    wins and the settings files are the fallback. OTel's own precedence is then
+    applied over that map, which means a per-signal variable beats a generic one
+    no matter which tier it came from (a settings-file
+    OTEL_EXPORTER_OTLP_LOGS_ENDPOINT does beat an exported
+    OTEL_EXPORTER_OTLP_ENDPOINT), matching the native exporter's behavior.
+    AFYAPOWERS_OTEL_ENDPOINT overrides everything.
+    """
+    cwd = payload.get("cwd") or os.getcwd()
+    env = settings_env(cwd)
+    env.update({k: v for k, v in os.environ.items() if v})
+
+    def get(name):
+        return env.get(name) or None
+
+    switch = get("AFYAPOWERS_OTEL_ENABLED")
+    if switch == "0":
+        return None, "disabled by AFYAPOWERS_OTEL_ENABLED=0"
+    if switch != "1" and get("CLAUDE_CODE_ENABLE_TELEMETRY") != "1":
+        return None, "telemetry not enabled"
+
+    endpoint = get("AFYAPOWERS_OTEL_ENDPOINT") or get("OTEL_EXPORTER_OTLP_LOGS_ENDPOINT")
+    if not endpoint:
+        base = get("OTEL_EXPORTER_OTLP_ENDPOINT")
+        if base:
+            endpoint = base.rstrip("/") + "/v1/logs"
+    if not endpoint:
+        return None, "no OTLP logs endpoint configured"
+
+    protocol = (
+        get("AFYAPOWERS_OTEL_PROTOCOL")
+        or get("OTEL_EXPORTER_OTLP_LOGS_PROTOCOL")
+        or get("OTEL_EXPORTER_OTLP_PROTOCOL")
+        or DEFAULT_PROTOCOL
+    )
+    if protocol == "grpc":
+        # We only speak OTLP over HTTP. An explicit AFYAPOWERS_OTEL_ENDPOINT means
+        # the operator pointed us at an HTTP route on purpose; honor it as protobuf.
+        if not get("AFYAPOWERS_OTEL_ENDPOINT"):
+            return None, "grpc protocol unsupported; set AFYAPOWERS_OTEL_ENDPOINT to an HTTP route"
+        protocol = DEFAULT_PROTOCOL
+
+    headers = parse_kv(get("OTEL_EXPORTER_OTLP_HEADERS"))
+    headers.update(parse_kv(get("OTEL_EXPORTER_OTLP_LOGS_HEADERS")))
+    headers.update(parse_kv(get("AFYAPOWERS_OTEL_HEADERS")))
+    # The inherited headers may pin a content-type for the native exporter's
+    # encoding; ours is decided by `protocol`, so drop any inherited copy.
+    headers = {k: v for k, v in headers.items() if k.lower() != "content-type"}
+
+    # Carry the organization's static resource attributes (department, cost
+    # center) onto our records too, so they filter like the native events.
+    resource = parse_kv(get("OTEL_RESOURCE_ATTRIBUTES"))
+    resource["service.name"] = (
+        get("OTEL_SERVICE_NAME") or resource.get("service.name") or DEFAULT_SERVICE_NAME
+    )
+
+    return {
+        "endpoint": endpoint,
+        "protocol": protocol,
+        "headers": headers,
+        "resource": resource,
+        "cwd": cwd,
+        "git_dirty": get("AFYAPOWERS_OTEL_GIT_DIRTY") == "1",
+        "debug": get("AFYAPOWERS_OTEL_DEBUG") == "1",
+    }, None
+
+
+# --------------------------------------------------------------------------- #
+# Debug trace
+# --------------------------------------------------------------------------- #
+
+def debug_log(cwd, record):
+    """Append one JSON line describing what happened. Best effort."""
+    try:
+        base = Path(cwd or ".") / ".afyapowers"
+        target = (
+            base if base.is_dir() else Path(tempfile.gettempdir())
+        ) / "otel-debug.jsonl"
+        record["ts"] = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+        with open(target, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+
+
+# --------------------------------------------------------------------------- #
+# Git attributes (child only)
+# --------------------------------------------------------------------------- #
+
+def git(cwd, *args):
+    try:
+        result = subprocess.run(
+            ["git", "-C", cwd, *args],
+            capture_output=True,
+            text=True,
+            timeout=GIT_TIMEOUT,
+        )
+    except Exception:
+        return None
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip() or None
+
+
+# Path segments that hosting providers inject into clone URLs and that carry no
+# identity: Azure DevOps uses `.../_git/<repo>`, Bitbucket Server `.../scm/...`.
+REMOTE_NOISE_SEGMENTS = {"_git", "scm"}
+
+
+def remote_slug(url):
+    """Turn a clone URL into an `owner/repo` slug.
+
+    Handles scp-like (`git@host:owner/repo.git`), ssh:// and https:// forms,
+    including nested GitLab groups and Azure DevOps `_git` paths. Only the path
+    is ever used, never the authority — a clone URL can embed credentials
+    (`https://user:token@host/...`) and those must not reach telemetry.
+
+    Returns None for a remote that is a local filesystem path: it identifies
+    nothing outside the machine it came from, and shipping it would leak the
+    developer's directory layout into telemetry.
+    """
+    if not url:
+        return None
+    url = url.strip()
+
+    if "://" in url:
+        path = urllib.parse.urlsplit(url).path
+    else:
+        host, sep, rest = url.partition(":")
+        # scp-like syntax needs a colon with no slash before it, over a host of
+        # more than one character — a single letter is a Windows drive.
+        if not sep or "/" in host or len(host) < 2:
+            return None
+        path = rest
+
+    if path.endswith(".git"):
+        path = path[: -len(".git")]
+
+    segments = [
+        seg for seg in path.split("/") if seg and seg not in REMOTE_NOISE_SEGMENTS
+    ]
+    return "/".join(segments) or None
+
+
+def git_remote_url(cwd):
+    """Clone URL of `origin`, or of the first remote when there is no `origin`."""
+    url = git(cwd, "remote", "get-url", "origin")
+    if url:
+        return url
+    remotes = git(cwd, "remote")
+    if not remotes:
+        return None
+    return git(cwd, "remote", "get-url", remotes.splitlines()[0].strip())
+
+
+def git_attrs(cwd, want_dirty):
+    """Collect git context.
+
+    Separate calls on purpose: `git rev-parse` flags are sticky, so combining
+    --abbrev-ref/--short/--show-toplevel returns values in an unpredictable
+    order. This runs in the detached child, so the extra forks are free.
+    """
+    toplevel = git(cwd, "rev-parse", "--show-toplevel")
+    if not toplevel:
+        return None  # not a git repo — nothing to enrich
+
+    # Prefer the remote slug: the local folder name is whatever each developer
+    # happened to clone into, so it cannot identify a repo across a fleet.
+    attrs = {"git.repo": remote_slug(git_remote_url(cwd)) or os.path.basename(toplevel)}
+
+    # Empty in detached HEAD, a state worth distinguishing from a branch.
+    branch = git(cwd, "branch", "--show-current")
+    attrs["git.branch"] = branch or "detached"
+
+    commit = git(cwd, "rev-parse", "--short", "HEAD")
+    if commit:
+        attrs["git.commit"] = commit
+
+    # Opt-in: `git status` walks the whole tree, which costs seconds in a monorepo.
+    if want_dirty:
+        attrs["git.dirty"] = "true" if git(cwd, "status", "--porcelain") else "false"
+
+    return attrs
+
+
+# --------------------------------------------------------------------------- #
+# OTLP encoding — protobuf
+# --------------------------------------------------------------------------- #
+# Hand-rolled because the plugin is stdlib-only. Field numbers come from the
+# OTLP proto definitions (common/v1/common.proto, resource/v1/resource.proto,
+# logs/v1/logs.proto) and must not be renumbered.
+
+def _varint(value):
+    out = bytearray()
+    while True:
+        byte = value & 0x7F
+        value >>= 7
+        out.append(byte | (0x80 if value else 0))
+        if not value:
+            return bytes(out)
+
+
+def _tag(field, wire_type):
+    return _varint((field << 3) | wire_type)
+
+
+def _pb_string(field, text):
+    raw = str(text).encode("utf-8")
+    return _tag(field, 2) + _varint(len(raw)) + raw
+
+
+def _pb_message(field, body):
+    return _tag(field, 2) + _varint(len(body)) + body
+
+
+def _pb_varint(field, value):
+    return _tag(field, 0) + _varint(value)
+
+
+def _pb_fixed64(field, value):
+    return _tag(field, 1) + struct.pack("<Q", value)
+
+
+def _pb_key_values(field, mapping):
+    """repeated KeyValue { key = 1; AnyValue value = 2 { string_value = 1 } }"""
+    out = b""
+    for key, value in mapping.items():
+        if value in (None, ""):
+            continue
+        any_value = _pb_string(1, value)
+        out += _pb_message(field, _pb_string(1, key) + _pb_message(2, any_value))
+    return out
+
+
+def encode_protobuf(resource, attrs, time_ns):
+    # LogRecord: time_unix_nano=1, severity_number=2, severity_text=3, body=5,
+    #            attributes=6, observed_time_unix_nano=11
+    log_record = (
+        _pb_fixed64(1, time_ns)
+        + _pb_varint(2, SEVERITY_INFO)
+        + _pb_string(3, "INFO")
+        + _pb_message(5, _pb_string(1, EVENT_NAME))
+        + _pb_key_values(6, attrs)
+        + _pb_fixed64(11, time_ns)
+    )
+    # ScopeLogs: scope=1 (InstrumentationScope { name = 1 }), log_records=2
+    scope_logs = _pb_message(1, _pb_string(1, SCOPE_NAME)) + _pb_message(2, log_record)
+    # ResourceLogs: resource=1 (Resource { attributes = 1 }), scope_logs=2
+    resource_logs = _pb_message(1, _pb_key_values(1, resource)) + _pb_message(2, scope_logs)
+    # LogsData: resource_logs=1
+    return _pb_message(1, resource_logs)
+
+
+# --------------------------------------------------------------------------- #
+# OTLP encoding — JSON
+# --------------------------------------------------------------------------- #
+
+def _json_attributes(mapping):
+    return [
+        {"key": k, "value": {"stringValue": str(v)}}
+        for k, v in mapping.items()
+        if v not in (None, "")
+    ]
+
+
+def encode_json(resource, attrs, time_ns):
+    return json.dumps(
+        {
+            "resourceLogs": [
+                {
+                    "resource": {"attributes": _json_attributes(resource)},
+                    "scopeLogs": [
+                        {
+                            "scope": {"name": SCOPE_NAME},
+                            "logRecords": [
+                                {
+                                    "timeUnixNano": str(time_ns),
+                                    "observedTimeUnixNano": str(time_ns),
+                                    "severityNumber": SEVERITY_INFO,
+                                    "severityText": "INFO",
+                                    "body": {"stringValue": EVENT_NAME},
+                                    "attributes": _json_attributes(attrs),
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ]
+        }
+    ).encode("utf-8")
+
+
+# --------------------------------------------------------------------------- #
+# Emission (child only)
+# --------------------------------------------------------------------------- #
+
+def emit(config, payload):
+    cwd = config["cwd"]
+    git_context = git_attrs(cwd, config["git_dirty"])
+    if not git_context:
+        if config["debug"]:
+            debug_log(cwd, {"skipped": "not a git repository", "cwd": cwd})
+        return
+
+    # session.id / prompt.id are the join keys against the native claude_code.*
+    # events — structural, not optional. prompt_id is absent before first input.
+    attrs = {
+        "event.name": EVENT_NAME,
+        "session.id": payload.get("session_id"),
+        "prompt.id": payload.get("prompt_id"),
+        "hook.event": payload.get("hook_event_name"),
+        **git_context,
+    }
+
+    time_ns = time.time_ns()
+    if config["protocol"] == "http/json":
+        body, content_type = encode_json(config["resource"], attrs, time_ns), "application/json"
+    else:
+        body, content_type = (
+            encode_protobuf(config["resource"], attrs, time_ns),
+            "application/x-protobuf",
+        )
+
+    request = urllib.request.Request(
+        config["endpoint"], data=body, headers={"Content-Type": content_type}
+    )
+    for key, value in config["headers"].items():
+        request.add_header(key, value)
+
+    status, error = None, None
+    try:
+        with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT) as response:
+            status = response.status
+    except Exception as exc:  # network, TLS, auth, collector down — all silent
+        error = "{}: {}".format(type(exc).__name__, exc)
+
+    if config["debug"]:
+        debug_log(
+            cwd,
+            {
+                "endpoint": config["endpoint"],
+                "protocol": config["protocol"],
+                "status": status,
+                "error": error,
+                "attributes": attrs,
+            },
+        )
+
+
+# --------------------------------------------------------------------------- #
+# Entrypoints
+# --------------------------------------------------------------------------- #
+
+def spawn_detached(blob):
+    """Hand the work to a detached child so the hook never blocks the prompt."""
+    kwargs = {
+        "stdin": subprocess.PIPE,
+        "stdout": subprocess.DEVNULL,
+        "stderr": subprocess.DEVNULL,
+    }
+    if os.name == "nt":
+        DETACHED_PROCESS = 0x00000008
+        CREATE_NEW_PROCESS_GROUP = 0x00000200
+        kwargs["creationflags"] = DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
+    else:
+        kwargs["start_new_session"] = True
+
+    child = subprocess.Popen(
+        [sys.executable, os.path.abspath(__file__), "--emit"], **kwargs
+    )
+    child.stdin.write(blob.encode("utf-8"))
+    child.stdin.close()  # no wait() — the child outlives us
+
+
+def run_hook():
+    payload = json.loads(sys.stdin.read() or "{}")
+    config, reason = resolve_config(payload)
+    if config is None:
+        if os.environ.get("AFYAPOWERS_OTEL_DEBUG") == "1":
+            debug_log(payload.get("cwd"), {"skipped": reason})
+        return
+    spawn_detached(json.dumps({"config": config, "payload": payload}))
+
+
+def run_emit():
+    blob = json.loads(sys.stdin.read() or "{}")
+    config, payload = blob.get("config"), blob.get("payload") or {}
+    if not isinstance(config, dict):
+        # Invoked directly for testing: resolve config from the environment.
+        config, _ = resolve_config(payload)
+        if config is None:
+            return
+    if not config.get("endpoint"):
+        return
+    config.setdefault("protocol", DEFAULT_PROTOCOL)
+    config.setdefault("cwd", payload.get("cwd") or os.getcwd())
+    config.setdefault("headers", {})
+    config.setdefault("resource", {"service.name": DEFAULT_SERVICE_NAME})
+    config.setdefault("git_dirty", False)
+    config.setdefault("debug", os.environ.get("AFYAPOWERS_OTEL_DEBUG") == "1")
+    emit(config, payload)
+
+
+def main():
+    try:
+        if "--emit" in sys.argv[1:]:
+            run_emit()
+        else:
+            run_hook()
+    except Exception:
+        pass  # observability must never break a session
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()

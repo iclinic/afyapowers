@@ -134,6 +134,91 @@ O afyapowers utiliza servidores MCP para integração com JIRA (Atlassian) e Fig
 4. Instale o plugin do **Atlassian**
 5. Autentique em ambos os plugins
 
+## Telemetria (OpenTelemetry)
+
+> Apenas Claude Code. As env vars `OTEL_*` e os eventos `claude_code.*` não existem nos outros IDEs.
+
+O Claude Code já exporta métricas e eventos via OTLP, mas nada dinâmico: `env` em `settings.json` é
+estritamente estático (sem interpolação, sem command substitution) e nenhum hook consegue exportar env
+var de volta para o processo do Claude Code. Ou seja, a branch atual jamais chega em
+`OTEL_RESOURCE_ATTRIBUTES`.
+
+O hook `otel-context` resolve isso emitindo **log records OTLP próprios** para o mesmo coletor, em
+`SessionStart`, `UserPromptSubmit` e `SessionEnd`. Cada record carrega:
+
+| Atributo | Exemplo | Observação |
+|---|---|---|
+| `event.name` | `afyapowers.git_context` | discrimina nossos records dos nativos |
+| `session.id` | `abc123` | **chave de join** com os eventos `claude_code.*` |
+| `prompt.id` | `550e8400-…` | join exato por prompt; ausente no `SessionStart` |
+| `hook.event` | `UserPromptSubmit` | qual evento originou o record |
+| `git.branch` | `feat/tela-de-quizzes` | `detached` quando em detached HEAD |
+| `git.repo` | `iclinic/afyapowers` | slug do remote (`origin`, ou o primeiro remote); cai para o nome da pasta local se não houver remote hospedado |
+| `git.commit` | `73f5798` | SHA curto do `HEAD` |
+| `git.dirty` | `true` / `false` | opt-in (ver abaixo) |
+
+Os pares de `OTEL_RESOURCE_ATTRIBUTES` (department, cost center, squad) viajam no resource dos nossos
+records também, então filtram igual aos eventos nativos.
+
+> `git.repo` sai do remote justamente porque o nome da pasta local é escolha de cada dev e não
+> identifica repositório numa frota. São extraídos apenas o owner e o repo — nunca o host nem
+> credenciais eventualmente embutidas na URL de clone. Remote que é caminho local do filesystem é
+> ignorado, para não vazar o layout de diretórios do dev.
+
+**Como correlacionar:** no backend, junte nossos records aos nativos por `prompt.id` (exato) ou por
+`session.id` (sessão inteira). Ex.: custo de tokens por branch = `claude_code.token.usage` ⨝
+`event.name = 'afyapowers.git_context'` em `prompt.id`.
+
+### Configuração
+
+O hook não tem config própria obrigatória: ele **herda** a configuração OTLP que você já usa. Se
+`CLAUDE_CODE_ENABLE_TELEMETRY=1` e houver um endpoint de logs resolvível, ele emite; caso contrário
+fica silenciosamente inerte. As env vars podem vir do ambiente ou do bloco `env` de qualquer
+`settings.json` (managed > projeto local > projeto > usuário) — o hook lê os arquivos como fallback,
+então funciona independente de env var de settings ser herdada por subprocesso.
+
+| Variável | Efeito |
+|---|---|
+| `AFYAPOWERS_OTEL_ENABLED` | `1` liga mesmo sem `CLAUDE_CODE_ENABLE_TELEMETRY`; `0` é kill switch e vence tudo |
+| `AFYAPOWERS_OTEL_ENDPOINT` | sobrescreve o endpoint de logs (necessário se a org usa `grpc`, já que o hook só fala OTLP sobre HTTP) |
+| `AFYAPOWERS_OTEL_HEADERS` | headers extras/sobrescritos, formato `k=v,k=v` |
+| `AFYAPOWERS_OTEL_PROTOCOL` | `http/protobuf` (default) ou `http/json` |
+| `AFYAPOWERS_OTEL_GIT_DIRTY` | `1` inclui `git.dirty`. Opt-in porque `git status` varre a árvore inteira e custa segundos em monorepo |
+| `AFYAPOWERS_OTEL_DEBUG` | `1` grava o que foi enviado (ou por que não) em `.afyapowers/otel-debug.jsonl` |
+
+Ordem de resolução do endpoint: `AFYAPOWERS_OTEL_ENDPOINT` → `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` →
+`OTEL_EXPORTER_OTLP_ENDPOINT` + `/v1/logs`. Headers e protocolo seguem a mesma lógica per-signal do
+OTel (`OTEL_EXPORTER_OTLP_LOGS_HEADERS` / `_PROTOCOL` ganham dos genéricos).
+
+### Rollout na frota
+
+Um único arquivo de managed settings (`/Library/Application Support/ClaudeCode/managed-settings.json`
+no macOS, `/etc/claude-code/` no Linux) mais o plugin atualizado cobrem toda a base de devs — sem
+dotfile e sem setting por repositório:
+
+```json
+{
+  "env": {
+    "CLAUDE_CODE_ENABLE_TELEMETRY": "1",
+    "OTEL_LOGS_EXPORTER": "otlp",
+    "OTEL_EXPORTER_OTLP_LOGS_PROTOCOL": "http/protobuf",
+    "OTEL_EXPORTER_OTLP_LOGS_ENDPOINT": "https://collector.exemplo.com.br/v1/logs",
+    "OTEL_EXPORTER_OTLP_LOGS_HEADERS": "Authorization=Bearer TOKEN",
+    "OTEL_RESOURCE_ATTRIBUTES": "department=engineering,cost_center=eng-123",
+    "OTEL_METRICS_INCLUDE_RESOURCE_ATTRIBUTES": "false"
+  }
+}
+```
+
+> Managed settings **remove** env vars conflitantes definidas pelo dev no startup. Fixar
+> `OTEL_RESOURCE_ATTRIBUTES` ali é o que você quer para atributos organizacionais, mas inviabiliza
+> qualquer enriquecimento local via wrapper de shell.
+
+**Garantias do hook:** roda no caminho crítico do prompt apenas para resolver config e fazer spawn de
+um filho destacado (~50 ms); git e rede acontecem no filho. Nunca escreve em stdout (em
+`UserPromptSubmit` o stdout do hook seria injetado como contexto no prompt), nunca bloqueia a sessão e
+sai `0` em qualquer erro. Fora de um repositório git, não emite nada.
+
 ## Estrutura do Projeto
 
 ```text
@@ -157,7 +242,7 @@ O afyapowers utiliza servidores MCP para integração com JIRA (Atlassian) e Fig
 src/
   skills/                   # Todas as skills — workflow commands e skills de fase (19 no total)
   config/                   # Configuração específica por IDE (Claude, Cursor, Gemini)
-  hooks/                    # Hook de início de sessão para restauração de contexto
+  hooks/                    # Hooks: contexto de sessão, diretiva de idioma, histórico, telemetria OTLP
   manifests/                # Manifestos do plugin para Claude e Cursor
   templates/                # Templates Markdown para artefatos
 ```

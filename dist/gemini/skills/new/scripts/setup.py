@@ -16,7 +16,7 @@ import os
 import sys
 
 AFYA = ".afyapowers"
-GITIGNORE_LINES = ["features/active", "history/"]
+GITIGNORE_LINES = ["features/active", "history/", "otel-debug.jsonl"]
 
 
 def ensure_dirs():
