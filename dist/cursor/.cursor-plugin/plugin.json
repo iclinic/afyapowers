@@ -2,7 +2,7 @@
   "name": "afyapowers",
   "displayName": "afyapowers",
   "description": "Deterministic, phase-gated development workflow with persistent state and auditability",
-  "version": "1.7.0",
+  "version": "1.6.3",
   "author": {
     "name": "Rafael Papastamatiou",
     "email": "rafael.rodrigues@afya.com.br"
