@@ -1,5 +1,5 @@
 ---
-name: afyapowers:switch
+name: switch
 description: Switch Active Feature
 disable-model-invocation: true
 ---

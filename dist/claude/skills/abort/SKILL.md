@@ -1,5 +1,5 @@
 ---
-name: afyapowers:abort
+name: abort
 description: Abort Current Feature
 disable-model-invocation: true
 ---

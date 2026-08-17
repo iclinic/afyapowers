@@ -1,6 +1,6 @@
 ---
 claude:
-  name: afyapowers:next
+  name: next
   description: Advance to Next Phase
   disable-model-invocation: true
 cursor:

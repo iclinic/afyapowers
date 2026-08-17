@@ -1,6 +1,6 @@
 ---
 claude:
-  name: afyapowers:reviewing
+  name: reviewing
   description: "Use when the current afyapowers phase is review — performs 2-step code review (spec compliance + quality)"
   model: sonnet
   effort: medium

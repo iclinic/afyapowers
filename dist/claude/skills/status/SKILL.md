@@ -1,5 +1,5 @@
 ---
-name: afyapowers:status
+name: status
 description: Show Feature Status
 disable-model-invocation: true
 ---

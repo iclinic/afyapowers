@@ -1,5 +1,5 @@
 ---
-name: afyapowers:history
+name: history
 description: Show Feature History
 disable-model-invocation: true
 ---

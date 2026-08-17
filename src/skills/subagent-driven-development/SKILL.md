@@ -1,6 +1,6 @@
 ---
 claude:
-  name: afyapowers:subagent-driven-development
+  name: subagent-driven-development
   description: Use when executing implementation plans with independent tasks in the current session
   model: claude-opus-5
   effort: high

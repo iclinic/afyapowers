@@ -1,5 +1,5 @@
 ---
-name: afyapowers:features
+name: features
 description: List All Features
 disable-model-invocation: true
 ---

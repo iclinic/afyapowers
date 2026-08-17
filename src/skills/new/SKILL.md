@@ -1,6 +1,6 @@
 ---
 claude:
-  name: afyapowers:new
+  name: new
   description: Start a New Feature
   disable-model-invocation: true
 cursor:

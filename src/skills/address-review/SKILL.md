@@ -1,6 +1,6 @@
 ---
 claude:
-  name: afyapowers:address-review
+  name: address-review
   description: Triage open-PR review comments one at a time and plan the fixes
   disable-model-invocation: true
   model: claude-opus-5
