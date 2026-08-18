@@ -355,30 +355,43 @@ def git_remote_url(cwd):
     return git(cwd, "remote", "get-url", remotes.splitlines()[0].strip())
 
 
+# Every git attribute this hook can carry. The record always has all of them,
+# as a value or as an explicit null, so the backend sees one stable schema.
+GIT_ATTR_KEYS = ("git.repo", "git.branch", "git.commit", "git.dirty")
+
+
 def git_attrs(cwd, want_dirty):
-    """Collect git context.
+    """Collect git context. Never returns None.
+
+    Whatever cannot be resolved — no repo at all, no commits yet, dirty-checking
+    switched off — comes back as ATTR_NULL rather than being left out, because a
+    missing attribute and a null one are different facts to a query, and an
+    unenrichable session must still produce a record.
 
     Separate calls on purpose: `git rev-parse` flags are sticky, so combining
     --abbrev-ref/--short/--show-toplevel returns values in an unpredictable
     order. This runs in the detached child, so the extra forks are free.
     """
+    attrs = dict.fromkeys(GIT_ATTR_KEYS, ATTR_NULL)
+
     toplevel = git(cwd, "rev-parse", "--show-toplevel")
     if not toplevel:
-        return None  # not a git repo — nothing to enrich
+        return attrs  # not a git repo — every git attribute stays null
 
     # Prefer the remote slug: the local folder name is whatever each developer
     # happened to clone into, so it cannot identify a repo across a fleet.
-    attrs = {"git.repo": remote_slug(git_remote_url(cwd)) or os.path.basename(toplevel)}
+    attrs["git.repo"] = (
+        remote_slug(git_remote_url(cwd)) or os.path.basename(toplevel) or ATTR_NULL
+    )
 
     # Empty in detached HEAD, a state worth distinguishing from a branch.
-    branch = git(cwd, "branch", "--show-current")
-    attrs["git.branch"] = branch or "detached"
+    attrs["git.branch"] = git(cwd, "branch", "--show-current") or "detached"
 
-    commit = git(cwd, "rev-parse", "--short", "HEAD")
-    if commit:
-        attrs["git.commit"] = commit
+    # Null in a repo with no commits yet.
+    attrs["git.commit"] = git(cwd, "rev-parse", "--short", "HEAD") or ATTR_NULL
 
-    # Opt-in: `git status` walks the whole tree, which costs seconds in a monorepo.
+    # Opt-in: `git status` walks the whole tree, which costs seconds in a
+    # monorepo. Left null when off — "not measured", not "clean".
     if want_dirty:
         attrs["git.dirty"] = "true" if git(cwd, "status", "--porcelain") else "false"
 
@@ -507,25 +520,28 @@ def encode_json(resource, attrs, time_ns):
 # --------------------------------------------------------------------------- #
 
 def emit(config, payload):
+    """Send exactly one record per invocation.
+
+    Once we are here the emitter is configured and routable, so a record goes
+    out unconditionally: no input is treated as a reason to stay silent. Every
+    attribute below is always present — a real value or an explicit null — so a
+    session outside a repo, before the first prompt, or without a ticket is
+    still visible in the backend rather than absent from it.
+    """
     cwd = config["cwd"]
-    git_context = git_attrs(cwd, config["git_dirty"])
-    if not git_context:
-        if config["debug"]:
-            debug_log(cwd, {"skipped": "not a git repository", "cwd": cwd})
-        return
 
     # session.id / prompt.id are the join keys against the native claude_code.*
     # events — structural, not optional. prompt_id is absent before first input.
     attrs = {
         "event.name": EVENT_NAME,
-        "session.id": payload.get("session_id"),
-        "prompt.id": payload.get("prompt_id"),
-        "hook.event": payload.get("hook_event_name"),
+        "session.id": payload.get("session_id") or ATTR_NULL,
+        "prompt.id": payload.get("prompt_id") or ATTR_NULL,
+        "hook.event": payload.get("hook_event_name") or ATTR_NULL,
         "jira.key": jira_key(cwd) or ATTR_NULL,  # always present; explicit null when unset
         # Which plugin build produced this session — lets the backend correlate a
         # behavior change with the release that shipped it.
         "afyapowers.version": plugin_version() or ATTR_NULL,
-        **git_context,
+        **git_attrs(cwd, config["git_dirty"]),
     }
 
     time_ns = time.time_ns()
