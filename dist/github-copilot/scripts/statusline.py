@@ -2,8 +2,8 @@
 """afyapowers status line for Claude Code.
 
 Reads the session JSON Claude Code pipes to stdin and prints up to three
-lines: plugin version / model / context usage, active feature + phase +
-Jira ticket, and git status + session cost/duration. Installed into the
+lines: plugin version / model / context usage, Jira ticket + git status,
+and session cost/duration. Installed into the
 project's `.claude/settings.json` by the `/afyapowers:statusline` skill,
 which resolves this script through the `.afyapowers/plugin-root` pointer
 maintained by the session-start hook (the install path changes on every
@@ -28,11 +28,11 @@ from pathlib import Path
 
 RESET = "\033[0m"
 DIM = "\033[2m"
-CYAN = "\033[36m"
 GREEN = "\033[32m"
 YELLOW = "\033[33m"
 RED = "\033[31m"
-MAGENTA = "\033[35m"
+AFYA_PINK = "\033[38;2;196;4;84m"
+JIRA_BLUE = "\033[38;5;33m"
 
 SEPARATOR = DIM + " │ " + RESET
 
@@ -74,7 +74,7 @@ def seg_version():
             continue
         version = manifest.get("version") if isinstance(manifest, dict) else None
         if version:
-            return "%s⚡ afyapowers v%s%s" % (CYAN, version, RESET)
+            return "%s⚡ afyapowers v%s%s" % (AFYA_PINK, version, RESET)
     return None
 
 
@@ -92,62 +92,6 @@ def seg_context(data):
     return "%s\U0001f9e0 %d%%%s" % (color, pct, RESET)
 
 
-def _yaml_line(text, key):
-    """First `key: value` line of a state.yaml, quotes stripped."""
-    match = re.search(r"^%s: *(.*)$" % key, text, re.MULTILINE)
-    if not match:
-        return None
-    value = match.group(1).strip()
-    if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
-        value = value[1:-1]
-    return value or None
-
-
-def _active_state(cwd):
-    """(feature_dir, state.yaml text) of the active feature, or None."""
-    features_dir = Path(cwd) / ".afyapowers" / "features"
-    try:
-        slug = (features_dir / "active").read_text(encoding="utf-8").strip()
-    except Exception:
-        return None
-    feature_dir = features_dir / slug
-    if not slug or not feature_dir.is_dir():
-        return None
-    try:
-        return feature_dir, (feature_dir / "state.yaml").read_text(encoding="utf-8")
-    except Exception:
-        return None
-
-
-def seg_feature(cwd):
-    active = _active_state(cwd)
-    if not active:
-        return None
-    name = _yaml_line(active[1], "feature")
-    return "\U0001f3af %s" % name if name else None
-
-
-def seg_phase(cwd):
-    active = _active_state(cwd)
-    if not active:
-        return None
-    feature_dir, state = active
-    phase = _yaml_line(state, "current_phase")
-    if not phase:
-        return None
-    tasks = ""
-    if phase == "implement":
-        try:
-            plan = (feature_dir / "artifacts" / "plan.md").read_text(encoding="utf-8")
-            total = len(re.findall(r"^- \[", plan, re.MULTILINE))
-            done = len(re.findall(r"^- \[x\]", plan, re.MULTILINE))
-            if total:
-                tasks = " (%d/%d)" % (done, total)
-        except Exception:
-            pass
-    return "%s%s" % (phase, tasks)
-
-
 def seg_jira(cwd):
     try:
         raw = (Path(cwd) / ".afyapowers" / "current-jira-ticket").read_text(
@@ -160,7 +104,7 @@ def seg_jira(cwd):
     raw = raw.upper()
     if not JIRA_KEY_RE.match(raw):
         return None
-    return "%s\U0001f3ab %s%s" % (MAGENTA, raw, RESET)
+    return "%s\U0001f3af %s%s" % (JIRA_BLUE, raw, RESET)
 
 
 def seg_git(cwd):
@@ -203,7 +147,7 @@ def seg_cost(data):
     cost = (data.get("cost") or {}).get("total_cost_usd")
     if cost is None:
         return None
-    return "\U0001f4b0 $%.2f" % cost
+    return "%s\U0001f4b0 $%.2f%s" % (GREEN, cost, RESET)
 
 
 def seg_duration(data):
@@ -232,18 +176,10 @@ def main():
     data = read_stdin_json()
     cwd = resolve_cwd(data)
 
-    # Feature, phase and Jira ticket share one line, each behind its own
-    # gate: any subset of the three renders, joined by a middle dot.
-    feature_line = " · ".join(
-        s
-        for s in (_safe(seg_feature, cwd), _safe(seg_phase, cwd), _safe(seg_jira, cwd))
-        if s
-    )
-
     lines = [
         [_safe(seg_version), _safe(seg_model, data), _safe(seg_context, data)],
-        [feature_line],
-        [_safe(seg_git, cwd), _safe(seg_cost, data), _safe(seg_duration, data)],
+        [_safe(seg_jira, cwd), _safe(seg_git, cwd)],
+        [_safe(seg_cost, data), _safe(seg_duration, data)],
     ]
     for segments in lines:
         segments = [s for s in segments if s]
