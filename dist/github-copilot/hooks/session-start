@@ -35,6 +35,12 @@ fi
 # Find .afyapowers directory relative to working directory
 AFYA_DIR=".afyapowers"
 
+# Refresh the user-level plugin-root pointer (used by the opt-in status
+# line, installed globally in ~/.claude/settings.json) so it survives
+# plugin version upgrades that change the versioned install path.
+mkdir -p "$HOME/.claude/afyapowers" 2>/dev/null || true
+printf '%s\n' "$PLUGIN_ROOT" > "$HOME/.claude/afyapowers/plugin-root" 2>/dev/null || true
+
 # Jira ticket context lives entirely in the jira-context UserPromptSubmit
 # hook: instructions injected at SessionStart arrive before the first prompt
 # and the model does not act on them (same lesson as lang-directive).
