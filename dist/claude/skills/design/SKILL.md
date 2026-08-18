@@ -37,7 +37,7 @@ Every project goes through this process. A todo list, a single-function utility,
 
 You MUST complete these items in order. **Requirements first (1-6), code exploration only after (7).**
 
-1. **JIRA discovery (offer-based)** — offer the user the chance to provide a JIRA issue key; if provided, fetch and summarize the issue (see below)
+1. **JIRA discovery (offer-based)** — offer the user the chance to provide a JIRA issue key; if provided, fetch the issue (the fetch is what validates the key), summarize it, and record the key in `.afyapowers/current-jira-ticket`; if the user has no ticket, record the literal `none` in that same file (see below)
 2. **Figma discovery (trigger-based)** — check user request against trigger keywords (see below); if match, ask about Figma and collect the URL(s)
 3. **Revisão de handoff do Figma (REQUIRED quando há URLs)** — dispatch @"figma-handoff-reviewer (agent)"; it discovers the file's own design libraries via `get_libraries`, writes `figma-handoff-review.md` into the feature's artifacts and returns only a status block. On `BLOQUEADO` (Figma MCP down) or `SEM_BIBLIOTECAS` (file has no library enabled) the phase stops with no artifact. On `OK` the status block carries blocking/suggestion counts and a `Recomendação`, and the phase STOPS until the user reviews the report and decides whether to continue or talk to the Product Designer — both options always offered, the recommended one first (see HARD-GATE-HANDOFF)
 4. **Ler os designs do Figma** — invoke `afyapowers:reading-figma-designs` to produce `## Recursos do Figma` and `## Contrato de Layout` (only after the user chose to continue)
@@ -64,6 +64,7 @@ digraph design {
     "Offer JIRA issue key" [shape=box];
     "JIRA issue provided?" [shape=diamond];
     "Fetch JIRA issue" [shape=box];
+    "Gravar .afyapowers/current-jira-ticket" [shape=box];
     "Trigger keywords match?" [shape=diamond];
     "Ask Figma question" [shape=box];
     "Revisar handoff (agent)" [shape=box];
@@ -93,8 +94,10 @@ digraph design {
 
     "Offer JIRA issue key" -> "JIRA issue provided?";
     "JIRA issue provided?" -> "Fetch JIRA issue" [label="yes"];
-    "JIRA issue provided?" -> "Trigger keywords match?" [label="no"];
-    "Fetch JIRA issue" -> "Trigger keywords match?";
+    "JIRA issue provided?" -> "Gravar .afyapowers/current-jira-ticket" [label="no (grava none)"];
+    "Fetch JIRA issue" -> "Gravar .afyapowers/current-jira-ticket" [label="chave válida (grava a chave)"];
+    "Fetch JIRA issue" -> "Offer JIRA issue key" [label="chave inválida — pedir de novo"];
+    "Gravar .afyapowers/current-jira-ticket" -> "Trigger keywords match?";
     "Trigger keywords match?" -> "Ask Figma question" [label="yes"];
     "Trigger keywords match?" -> "Standard clarifying questions" [label="no"];
     "Ask Figma question" -> "Revisar handoff (agent)" [label="user provides URLs"];
@@ -177,11 +180,27 @@ If the user provides a JIRA issue key:
 
    Present this summary to the user for confirmation before proceeding.
 
-4. **Proceed to Figma discovery** (the JIRA summary and description text is now part of the context when evaluating Figma trigger keywords)
+4. **Record the ticket pointer (REQUIRED):** the successful fetch is what proves the key is valid. Only then, write it to `.afyapowers/current-jira-ticket` — uppercase, single line, no trailing newline, overwriting whatever was there (the file holds exactly one value):
 
-If no JIRA issue is provided, proceed directly to Figma discovery.
+   ```bash
+   mkdir -p .afyapowers && printf '%s' 'PROJ-123' > .afyapowers/current-jira-ticket
+   ```
 
-**If the Atlassian MCP server is unavailable:** Warn the user and **stop the JIRA discovery flow**. Do not attempt to proceed without it — the user asked for JIRA context, so a silent fallback would undermine the purpose. Suggest the user check their MCP server connection and retry.
+   **If the fetch fails because the key does not exist or is not readable:** do NOT write the file. Tell the user the key was not found and ask for the correct one — or whether they would rather work without a ticket (then follow the `none` path below) — and retry.
+
+5. **Proceed to Figma discovery** (the JIRA summary and description text is now part of the context when evaluating Figma trigger keywords)
+
+If no JIRA issue is provided — the user has no ticket, or does not want to tie this work to one — record that too, so nobody is asked again:
+
+```bash
+mkdir -p .afyapowers && printf '%s' 'none' > .afyapowers/current-jira-ticket
+```
+
+Then proceed directly to Figma discovery.
+
+**Why this file matters:** `.afyapowers/current-jira-ticket` is the project's ticket pointer. The `jira-context` hook reads it on every prompt (and re-asks the user whenever it is missing or holds garbage), and telemetry attaches the key to the work done in this session. The design phase is where the ticket is established, so the pointer MUST end this step either holding a validated key or the literal `none` — never left unset, and never set to an unverified key. The file is gitignored; it is a local pointer, not a project artifact.
+
+**If the Atlassian MCP server is unavailable:** Warn the user and **stop the JIRA discovery flow**. Do not attempt to proceed without it — the user asked for JIRA context, so a silent fallback would undermine the purpose. Do NOT write `.afyapowers/current-jira-ticket` in this case: the key was never validated, and writing `none` would wrongly record "no ticket". Suggest the user check their MCP server connection and retry.
 
 **Figma discovery (trigger-based):**
 

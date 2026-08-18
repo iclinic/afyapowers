@@ -8,7 +8,9 @@ set -euo pipefail
 # lang-directive to per-skill injection), so everything happens here, injected
 # WITH the user's prompt — the moment the model is deciding what to do:
 #
-#   unresolved pointer (missing/invalid, or conflicting with the git branch)
+#   unresolved pointer (missing/empty/invalid, or conflicting with the git
+#   branch) — `/afyapowers:new` bootstraps the file EMPTY, which is exactly
+#   this state: nobody has been asked yet
 #     -> full instructions to ask the user (AskUserQuestion) and persist the
 #        answer to .afyapowers/current-jira-ticket;
 #   resolved pointer (key matching the branch state, or the literal `none`)
@@ -48,6 +50,8 @@ BRANCH=$(git branch --show-current 2>/dev/null || true)
 BRANCH_KEY=$(printf '%s' "$BRANCH" | grep -oE '[A-Z][A-Z0-9]+-[0-9]+' | head -1 || true)
 
 # File value: strip newlines like features/active; discard garbage (keep `none`).
+# An empty file — the bootstrap default — falls through as unresolved, so the
+# user is asked; only the literal `none` records "the user has no ticket".
 FILE_KEY=""
 if [ -f "$JIRA_FILE" ]; then
   FILE_KEY=$(tr -d '\n\r' < "$JIRA_FILE")

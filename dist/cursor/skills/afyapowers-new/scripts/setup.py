@@ -2,8 +2,9 @@
 """afyapowers project scaffolding.
 
 Idempotently create the content-free `.afyapowers/` structure for the current
-working directory: the state dir, `features/`, `history/`, and a `.gitignore`
-that keeps the active-feature pointer, the Jira ticket pointer, and conversation
+working directory: the state dir, `features/`, `history/`, an empty Jira ticket
+pointer, and a `.gitignore` that keeps the active-feature pointer, the Jira
+ticket pointer, and conversation
 logs out of version control. Feature-specific files (state.yaml, history.yaml, features/active) are
 written by the `/afyapowers:new` skill, which needs timestamps and the feature
 name, so this script deliberately does not touch them.
@@ -22,6 +23,22 @@ GITIGNORE_LINES = ["features/active", "history/", "otel-debug.jsonl", "current-j
 def ensure_dirs():
     os.makedirs(os.path.join(AFYA, "features"), exist_ok=True)
     os.makedirs(os.path.join(AFYA, "history"), exist_ok=True)
+
+
+def ensure_jira_pointer():
+    """Create `current-jira-ticket` EMPTY when absent, never touching an
+    existing one.
+
+    Empty is the "nobody has been asked yet" state: the jira-context hook reads
+    an empty/garbage/missing pointer the same way and asks the user, while the
+    literal `none` means the user explicitly works without a ticket and must
+    not be asked again. Pre-creating the file only saves the design phase (and
+    the hook-driven writes) from having to create it."""
+    path = os.path.join(AFYA, "current-jira-ticket")
+    if os.path.exists(path):
+        return
+    with io.open(path, "w", encoding="utf-8"):
+        pass
 
 
 def ensure_gitignore():
@@ -48,6 +65,7 @@ def ensure_gitignore():
 
 def main():
     ensure_dirs()
+    ensure_jira_pointer()
     ensure_gitignore()
     print("ok=true")
 
