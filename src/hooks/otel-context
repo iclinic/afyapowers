@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """afyapowers OTLP context emitter.
 
-Enriches Claude Code's OpenTelemetry data with dynamic per-session git and Jira
-context that the native telemetry cannot carry. `env` in settings.json is strictly static (no
+Enriches Claude Code's OpenTelemetry data with dynamic per-session git, Jira and
+plugin-version context that the native telemetry cannot carry. `env` in settings.json is strictly static (no
 interpolation, no command substitution) and no hook can export env vars back into
 the Claude Code process, so values like the current git branch can never reach
 `OTEL_RESOURCE_ATTRIBUTES`. Instead this hook emits its own OTLP log records to
@@ -42,6 +42,7 @@ from pathlib import Path
 
 GIT_TIMEOUT = 5
 HTTP_TIMEOUT = 5
+CLI_TIMEOUT = 10
 SCOPE_NAME = "afyapowers"
 EVENT_NAME = "afyapowers.git_context"
 DEFAULT_SERVICE_NAME = "afyapowers"
@@ -194,6 +195,70 @@ def debug_log(cwd, record):
             fh.write(json.dumps(record, ensure_ascii=False) + "\n")
     except Exception:
         pass
+
+
+# --------------------------------------------------------------------------- #
+# Plugin version (child only)
+# --------------------------------------------------------------------------- #
+
+# Manifest location relative to the plugin root, one entry per host IDE: Claude
+# Code and Cursor namespace theirs in a dot-directory, GitHub Copilot keeps it at
+# the root. This file is always at <plugin root>/hooks/, so the root is its parent.
+MANIFEST_RELATIVE_PATHS = (
+    ".claude-plugin/plugin.json",
+    ".cursor-plugin/plugin.json",
+    "plugin.json",
+)
+
+# Header line of `claude plugin details afyapowers`: `afyapowers <version>`.
+CLI_VERSION_RE = re.compile(r"^afyapowers\s+v?(\d[\w.+-]*)$")
+# Terminal control sequences the CLI interleaves with its output (CSI colors and
+# OSC title/color queries), stripped before the header line is matched.
+ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)")
+
+
+def version_from_manifest():
+    """Read the version out of the plugin manifest shipped beside this hook.
+
+    This is the same number `claude plugin details` prints — the CLI reads this
+    very file — but without a subprocess, and it works under every host IDE.
+    """
+    root = Path(__file__).resolve().parent.parent
+    for relative in MANIFEST_RELATIVE_PATHS:
+        try:
+            data = json.loads((root / relative).read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        version = data.get("version") if isinstance(data, dict) else None
+        if version:
+            return str(version)
+    return None
+
+
+def version_from_cli():
+    """Fallback for layouts with no manifest beside the hook (a Gemini
+    distribution, or a source checkout run directly): ask the CLI. Only the
+    header line is parsed — everything after it is the component inventory."""
+    try:
+        result = subprocess.run(
+            ["claude", "plugin", "details", "afyapowers"],
+            capture_output=True,
+            text=True,
+            timeout=CLI_TIMEOUT,
+        )
+    except Exception:
+        return None
+    if result.returncode != 0:
+        return None
+    for line in result.stdout.splitlines():
+        match = CLI_VERSION_RE.match(ANSI_RE.sub("", line).strip())
+        if match:
+            return match.group(1)
+    return None
+
+
+def plugin_version():
+    return version_from_manifest() or version_from_cli()
 
 
 # --------------------------------------------------------------------------- #
@@ -457,6 +522,9 @@ def emit(config, payload):
         "prompt.id": payload.get("prompt_id"),
         "hook.event": payload.get("hook_event_name"),
         "jira.key": jira_key(cwd) or ATTR_NULL,  # always present; explicit null when unset
+        # Which plugin build produced this session — lets the backend correlate a
+        # behavior change with the release that shipped it.
+        "afyapowers.version": plugin_version() or ATTR_NULL,
         **git_context,
     }
 

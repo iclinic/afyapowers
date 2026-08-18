@@ -152,6 +152,8 @@ O hook `otel-context` resolve isso emitindo **log records OTLP próprios** para 
 | `session.id` | `abc123` | **chave de join** com os eventos `claude_code.*` |
 | `prompt.id` | `550e8400-…` | join exato por prompt; ausente no `SessionStart` |
 | `hook.event` | `UserPromptSubmit` | qual evento originou o record |
+| `afyapowers.version` | `1.6.2` | versão do plugin que produziu o record; lida do manifesto instalado (fallback: `claude plugin details afyapowers`), `null` se indeterminável |
+| `jira.key` | `ABC-123` | ticket atual (`.afyapowers/current-jira-ticket`); sempre presente, `null` quando não há ticket |
 | `git.branch` | `feat/tela-de-quizzes` | `detached` quando em detached HEAD |
 | `git.repo` | `iclinic/afyapowers` | slug do remote (`origin`, ou o primeiro remote); cai para o nome da pasta local se não houver remote hospedado |
 | `git.commit` | `73f5798` | SHA curto do `HEAD` |
