@@ -35,7 +35,7 @@ Using the feature name provided:
    ```bash
    python3 "<setup-script-path>"
    ```
-   This idempotently creates `.afyapowers/features/`, `.afyapowers/history/`, and `.afyapowers/.gitignore`. Confirm the output is `ok=true`; if it is `ok=false` or the command errors, report the error and stop.
+   This idempotently creates `.afyapowers/features/`, `.afyapowers/history/`, `.afyapowers/.gitignore`, and an empty `.afyapowers/current-jira-ticket` (empty = the Jira ticket was never asked about; the design phase fills it in with the validated key or `none`). Existing files are never overwritten. Confirm the output is `ok=true`; if it is `ok=false` or the command errors, report the error and stop.
 6. Create the feature directory structure:
    - `.afyapowers/features/<directory-name>/`
    - `.afyapowers/features/<directory-name>/artifacts/`
