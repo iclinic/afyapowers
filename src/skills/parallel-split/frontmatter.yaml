@@ -1,0 +1,9 @@
+claude:
+  name: afyapowers:parallel-split
+  description: "Split independent task groups into parallel worktrees with territory-based file isolation"
+cursor:
+  name: afyapowers-parallel-split
+  description: "Split independent task groups into parallel worktrees with territory-based file isolation"
+github-copilot:
+  name: parallel-split
+  description: "Split independent task groups into parallel worktrees with territory-based file isolation"
