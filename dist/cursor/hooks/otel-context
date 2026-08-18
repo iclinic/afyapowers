@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """afyapowers OTLP context emitter.
 
-Enriches Claude Code's OpenTelemetry data with dynamic per-session context that
-the native telemetry cannot carry. `env` in settings.json is strictly static (no
+Enriches Claude Code's OpenTelemetry data with dynamic per-session git and Jira
+context that the native telemetry cannot carry. `env` in settings.json is strictly static (no
 interpolation, no command substitution) and no hook can export env vars back into
 the Claude Code process, so values like the current git branch can never reach
 `OTEL_RESOURCE_ATTRIBUTES`. Instead this hook emits its own OTLP log records to
@@ -30,6 +30,7 @@ Set AFYAPOWERS_OTEL_DEBUG=1 to trace what was sent (or why it wasn't) into
 
 import json
 import os
+import re
 import struct
 import subprocess
 import sys
@@ -46,6 +47,10 @@ EVENT_NAME = "afyapowers.git_context"
 DEFAULT_SERVICE_NAME = "afyapowers"
 DEFAULT_PROTOCOL = "http/protobuf"  # matches the OTel spec default
 SEVERITY_INFO = 9  # SEVERITY_NUMBER_INFO
+
+# Explicit null for an attribute: encoded as an empty AnyValue (ValueTypeEmpty
+# on the collector side), unlike None/"" which drop the attribute entirely.
+ATTR_NULL = object()
 
 
 # --------------------------------------------------------------------------- #
@@ -192,6 +197,30 @@ def debug_log(cwd, record):
 
 
 # --------------------------------------------------------------------------- #
+# Jira ticket (child only)
+# --------------------------------------------------------------------------- #
+
+JIRA_KEY_RE = re.compile(r"^[A-Z][A-Z0-9]+-\d+$")
+
+
+def jira_key(cwd):
+    """Ticket pointer maintained by the model under the jira-context hook's
+    instructions. The literal `none` means the user explicitly works without
+    a ticket; garbage or a missing file mean the same to telemetry — the
+    caller sends jira.key as an explicit null (ATTR_NULL) in those cases."""
+    try:
+        raw = (Path(cwd) / ".afyapowers" / "current-jira-ticket").read_text(
+            encoding="utf-8"
+        ).strip()
+    except Exception:
+        return None
+    if raw.lower() == "none":
+        return None
+    raw = raw.upper()
+    return raw if JIRA_KEY_RE.match(raw) else None
+
+
+# --------------------------------------------------------------------------- #
 # Git attributes (child only)
 # --------------------------------------------------------------------------- #
 
@@ -330,12 +359,18 @@ def _pb_fixed64(field, value):
 
 
 def _pb_key_values(field, mapping):
-    """repeated KeyValue { key = 1; AnyValue value = 2 { string_value = 1 } }"""
+    """repeated KeyValue { key = 1; AnyValue value = 2 { string_value = 1 } }
+
+    ATTR_NULL encodes as an empty AnyValue (no oneof field set) — the OTLP
+    representation of null; None/"" drop the attribute entirely."""
     out = b""
     for key, value in mapping.items():
-        if value in (None, ""):
+        if value is ATTR_NULL:
+            any_value = b""
+        elif value in (None, ""):
             continue
-        any_value = _pb_string(1, value)
+        else:
+            any_value = _pb_string(1, value)
         out += _pb_message(field, _pb_string(1, key) + _pb_message(2, any_value))
     return out
 
@@ -364,11 +399,15 @@ def encode_protobuf(resource, attrs, time_ns):
 # --------------------------------------------------------------------------- #
 
 def _json_attributes(mapping):
-    return [
-        {"key": k, "value": {"stringValue": str(v)}}
-        for k, v in mapping.items()
-        if v not in (None, "")
-    ]
+    """ATTR_NULL encodes as an empty AnyValue ({}) — the OTLP representation
+    of null; None/"" drop the attribute entirely."""
+    out = []
+    for k, v in mapping.items():
+        if v is ATTR_NULL:
+            out.append({"key": k, "value": {}})
+        elif v not in (None, ""):
+            out.append({"key": k, "value": {"stringValue": str(v)}})
+    return out
 
 
 def encode_json(resource, attrs, time_ns):
@@ -417,6 +456,7 @@ def emit(config, payload):
         "session.id": payload.get("session_id"),
         "prompt.id": payload.get("prompt_id"),
         "hook.event": payload.get("hook_event_name"),
+        "jira.key": jira_key(cwd) or ATTR_NULL,  # always present; explicit null when unset
         **git_context,
     }
 
@@ -450,7 +490,10 @@ def emit(config, payload):
                 "protocol": config["protocol"],
                 "status": status,
                 "error": error,
-                "attributes": attrs,
+                # ATTR_NULL is not JSON-serializable; log it as a real null.
+                "attributes": {
+                    k: (None if v is ATTR_NULL else v) for k, v in attrs.items()
+                },
             },
         )
 

@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# UserPromptSubmit: the single owner of the Jira ticket flow.
+#
+# Context injected at SessionStart arrives before the first prompt and the
+# model routinely ignores it when it starts acting (same lesson that moved
+# lang-directive to per-skill injection), so everything happens here, injected
+# WITH the user's prompt — the moment the model is deciding what to do:
+#
+#   unresolved pointer (missing/invalid, or conflicting with the git branch)
+#     -> full instructions to ask the user (AskUserQuestion) and persist the
+#        answer to .afyapowers/current-jira-ticket;
+#   resolved pointer (key matching the branch state, or the literal `none`)
+#     -> the current ticket plus an active directive: BEFORE handling the
+#        prompt, assess whether it still belongs to the same work; if not,
+#        re-ask — a confirmation earlier in the session covers only the work
+#        it was given for, never a new topic shift. Topic shifts are a
+#        semantic judgment only the model can make, so the directive must
+#        ride along with every prompt.
+#
+# Dedup is by instruction, not state: unresolved messages say "unless already
+# asked in this session"; resolved messages scope it per topic shift. The
+# model's own conversation memory does the bookkeeping.
+
+json_escape() {
+  local s="$1"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  s="${s//$'\n'/\\n}"
+  s="${s//$'\r'/\\r}"
+  s="${s//$'\t'/\\t}"
+  printf '%s' "$s"
+}
+
+JIRA_FILE=".afyapowers/current-jira-ticket"
+WRITE_RULES="Persist the answer to .afyapowers/current-jira-ticket (create the directory first if needed): the chosen key uppercase, single line, no trailing newline (e.g. ABC-123), or the literal none so the user is not asked again."
+
+# Outside a git repo otel-context never emits (git_attrs -> None skips the
+# record), so a ticket would be collected and never sent — stay silent.
+if [ "$(git rev-parse --is-inside-work-tree 2>/dev/null || true)" != "true" ]; then
+  exit 0
+fi
+
+# Empty in detached HEAD. Every grep pipeline needs `|| true`: under pipefail
+# a no-match grep kills the hook.
+BRANCH=$(git branch --show-current 2>/dev/null || true)
+BRANCH_KEY=$(printf '%s' "$BRANCH" | grep -oE '[A-Z][A-Z0-9]+-[0-9]+' | head -1 || true)
+
+# File value: strip newlines like features/active; discard garbage (keep `none`).
+FILE_KEY=""
+if [ -f "$JIRA_FILE" ]; then
+  FILE_KEY=$(tr -d '\n\r' < "$JIRA_FILE")
+  if [ "$FILE_KEY" != "none" ] && ! printf '%s' "$FILE_KEY" | grep -qE '^[A-Z][A-Z0-9]+-[0-9]+$'; then
+    FILE_KEY=""
+  fi
+fi
+
+MSG=""
+if [ -z "$FILE_KEY" ]; then
+  # Unset: ask before handling the request.
+  if [ -n "$BRANCH_KEY" ]; then
+    MSG="The Jira ticket for this project is not set. Unless you already asked in this session, ask the user NOW, before handling the request — use the AskUserQuestion tool when available — which Jira ticket this work belongs to. Options: '${BRANCH_KEY} (from branch) (Recommended)', 'Another ticket id' (the user types it), 'No specific task'. ${WRITE_RULES}"
+  else
+    MSG="The Jira ticket for this project is not set. Unless you already asked in this session, ask the user NOW, before handling the request — use the AskUserQuestion tool when available — whether this work is tied to a Jira ticket. Options: 'No specific task (Recommended if unsure)', 'Yes, a specific ticket' (the user types the id, e.g. ABC-123). ${WRITE_RULES}"
+  fi
+elif [ -n "$BRANCH_KEY" ] && [ "$BRANCH_KEY" != "$FILE_KEY" ]; then
+  # Conflict: the branch suggests a key the user has not confirmed.
+  if [ "$FILE_KEY" = "none" ]; then
+    CURRENT_OPT="'No specific task (current setting)'"
+  else
+    CURRENT_OPT="'${FILE_KEY} (current setting)', 'Another ticket id' (the user types it), 'No specific task'"
+  fi
+  MSG="The Jira ticket pointer (${FILE_KEY}) conflicts with the git branch, which suggests ${BRANCH_KEY}. Unless the user already settled this in the current session, ask NOW — use the AskUserQuestion tool when available — which applies. Options: '${BRANCH_KEY} (from branch) (Recommended)', ${CURRENT_OPT}. ${WRITE_RULES}"
+elif [ "$FILE_KEY" = "none" ]; then
+  # Resolved as no-task: actively check each prompt for the start of new work.
+  MSG="Jira ticket: none (the user explicitly works without a ticket). Before handling this prompt, assess it: is it part of the same work this session has been doing? Tangents, follow-ups, questions, and sub-tasks of that work count as the same. If it starts a different piece of work, ask the user — use the AskUserQuestion tool when available — whether the new work is tied to a Jira ticket, even if they already answered earlier in this session: a previous answer covers only the work it was given for, never a new topic shift. Update .afyapowers/current-jira-ticket with the answer (uppercase key like ABC-123, single line, no trailing newline, or keep the literal none)."
+else
+  # Resolved with a key: actively check each prompt for a task switch.
+  MSG="Jira ticket: ${FILE_KEY}. Before handling this prompt, assess it: does it belong to the same piece of work this session has been doing under ${FILE_KEY}? Tangents, follow-ups, questions, and sub-tasks of that work count as the same. If it does not seem related — a different task, feature, or bug — ask the user, use the AskUserQuestion tool when available, whether ${FILE_KEY} still applies, even if the ticket was already confirmed earlier in this session: a confirmation covers only the work it was given for, never a new topic shift. Options: 'Keep ${FILE_KEY} (Recommended)', 'Another ticket id' (the user types it), 'No specific task'. Update .afyapowers/current-jira-ticket with the answer (uppercase key, single line, no trailing newline, or the literal none)."
+fi
+
+echo "{\"hookSpecificOutput\": {\"hookEventName\": \"UserPromptSubmit\", \"additionalContext\": \"$(json_escape "$MSG")\"}}"
+exit 0

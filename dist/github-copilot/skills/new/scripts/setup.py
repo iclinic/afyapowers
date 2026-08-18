@@ -3,8 +3,8 @@
 
 Idempotently create the content-free `.afyapowers/` structure for the current
 working directory: the state dir, `features/`, `history/`, and a `.gitignore`
-that keeps the active-feature pointer and conversation logs out of version
-control. Feature-specific files (state.yaml, history.yaml, features/active) are
+that keeps the active-feature pointer, the Jira ticket pointer, and conversation
+logs out of version control. Feature-specific files (state.yaml, history.yaml, features/active) are
 written by the `/afyapowers:new` skill, which needs timestamps and the feature
 name, so this script deliberately does not touch them.
 
@@ -16,7 +16,7 @@ import os
 import sys
 
 AFYA = ".afyapowers"
-GITIGNORE_LINES = ["features/active", "history/", "otel-debug.jsonl"]
+GITIGNORE_LINES = ["features/active", "history/", "otel-debug.jsonl", "current-jira-ticket"]
 
 
 def ensure_dirs():
