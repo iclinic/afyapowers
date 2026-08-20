@@ -1,16 +1,16 @@
 ---
 claude:
   name: implementing
-  description: "Use when the current afyapowers phase is implement — orchestrates implementation via subagent-driven-development"
+  description: "Fase implement do afyapowers: orquestra a execução das tarefas do plano. NUNCA invoque por iniciativa própria — roda apenas por invocação explícita do usuário ou da skill next."
   model: sonnet
   effort: medium
 cursor:
   name: afyapowers-implementing
-  description: "Use when the current afyapowers phase is implement — orchestrates implementation via subagent-driven-development"
+  description: "Fase implement do afyapowers: orquestra a execução das tarefas do plano. NUNCA invoque por iniciativa própria — roda apenas por invocação explícita do usuário ou da skill next."
   model: composer-2
 github-copilot:
   name: implementing
-  description: "Use when the current afyapowers phase is implement — orchestrates implementation via subagent-driven-development"
+  description: "Fase implement do afyapowers: orquestra a execução das tarefas do plano. NUNCA invoque por iniciativa própria — roda apenas por invocação explícita do usuário ou da skill next."
 ---
 
 # Implementing Phase

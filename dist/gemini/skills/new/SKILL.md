@@ -85,7 +85,7 @@ Tell the user:
 >
 > Iniciando o design...
 
-Then invoke the **design** skill to begin the design phase. The design skill will guide the conversation to clarify requirements, explore approaches, define architecture, and reach alignment.
+Then invoke `afyapowers:design` via the Skill tool to begin the design phase. It will guide the conversation to clarify requirements, explore approaches, define architecture, and reach alignment.
 
 When the design skill completes and produces the `design.md` artifact:
 1. Save it to `.afyapowers/features/<directory-name>/artifacts/design.md`

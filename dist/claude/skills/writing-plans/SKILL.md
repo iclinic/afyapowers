@@ -1,6 +1,6 @@
 ---
 name: writing-plans
-description: Use when the current afyapowers phase is plan — creates implementation plans from tech specs
+description: "Fase plan do afyapowers: transforma o design técnico em tarefas de implementação. NUNCA invoque por iniciativa própria — roda apenas por invocação explícita do usuário ou da skill next."
 model: claude-opus-5
 effort: high
 ---

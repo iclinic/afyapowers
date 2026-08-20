@@ -1,16 +1,16 @@
 ---
 claude:
   name: design
-  description: "You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements, and produces a full technical design."
+  description: "Fase design do afyapowers: explora intenção e requisitos e produz o design técnico. NUNCA invoque por iniciativa própria — roda apenas por invocação explícita do usuário ou das skills new/next."
   model: claude-opus-5
   effort: high
 cursor:
   name: afyapowers-design
-  description: "You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements, and produces a full technical design."
+  description: "Fase design do afyapowers: explora intenção e requisitos e produz o design técnico. NUNCA invoque por iniciativa própria — roda apenas por invocação explícita do usuário ou das skills new/next."
   model: claude-opus-5
 github-copilot:
   name: design
-  description: "You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements, and produces a full technical design."
+  description: "Fase design do afyapowers: explora intenção e requisitos e produz o design técnico. NUNCA invoque por iniciativa própria — roda apenas por invocação explícita do usuário ou das skills new/next."
 ---
 
 # Design Phase

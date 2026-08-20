@@ -1,16 +1,16 @@
 ---
 claude:
   name: reviewing
-  description: "Use when the current afyapowers phase is review — performs 2-step code review (spec compliance + quality)"
+  description: "Fase review do afyapowers: code review em 2 etapas (aderência à spec + qualidade). NUNCA invoque por iniciativa própria — roda apenas por invocação explícita do usuário ou da skill next."
   model: sonnet
   effort: medium
 cursor:
   name: afyapowers-reviewing
-  description: "Use when the current afyapowers phase is review — performs 2-step code review (spec compliance + quality)"
+  description: "Fase review do afyapowers: code review em 2 etapas (aderência à spec + qualidade). NUNCA invoque por iniciativa própria — roda apenas por invocação explícita do usuário ou da skill next."
   model: sonnet
 github-copilot:
   name: reviewing
-  description: "Use when the current afyapowers phase is review — performs 2-step code review (spec compliance + quality)"
+  description: "Fase review do afyapowers: code review em 2 etapas (aderência à spec + qualidade). NUNCA invoque por iniciativa própria — roda apenas por invocação explícita do usuário ou da skill next."
 ---
 
 # Review Phase

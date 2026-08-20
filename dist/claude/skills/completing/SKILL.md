@@ -1,6 +1,6 @@
 ---
 name: completing
-description: "Use when the current afyapowers phase is complete — handles merge/PR/cleanup and produces completion summary"
+description: "Fase complete do afyapowers: merge/PR/cleanup e sumário de conclusão. NUNCA invoque por iniciativa própria — roda apenas por invocação explícita do usuário ou da skill next."
 model: sonnet
 effort: medium
 ---

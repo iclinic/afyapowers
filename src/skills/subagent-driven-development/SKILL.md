@@ -1,16 +1,16 @@
 ---
 claude:
   name: subagent-driven-development
-  description: Use when executing implementation plans with independent tasks in the current session
+  description: "Sub-skill interna do afyapowers: executa as tarefas do plano pelo algoritmo de ondas. NUNCA invoque por iniciativa própria — roda apenas quando a skill implementing a invoca explicitamente."
   model: claude-opus-5
   effort: high
 cursor:
   name: afyapowers-subagent-driven-development
-  description: Use when executing implementation plans with independent tasks in the current session
+  description: "Sub-skill interna do afyapowers: executa as tarefas do plano pelo algoritmo de ondas. NUNCA invoque por iniciativa própria — roda apenas quando a skill implementing a invoca explicitamente."
   model: claude-opus-5
 github-copilot:
   name: subagent-driven-development
-  description: Use when executing implementation plans with independent tasks in the current session
+  description: "Sub-skill interna do afyapowers: executa as tarefas do plano pelo algoritmo de ondas. NUNCA invoque por iniciativa própria — roda apenas quando a skill implementing a invoca explicitamente."
 ---
 
 # Subagent-Driven Development

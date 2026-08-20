@@ -1,6 +1,6 @@
 ---
 name: reading-figma-designs
-description: "Reads Figma designs during the afyapowers design phase — parses Figma URLs, builds the Telas + Componentes inventory via a single get_metadata, and extracts ALL Dev Mode data annotations via use_figma. Use when a Figma URL is provided during the design phase."
+description: "Sub-skill interna do afyapowers: lê designs do Figma (inventário Telas+Componentes e anotações de Dev Mode). NUNCA invoque por iniciativa própria — roda apenas quando a skill design a invoca explicitamente."
 ---
 
 # Reading Figma Designs (Design Phase)

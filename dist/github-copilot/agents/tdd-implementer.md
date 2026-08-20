@@ -51,9 +51,9 @@ It's always OK to pause and clarify. Don't guess or make assumptions.
 
 ## Test-Driven Development
 
-<!-- These rules are a condensation of src/skills/test-driven-development/SKILL.md, inlined here because
-     a dispatched subagent cannot reliably read another skill's files. That file is canonical; if you
-     change the doctrine there, update this section in the same commit. -->
+<!-- This section is the canonical TDD doctrine for the plugin. It lives inline here because a
+     dispatched subagent cannot reliably read another skill's files. There is no separate
+     test-driven-development skill — change the doctrine here. -->
 
 
 You MUST follow the RED-GREEN-REFACTOR cycle for all implementation work.

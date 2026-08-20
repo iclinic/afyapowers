@@ -539,44 +539,6 @@ O Figma e usado em 3 fases, com niveis de acesso diferentes:
 
 Alem dos skills das 5 fases, o afyapowers inclui skills autonomos que podem ser usados a qualquer momento.
 
-### 🧪 Test-Driven Development (TDD)
-
-**Quando usar:** Em todas as tarefas de implementacao (nao-Figma).
-
-**Ciclo obrigatorio:**
-
-1. 🔴 **RED** — Escreva um teste minimo que falha. Confirme que a falha e pela feature faltando, nao por erro de digitacao
-2. 🟢 **GREEN** — Escreva o codigo mais simples possivel para o teste passar. Sem over-engineering
-3. 🔵 **REFACTOR** — Limpe o codigo. Remova duplicacao, melhore nomes. Mantenha testes verdes
-
-> ⚠️ **Regra de ferro:** Nenhum codigo de producao sem um teste falhando primeiro.
-
-### 🔎 Systematic Debugging
-
-**Quando usar:** Ao encontrar qualquer bug, falha de teste ou comportamento inesperado.
-
-**4 etapas obrigatorias:**
-
-1. **Investigar causa raiz** — Ler erros, reproduzir, checar mudancas recentes, rastrear fluxo de dados
-2. **Analisar padroes** — Encontrar exemplos funcionais no codebase e comparar
-3. **Hipotese e teste** — Uma hipotese por vez, testar de forma minima
-4. **Implementar** — Criar teste falhando, corrigir causa raiz, verificar
-
-> ⚠️ **Regra de ferro:** Nenhuma correcao sem investigacao da causa raiz primeiro.
-
-### ✔️ Verification Before Completion
-
-**Quando usar:** Antes de afirmar que qualquer trabalho esta concluido.
-
-**O processo:**
-1. **Identificar** — Qual comando prova a afirmacao?
-2. **Executar** — Rodar o comando completo
-3. **Ler** — Verificar saida, exit code, contagem de falhas
-4. **Confirmar** — A saida confirma a afirmacao?
-5. **So entao** — Fazer a afirmacao
-
-> ⚠️ **Regra de ferro:** Nenhuma afirmacao de conclusao sem evidencia de verificacao.
-
 ### 🌳 Using Git Worktrees
 
 **Quando usar:** Para criar workspaces isolados que compartilham o mesmo repositorio.
@@ -728,13 +690,10 @@ python3 sync.py cursor --clean   # Limpar + agente especifico
 | 4 | `reviewing` | Fase | `src/skills/reviewing/SKILL.md` |
 | 5 | `completing` | Fase | `src/skills/completing/SKILL.md` |
 | 6 | `subagent-driven-development` | Cross-cutting | `src/skills/subagent-driven-development/SKILL.md` |
-| 7 | `test-driven-development` | Cross-cutting | `src/skills/test-driven-development/SKILL.md` |
-| 8 | `systematic-debugging` | Cross-cutting | `src/skills/systematic-debugging/SKILL.md` |
-| 9 | `verification-before-completion` | Cross-cutting | `src/skills/verification-before-completion/SKILL.md` |
-| 10 | `using-git-worktrees` | Cross-cutting | `src/skills/using-git-worktrees/SKILL.md` |
-| 11 | `dispatching-parallel-agents` | Cross-cutting | `src/skills/dispatching-parallel-agents/SKILL.md` |
-| 12 | `autodoc` | Cross-cutting | `src/skills/autodoc/SKILL.md` |
-| 13 | `figma-component` | Standalone | `src/skills/figma-component/SKILL.md` |
+| 7 | `using-git-worktrees` | Cross-cutting | `src/skills/using-git-worktrees/SKILL.md` |
+| 8 | `dispatching-parallel-agents` | Cross-cutting | `src/skills/dispatching-parallel-agents/SKILL.md` |
+| 9 | `autodoc` | Cross-cutting | `src/skills/autodoc/SKILL.md` |
+| 10 | `figma-component` | Standalone | `src/skills/figma-component/SKILL.md` |
 
 ### Todos os comandos
 

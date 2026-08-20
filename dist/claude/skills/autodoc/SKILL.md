@@ -1,6 +1,6 @@
 ---
 name: autodoc
-description: "Generate or update living feature documentation under docs/{feature}/ (business-rules.md, architecture.md, optional data-models.md, CHANGELOG.md). Runs inside the afyapowers workflow to document the feature(s) just built, or standalone — ask the user what to document, explore the codebase, then create/update the docs."
+description: "Documentação viva da feature em docs/{feature}/ (business-rules, architecture, CHANGELOG). NUNCA invoque por iniciativa própria — roda apenas por invocação explícita do usuário ou da skill completing."
 model: sonnet
 effort: medium
 ---
