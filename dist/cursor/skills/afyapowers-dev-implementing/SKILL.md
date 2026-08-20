@@ -31,7 +31,7 @@ Otherwise (direct invocation):
 
 ## Required Sub-Skills
 
-**REQUIRED:** Invoke `afyapowers-subagent-driven-development` via the Skill tool to execute all plan tasks.
+**REQUIRED:** Invoke `afyapowers-dev-subagent-driven-development` via the Skill tool to execute all plan tasks.
 
 - Announce: "Usando o subagent-driven-development para executar as tarefas de implementação."
 - Invoke the skill. Follow its instructions completely.

@@ -1,5 +1,5 @@
 {
-  "name": "afyapowers",
+  "name": "afyapowers-dev",
   "description": "Deterministic, phase-gated development workflow with persistent state and auditability",
   "version": "1.8.0",
   "author": {

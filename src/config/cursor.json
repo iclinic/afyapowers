@@ -1,13 +1,13 @@
 {
   "agent": "cursor",
   "outputDir": "dist/cursor",
-  "prefix": "afyapowers",
+  "prefix": "afyapowers-dev",
   "skills": {
-    "dirPrefix": "afyapowers-",
-    "refPrefix": "afyapowers-"
+    "dirPrefix": "afyapowers-dev-",
+    "refPrefix": "afyapowers-dev-"
   },
   "agents": {
-    "filePrefix": "afyapowers-"
+    "filePrefix": "afyapowers-dev-"
   },
   "templates": true,
   "scripts": true,

@@ -57,10 +57,10 @@ Tell the user which phase is starting, then invoke the appropriate skill:
 
 | Next Phase | Skill to Invoke | What It Does |
 |-----------|----------------|--------------|
-| plan | `afyapowers-writing-plans` | Break design into implementation tasks |
-| implement | `afyapowers-implementing` | Execute tasks with TDD + subagents |
-| review | `afyapowers-reviewing` | 2-step code review (spec + quality) |
-| complete | `afyapowers-completing` | Merge/PR/cleanup and completion summary |
+| plan | `afyapowers-dev-writing-plans` | Break design into implementation tasks |
+| implement | `afyapowers-dev-implementing` | Execute tasks with TDD + subagents |
+| review | `afyapowers-dev-reviewing` | 2-step code review (spec + quality) |
+| complete | `afyapowers-dev-completing` | Merge/PR/cleanup and completion summary |
 
 When the skill completes and produces its artifact:
 1. Save the artifact to `.afyapowers/features/<slug>/artifacts/`

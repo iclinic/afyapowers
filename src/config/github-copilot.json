@@ -1,7 +1,7 @@
 {
   "agent": "github-copilot",
   "outputDir": "dist/github-copilot",
-  "prefix": "afyapowers",
+  "prefix": "afyapowers-dev",
   "skills": {
     "dirPrefix": ""
   },

@@ -47,7 +47,7 @@ structure.
 ### a. `### Arquivos`
 
 Register the file you just read as **F1**, with its role, URL and `fileKey`. Origin files for components
-declared elsewhere are added later, by `afyapowers:analyzing-design-system` — you only know F1.
+declared elsewhere are added later, by `afyapowers-dev:analyzing-design-system` — you only know F1.
 
 ### b. `### Telas`
 
@@ -98,7 +98,7 @@ plan may need it.
 `Variantes que o original declara` for components still carrying a `Pendência`, and any `F2`, `F3`… in
 `### Arquivos`.
 Those require the origin links, which is the design phase's hard gate, and the validated resolution,
-which is `afyapowers:analyzing-design-system`'s job. Do not invent them and do not leave them looking
+which is `afyapowers-dev:analyzing-design-system`'s job. Do not invent them and do not leave them looking
 filled.
 
 ### Example

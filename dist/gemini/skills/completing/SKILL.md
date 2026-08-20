@@ -15,7 +15,7 @@ Otherwise (direct invocation):
 
 ## Required Sub-Skills
 
-**REQUIRED:** Invoke `afyapowers:autodoc` via the Skill tool after executing the user's completion choice (Step 3).
+**REQUIRED:** Invoke `afyapowers-dev:autodoc` via the Skill tool after executing the user's completion choice (Step 3).
 
 - Announce: "Usando o autodoc para atualizar a documentação do projeto."
 - Invoke the skill. Follow its instructions completely.
@@ -54,7 +54,7 @@ Execute the user's chosen option:
 
 ### Step 3.5: Update Documentation
 
-**REQUIRED SUB-SKILL:** Invoke `afyapowers:autodoc` via the Skill tool.
+**REQUIRED SUB-SKILL:** Invoke `afyapowers-dev:autodoc` via the Skill tool.
 
 Announce: "Usando o autodoc para atualizar a documentação do projeto."
 

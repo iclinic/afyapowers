@@ -47,7 +47,7 @@ Create the following tasks in order:
 | T5 | Phase 2.1: Check child dependencies from stored metadata | Scan stored metadata for INSTANCE nodes with componentId references. Split them: resolved (the COMPONENT/COMPONENT_SET is in the T3 subtree) vs. NÃO RESOLVIDA (it is not — original declared elsewhere, needs an origin URL from the user in Phase 3). |
 | T6 | Phase 2.2: Cross-reference dependencies with Code Connect map | Check each componentId against the stored Code Connect map. A hit = child already exists → `Importar` (recursion stops there). Feed the analysis; do NOT hard-stop on missing deps. |
 | T7 | Phase 2.3: Detect output location, framework, Storybook | Glob for component directories, check package.json, detect Storybook. |
-| T8 | Phase 3: Build Component Tree | Invoke `afyapowers:analyzing-design-system` with the stored T3 metadata and T4 Code Connect map. It resolves every dependency, recurses leaves→root (bounded at depth 2), diffs, recommends a verdict per node, and confirms EVERY node with the user in compact batches. Returns the confirmed `## Árvore de Componentes de DS`. |
+| T8 | Phase 3: Build Component Tree | Invoke `afyapowers-dev:analyzing-design-system` with the stored T3 metadata and T4 Code Connect map. It resolves every dependency, recurses leaves→root (bounded at depth 2), diffs, recommends a verdict per node, and confirms EVERY node with the user in compact batches. Returns the confirmed `## Árvore de Componentes de DS`. |
 | T9 | Phase 4: Present pre-flight summary | Show the global pre-flight summary (directory, framework, Storybook, resolved origins) and the confirmed DS tree. Confirm the run-level settings. Per-node verdicts were already confirmed in T8. |
 | T10 | Dispatch implementer subagent(s) per node | For each code-task node (leaves→root), build the extended subagent prompt and dispatch. Each subagent includes self-review against Figma data. Handle the results. |
 
@@ -197,14 +197,14 @@ Before proceeding: verify tasks T5–T7 are all `completed`. If any task trigger
 ## Phase 3 — Analyze Design System
 
 <MCP_ALLOWLIST>
-The orchestrator makes NO Figma MCP calls in this phase. `afyapowers:analyzing-design-system` owns the
+The orchestrator makes NO Figma MCP calls in this phase. `afyapowers-dev:analyzing-design-system` owns the
 resolution chain and its own budget (~12 req/min, backoff 30-60s on 429). Do not call `get_screenshot`
 or `get_variable_defs` here or anywhere — those belong to the implementer subagent.
 </MCP_ALLOWLIST>
 
 ### Task T8 — Build the DS Component Tree
 
-Mark T8 `in_progress`. Invoke `afyapowers:analyzing-design-system` — it is the single design-system
+Mark T8 `in_progress`. Invoke `afyapowers-dev:analyzing-design-system` — it is the single design-system
 brain, shared with the design phase. Do NOT reimplement its resolution chain, verdict rules, or
 confirmation loop here; if this file ever describes those rules again, that copy is stale.
 
@@ -265,7 +265,7 @@ If you are about to call any Figma MCP tool, STOP. You are violating the skill p
 
 Mark T9 `in_progress`.
 
-**The per-node verdicts were already confirmed in Phase 3.** `afyapowers:analyzing-design-system` asked
+**The per-node verdicts were already confirmed in Phase 3.** `afyapowers-dev:analyzing-design-system` asked
 the user about **every** node -- one explicit answer per node, leaves->root, in compact batches -- and
 returned a tree where each row carries a decision the user actually made. Do NOT re-ask those questions here, and do NOT accept a
 tree with unconfirmed rows: if any row is missing a decision, go back to T8 rather than filling it in
