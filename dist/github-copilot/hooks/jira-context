@@ -35,14 +35,57 @@ json_escape() {
   printf '%s' "$s"
 }
 
-JIRA_FILE=".afyapowers/current-jira-ticket"
-WRITE_RULES="Persist the answer to .afyapowers/current-jira-ticket (create the directory first if needed): the chosen key uppercase, single line, no trailing newline (e.g. ABC-123), or the literal none so the user is not asked again."
+AFYA_DIR=".afyapowers"
+JIRA_FILE="$AFYA_DIR/current-jira-ticket"
+WRITE_RULES="Persist the answer to .afyapowers/current-jira-ticket (create the directory first if needed): the chosen key uppercase, single line, no trailing newline (e.g. ABC-123), or the literal none so the user is not asked again. If you had to create .afyapowers/, also write .afyapowers/.gitignore with one line each: features/active, history/, otel-debug.jsonl, current-jira-ticket."
+
+# `/afyapowers:new` writes `.afyapowers/.gitignore`, but the ticket pointer is
+# created outside that flow too — the instructions above tell the model to write
+# it in any project, and `/new` may never run there. So top the file up on every
+# prompt: cheap, idempotent, and it keeps the local pointer, the active-feature
+# marker and the conversation logs out of version control. Never create
+# `.afyapowers/` itself — its presence is what marks a project as
+# afyapowers-enabled (same rule as render-history).
+ensure_gitignore() {
+  local gi="$AFYA_DIR/.gitignore" line trimmed existing="" missing="" found
+  if [ ! -d "$AFYA_DIR" ]; then
+    return 0
+  fi
+  if [ -f "$gi" ]; then
+    existing=$(cat "$gi" 2>/dev/null || true)
+  fi
+  for line in features/active history/ otel-debug.jsonl current-jira-ticket; do
+    found=""
+    while IFS= read -r trimmed; do
+      trimmed="${trimmed#"${trimmed%%[![:space:]]*}"}"
+      trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
+      if [ "$trimmed" = "$line" ]; then
+        found=1
+        break
+      fi
+    done <<< "$existing"
+    if [ -z "$found" ]; then
+      missing="${missing}${line}"$'\n'
+    fi
+  done
+  if [ -z "$missing" ]; then
+    return 0
+  fi
+  # `$(...)` strips a trailing newline, so an empty capture means the file
+  # already ends with one.
+  if [ -s "$gi" ] && [ -n "$(tail -c1 "$gi" 2>/dev/null || true)" ]; then
+    printf '\n' >> "$gi" 2>/dev/null || true
+  fi
+  printf '%s' "$missing" >> "$gi" 2>/dev/null || true
+}
 
 # Outside a git repo otel-context never emits (git_attrs -> None skips the
 # record), so a ticket would be collected and never sent — stay silent.
 if [ "$(git rev-parse --is-inside-work-tree 2>/dev/null || true)" != "true" ]; then
   exit 0
 fi
+
+ensure_gitignore
 
 # Empty in detached HEAD. Every grep pipeline needs `|| true`: under pipefail
 # a no-match grep kills the hook.
