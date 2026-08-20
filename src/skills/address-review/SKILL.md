@@ -6,7 +6,7 @@ claude:
   model: claude-opus-5
   effort: high
 cursor:
-  name: afyapowers-address-review
+  name: afyapowers-dev-address-review
   description: Triage open-PR review comments one at a time and plan the fixes
   disable-model-invocation: true
   model: claude-opus-5
@@ -16,7 +16,7 @@ github-copilot:
   disable-model-invocation: true
 ---
 
-# /afyapowers:address-review — Address PR Review Comments
+# /afyapowers-dev:address-review — Address PR Review Comments
 
 Walk through the review comments on the current branch's open pull request one at a
 time, evaluate each, let the user decide which to address, then produce a plan for the
@@ -46,14 +46,14 @@ Run these read-only checks. On any failure, tell the user exactly what to do and
    command -v gh >/dev/null && echo OK || echo MISSING
    ```
    If `MISSING`: "This skill needs the GitHub CLI (`gh`). Install it from
-   https://cli.github.com/ and run `/afyapowers:address-review` again." Then stop.
+   https://cli.github.com/ and run `/afyapowers-dev:address-review` again." Then stop.
 
 2. **Authenticated:**
    ```bash
    gh auth status
    ```
    If this errors / reports not logged in: "GitHub CLI is not authenticated. Run
-   `gh auth login`, then run `/afyapowers:address-review` again." Then stop.
+   `gh auth login`, then run `/afyapowers-dev:address-review` again." Then stop.
 
 3. **GraphQL access** (needed to detect resolved/outdated threads):
    ```bash
@@ -61,7 +61,7 @@ Run these read-only checks. On any failure, tell the user exactly what to do and
    ```
    If this fails: "GitHub CLI can't reach the GraphQL API — this is required to skip
    resolved/outdated review threads. Check your auth and token scopes (`gh auth login`
-   / `gh auth refresh`), then run `/afyapowers:address-review` again." Then stop.
+   / `gh auth refresh`), then run `/afyapowers-dev:address-review` again." Then stop.
 
 ## Step 2: Locate the Open PR
 

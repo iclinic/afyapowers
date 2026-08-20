@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""afyapowers sync — generate per-agent distributions from source."""
+"""afyapowers-dev sync — generate per-agent distributions from source."""
 
 import argparse
 import json
@@ -46,7 +46,7 @@ def parse_agent_config(config_path: Path, repo_root: Path) -> AgentConfig:
     # always applies; the separator is ":" for most agents but "-" for Cursor.
     # Defaults to "<prefix>:" so only Cursor needs an explicit override.
     skills = data.get("skills", {})
-    default_ref_prefix = f"{data.get('prefix', 'afyapowers')}:"
+    default_ref_prefix = f"{data.get('prefix', 'afyapowers-dev')}:"
 
     return AgentConfig(
         agent=data["agent"],
@@ -133,8 +133,8 @@ def render_frontmatter(yaml_str: str) -> str:
 def substitute_skill_refs(body: str, ref_prefix: str) -> str:
     """Replace every `{{skill:NAME}}` token with the agent-correct invocation name.
 
-    The invocation name is `<ref_prefix><NAME>` (e.g. `afyapowers:autodoc` for
-    Claude/Copilot/Gemini, `afyapowers-autodoc` for Cursor). Source bodies use the
+    The invocation name is `<ref_prefix><NAME>` (e.g. `afyapowers-dev:autodoc` for
+    Claude/Copilot/Gemini, `afyapowers-dev-autodoc` for Cursor). Source bodies use the
     placeholder so a single shared body resolves correctly for every agent.
     """
     return SKILL_REF_RE.sub(lambda m: f"{ref_prefix}{m.group(1)}", body)
@@ -415,7 +415,7 @@ def sync_agent(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="afyapowers sync — generate per-agent distributions from source"
+        description="afyapowers-dev sync — generate per-agent distributions from source"
     )
     parser.add_argument(
         "agents", nargs="*", help="Agent names to sync (default: all from src/config/)"
@@ -431,7 +431,7 @@ def main() -> None:
 
     agent_names = args.agents or sorted(f.stem for f in config_dir.glob("*.json"))
 
-    print("=== afyapowers sync ===")
+    print("=== afyapowers-dev sync ===")
     print()
 
     for agent_name in agent_names:

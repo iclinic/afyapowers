@@ -5,7 +5,7 @@ claude:
   model: sonnet
   effort: high
 cursor:
-  name: afyapowers-code-quality-reviewer
+  name: afyapowers-dev-code-quality-reviewer
   description: Code quality reviewer — checks implementation for clean code, architecture, testing, and production readiness.
   model: sonnet
 github-copilot:

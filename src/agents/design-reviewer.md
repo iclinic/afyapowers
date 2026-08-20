@@ -5,7 +5,7 @@ claude:
   model: claude-opus-5
   effort: high
 cursor:
-  name: afyapowers-design-reviewer
+  name: afyapowers-dev-design-reviewer
   description: Design document reviewer — validates that a design spec is complete, consistent, and ready for implementation planning.
   model: claude-opus-5
 github-copilot:

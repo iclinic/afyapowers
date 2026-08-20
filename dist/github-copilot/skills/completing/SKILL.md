@@ -1,6 +1,6 @@
 ---
 name: completing
-description: "Fase complete do afyapowers: merge/PR/cleanup e sumário de conclusão. NUNCA invoque por iniciativa própria — roda apenas por invocação explícita do usuário ou da skill next."
+description: "Fase complete do afyapowers-dev: merge/PR/cleanup e sumário de conclusão. NUNCA invoque por iniciativa própria — roda apenas por invocação explícita do usuário ou da skill next."
 ---
 
 # Complete Phase
@@ -9,7 +9,7 @@ Finalize the feature: verify everything works, merge or create PR, produce compl
 
 ## Phase Gate
 
-If this skill was invoked by `/afyapowers:next` (you already know the active feature slug and confirmed the phase is `complete` from the conversation context above):
+If this skill was invoked by `/afyapowers-dev:next` (you already know the active feature slug and confirmed the phase is `complete` from the conversation context above):
 - Skip steps 1-3 and proceed to Final Verification
 
 Otherwise (direct invocation):
@@ -84,6 +84,6 @@ Save to `.afyapowers/features/<feature>/artifacts/completion.md`
 Update `state.yaml` to add `completion.md` to the complete phase's artifacts list.
 Append `artifact_created` event to `history.yaml`.
 
-Tell the user: "Fase complete concluída. Rode `/afyapowers:next` para finalizar a feature."
+Tell the user: "Fase complete concluída. Rode `/afyapowers-dev:next` para finalizar a feature."
 
-When the user runs `/afyapowers:next`, the command will mark the feature as `completed`.
+When the user runs `/afyapowers-dev:next`, the command will mark the feature as `completed`.

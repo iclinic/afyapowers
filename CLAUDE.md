@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-afyapowers is a deterministic, phase-gated development workflow plugin for Claude Code (forked from [superpowers](https://github.com/obra/superpowers)). It enforces a 5-phase workflow (Design → Plan → Implement → Review → Complete) with persistent YAML-based state and markdown artifacts. It supports multiple AI IDEs: Claude Code, Cursor, Gemini, and GitHub Copilot.
+afyapowers-dev is a deterministic, phase-gated development workflow plugin for Claude Code (forked from [superpowers](https://github.com/obra/superpowers)). It enforces a 5-phase workflow (Design → Plan → Implement → Review → Complete) with persistent YAML-based state and markdown artifacts. It supports multiple AI IDEs: Claude Code, Cursor, Gemini, and GitHub Copilot.
 
 ## Build / Sync
 
@@ -21,7 +21,7 @@ The script reads JSON configs from `src/config/` and produces customized output 
 
 There are no tests or linting configured for this repository.
 
-**Runtime requirement:** the plugin itself also needs Python 3.9+ at runtime, not just for `sync.py`. The `/afyapowers:new` setup script (`src/skills/new/scripts/setup.py`) is Python. The `session-start` hook warns when `python3` is absent, and `/afyapowers:new` stops rather than scaffolding into a broken state.
+**Runtime requirement:** the plugin itself also needs Python 3.9+ at runtime, not just for `sync.py`. The `/afyapowers-dev:new` setup script (`src/skills/new/scripts/setup.py`) is Python. The `session-start` hook warns when `python3` is absent, and `/afyapowers-dev:new` stops rather than scaffolding into a broken state.
 
 ## Architecture
 

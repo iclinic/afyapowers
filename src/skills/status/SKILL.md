@@ -4,7 +4,7 @@ claude:
   description: Show Feature Status
   disable-model-invocation: true
 cursor:
-  name: afyapowers-status
+  name: afyapowers-dev-status
   description: Show Feature Status
   disable-model-invocation: true
 github-copilot:
@@ -12,14 +12,14 @@ github-copilot:
   description: Show Feature Status
   disable-model-invocation: true
 ---
-# /afyapowers:status — Show Feature Status
+# /afyapowers-dev:status — Show Feature Status
 
 Display the current state of the active feature.
 
 ## Steps
 
 1. Read `.afyapowers/features/active` to get the active feature slug
-2. If no active feature, tell the user: "Nenhuma feature ativa. Rode `/afyapowers:new` para começar uma, ou `/afyapowers:switch` para selecionar uma existente."
+2. If no active feature, tell the user: "Nenhuma feature ativa. Rode `/afyapowers-dev:new` para começar uma, ou `/afyapowers-dev:switch` para selecionar uma existente."
 3. Read `.afyapowers/features/<slug>/state.yaml`
 4. Display the status in this format:
 

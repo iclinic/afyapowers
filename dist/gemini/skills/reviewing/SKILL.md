@@ -5,7 +5,7 @@ Perform a comprehensive 2-step code review of the completed feature implementati
 
 ## Phase Gate
 
-If this skill was invoked by `/afyapowers:next` (you already know the active feature slug and confirmed the phase is `review` from the conversation context above):
+If this skill was invoked by `/afyapowers-dev:next` (you already know the active feature slug and confirmed the phase is `review` from the conversation context above):
 - Skip steps 1-3 and proceed to Gather Context
 
 Otherwise (direct invocation):
@@ -72,6 +72,6 @@ Save to `.afyapowers/features/<feature>/artifacts/review.md`
 Update `state.yaml` to add `review.md` to the review phase's artifacts list.
 Append `artifact_created` event to `history.yaml`.
 
-Tell the user: "Fase review concluída. Rode `/afyapowers:next` para avançar para **complete**."
+Tell the user: "Fase review concluída. Rode `/afyapowers-dev:next` para avançar para **complete**."
 
-**Important:** The verdict MUST be **Aprovado** for `/afyapowers:next` to accept the transition. If issues remain, keep the verdict as **Alterações Solicitadas** and work with the user to resolve them.
+**Important:** The verdict MUST be **Aprovado** for `/afyapowers-dev:next` to accept the transition. If issues remain, keep the verdict as **Alterações Solicitadas** and work with the user to resolve them.

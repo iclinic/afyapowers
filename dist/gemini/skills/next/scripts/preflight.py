@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""afyapowers /next preflight validation.
+"""afyapowers-dev /next preflight validation.
 
 Validates the active feature's current phase WITHOUT reading artifact files into
 the model's context. Emits `key=value` lines (one per line) that the
-`/afyapowers:next` skill parses:
+`/afyapowers-dev:next` skill parses:
 
     slug, feature, current_phase, status, valid, next_phase, error, task_progress
 

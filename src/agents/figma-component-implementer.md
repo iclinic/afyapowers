@@ -5,7 +5,7 @@ claude:
   model: claude-opus-5
   effort: high
 cursor:
-  name: afyapowers-figma-component-implementer
+  name: afyapowers-dev-figma-component-implementer
   description: Figma component implementer subagent — translates a single Figma component into production code with self-review. Requires Figma MCP server.
   model: claude-opus-5
 github-copilot:

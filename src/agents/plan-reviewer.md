@@ -5,7 +5,7 @@ claude:
   model: claude-opus-5
   effort: high
 cursor:
-  name: afyapowers-plan-reviewer
+  name: afyapowers-dev-plan-reviewer
   description: Plan document reviewer — validates that plan chunks are complete, match the spec, and have proper task decomposition.
   model: claude-opus-5
 github-copilot:

@@ -5,7 +5,7 @@ claude:
   model: sonnet
   effort: high
 cursor:
-  name: afyapowers-figma-token-verifier
+  name: afyapowers-dev-figma-token-verifier
   description: Code-level fidelity verifier — checks that an implementation's tokens (colors, shadows, spacing, typography, radius) and layout acceptance measures match the expected Figma values by reading the code. Read-only; does not render or call Figma MCP.
   model: sonnet
 github-copilot:

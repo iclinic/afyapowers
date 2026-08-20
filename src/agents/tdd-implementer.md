@@ -5,7 +5,7 @@ claude:
   model: sonnet
   effort: high
 cursor:
-  name: afyapowers-tdd-implementer
+  name: afyapowers-dev-tdd-implementer
   description: TDD implementer subagent — implements plan tasks following red-green-refactor with self-review and structured reporting.
   model: composer-2
 github-copilot:

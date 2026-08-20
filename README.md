@@ -1,8 +1,8 @@
-# afyapowers
+# afyapowers-dev
 
-afyapowers é um plugin de workflow de desenvolvimento determinístico, derivado do [superpowers](https://github.com/obra/superpowers). Ele traz um processo estruturado para criação de features, com fases bem definidas, estado persistente, continuidade de sessão e auditabilidade total.
+afyapowers-dev é um plugin de workflow de desenvolvimento determinístico, derivado do [superpowers](https://github.com/obra/superpowers). Ele traz um processo estruturado para criação de features, com fases bem definidas, estado persistente, continuidade de sessão e auditabilidade total.
 
-Baseado nas principais práticas do superpowers (como TDD, debugging sistemático e desenvolvimento orientado a subagentes), o afyapowers organiza o trabalho em 5 fases sequenciais. Cada fase só avança após a conclusão e registro do artefato correspondente, garantindo controle e rastreabilidade em todo o ciclo.
+Baseado nas principais práticas do superpowers (como TDD, debugging sistemático e desenvolvimento orientado a subagentes), o afyapowers-dev organiza o trabalho em 5 fases sequenciais. Cada fase só avança após a conclusão e registro do artefato correspondente, garantindo controle e rastreabilidade em todo o ciclo.
 
 ## Compatibilidade
 
@@ -12,7 +12,7 @@ Baseado nas principais práticas do superpowers (como TDD, debugging sistemátic
 
 ## Pré-requisitos
 
-Antes de instalar o afyapowers, é necessário instalar o **Marketplace de DevEx da Afya**. Siga as instruções no repositório do [devex-marketplace](https://github.com/iclinic/devex-marketplace).
+Antes de instalar o afyapowers-dev, é necessário instalar o **Marketplace de DevEx da Afya**. Siga as instruções no repositório do [devex-marketplace](https://github.com/iclinic/devex-marketplace).
 
 ## Instalação
 
@@ -21,7 +21,7 @@ Antes de instalar o afyapowers, é necessário instalar o **Marketplace de DevEx
 > **Importante:** O comando deve ser executado **dentro** da instância do agente (com o Claude Code rodando).
 
 ```bash
-/plugin install afyapowers@devex-marketplace
+/plugin install afyapowers-dev@devex-marketplace
 ```
 
 Após a instalação, execute `/reload-plugins` dentro do agente para carregar o plugin.
@@ -30,7 +30,7 @@ Após a instalação, execute `/reload-plugins` dentro do agente para carregar o
 
 1. Abra o Cursor
 2. Vá em **Settings → Plugins -> Marketplace ou Browse Marketplace**
-3. Instale o plugin `afyapowers`
+3. Instale o plugin `afyapowers-dev`
 4. **Faça um reload do Cursor** após a instalação (obrigatório)`
 
 ### GitHub Copilot
@@ -38,7 +38,7 @@ Após a instalação, execute `/reload-plugins` dentro do agente para carregar o
 > O comando deve ser executado **fora** da instância do agente (com o Copilot CLI sem estar rodando)
 
 ```bash
-copilot plugin install afyapowers@devex-marketplace
+copilot plugin install afyapowers-dev@devex-marketplace
 ```
 
 ## Início Rápido
@@ -47,13 +47,13 @@ copilot plugin install afyapowers@devex-marketplace
 
 ```bash
 # Iniciar uma nova feature
-/afyapowers:new
+/afyapowers-dev:new
 
 # Trabalhar em cada fase, avançando com:
-/afyapowers:next
+/afyapowers-dev:next
 
 # Verificar o status atual a qualquer momento
-/afyapowers:status
+/afyapowers-dev:status
 ```
 
 ### Cursor
@@ -62,13 +62,13 @@ copilot plugin install afyapowers@devex-marketplace
 
 ```bash
 # Iniciar uma nova feature
-/afyapowers-new
+/afyapowers-dev-new
 
 # Trabalhar em cada fase, avançando com:
-/afyapowers-next
+/afyapowers-dev-next
 
 # Verificar o status atual a qualquer momento
-/afyapowers-status
+/afyapowers-dev-status
 ```
 
 ## Fases do Workflow
@@ -89,21 +89,21 @@ As fases são controladas — você deve completar o artefato da fase atual ante
 
 | Claude Code / Copilot CLI | Cursor | Descrição |
 | ----------- | ------ | --------- |
-| `/afyapowers:new` | `/afyapowers-new` | Iniciar um novo workflow de feature |
-| `/afyapowers:next` | `/afyapowers-next` | Avançar para a próxima fase (valida conclusão da fase atual) |
-| `/afyapowers:status` | `/afyapowers-status` | Mostrar status atual da feature e progresso da fase |
-| `/afyapowers:features` | `/afyapowers-features` | Listar todas as features e seus estados |
-| `/afyapowers:switch` | `/afyapowers-switch` | Alternar o contexto da feature ativa |
-| `/afyapowers:history` | `/afyapowers-history` | Mostrar a linha do tempo completa de eventos da feature ativa |
-| `/afyapowers:abort` | `/afyapowers-abort` | Abandonar a feature ativa (irreversível) |
-| `/afyapowers:figma-component` | `/afyapowers-figma-component` | Desenvolver um componente Figma (standalone, fora do workflow de 5 fases) |
+| `/afyapowers-dev:new` | `/afyapowers-dev-new` | Iniciar um novo workflow de feature |
+| `/afyapowers-dev:next` | `/afyapowers-dev-next` | Avançar para a próxima fase (valida conclusão da fase atual) |
+| `/afyapowers-dev:status` | `/afyapowers-dev-status` | Mostrar status atual da feature e progresso da fase |
+| `/afyapowers-dev:features` | `/afyapowers-dev-features` | Listar todas as features e seus estados |
+| `/afyapowers-dev:switch` | `/afyapowers-dev-switch` | Alternar o contexto da feature ativa |
+| `/afyapowers-dev:history` | `/afyapowers-dev-history` | Mostrar a linha do tempo completa de eventos da feature ativa |
+| `/afyapowers-dev:abort` | `/afyapowers-dev-abort` | Abandonar a feature ativa (irreversível) |
+| `/afyapowers-dev:figma-component` | `/afyapowers-dev-figma-component` | Desenvolver um componente Figma (standalone, fora do workflow de 5 fases) |
 
 
 ## Integrações
 
 ### JIRA
 
-Durante a fase de **Design**, você pode opcionalmente fornecer uma chave de issue do JIRA. O afyapowers busca o contexto da issue (resumo, descrição, critérios de aceitação) via servidor MCP do Atlassian e o incorpora na spec de design.
+Durante a fase de **Design**, você pode opcionalmente fornecer uma chave de issue do JIRA. O afyapowers-dev busca o contexto da issue (resumo, descrição, critérios de aceitação) via servidor MCP do Atlassian e o incorpora na spec de design.
 
 ### Figma
 
@@ -115,7 +115,7 @@ A integração com o Figma abrange múltiplas fases:
 
 ## Configuração dos MCPs (Atlassian e Figma)
 
-O afyapowers utiliza servidores MCP para integração com JIRA (Atlassian) e Figma. A configuração varia por IDE:
+O afyapowers-dev utiliza servidores MCP para integração com JIRA (Atlassian) e Figma. A configuração varia por IDE:
 
 > **Importante:** Em todos os agentes (Cursor, Claude Code, Copilot CLI, etc.), ambos os MCPs vão precisar de **autenticação** antes do primeiro uso.
 
@@ -139,7 +139,7 @@ O afyapowers utiliza servidores MCP para integração com JIRA (Atlassian) e Fig
 A partir da v1.8.0, a telemetria OTLP (`otel-context`), o contexto de ticket Jira (`jira-context`), a
 reinjeção da diretiva de idioma (`lang-directive`), o histórico de conversas em HTML (`render-history`)
 e a status line vivem no plugin separado **afyapowers-core**, que funciona de forma independente deste
-workflow (inclusive em projetos sem afyapowers). Instale os dois plugins para a experiência completa.
+workflow (inclusive em projetos sem afyapowers-dev). Instale os dois plugins para a experiência completa.
 Consulte o README do afyapowers-core para a documentação de telemetria e configuração
 (`AFYAPOWERS_CORE_OTEL_*`).
 

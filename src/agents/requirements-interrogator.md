@@ -5,7 +5,7 @@ claude:
   model: claude-opus-5
   effort: high
 cursor:
-  name: afyapowers-requirements-interrogator
+  name: afyapowers-dev-requirements-interrogator
   description: Adversarial requirements analyst — attacks gathered requirements (JIRA, Figma, annotations, user answers) to surface contradictions, gaps, edge cases, ambiguities, and risky assumptions before a design is written.
   model: claude-opus-5
 gemini:

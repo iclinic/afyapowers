@@ -1,9 +1,9 @@
 ---
-name: afyapowers-abort
+name: afyapowers-dev-abort
 description: Abort Current Feature
 disable-model-invocation: true
 ---
-# /afyapowers:abort — Abort Current Feature
+# /afyapowers-dev:abort — Abort Current Feature
 
 Abandon the active feature. This is irreversible — aborted features cannot be resumed.
 
@@ -23,4 +23,4 @@ Abandon the active feature. This is irreversible — aborted features cannot be 
 2. Append to `history.yaml`:
    - `feature_aborted` event with current timestamp and the phase it was aborted in
 3. Clear `.afyapowers/features/active` (delete the file or empty it)
-4. Tell the user: "A feature '<feature-name>' foi abortada. Rode `/afyapowers:new` para começar uma nova feature."
+4. Tell the user: "A feature '<feature-name>' foi abortada. Rode `/afyapowers-dev:new` para começar uma nova feature."

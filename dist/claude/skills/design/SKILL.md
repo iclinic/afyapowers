@@ -1,6 +1,6 @@
 ---
 name: design
-description: "Fase design do afyapowers: explora intenção e requisitos e produz o design técnico. NUNCA invoque por iniciativa própria — roda apenas por invocação explícita do usuário ou das skills new/next."
+description: "Fase design do afyapowers-dev: explora intenção e requisitos e produz o design técnico. NUNCA invoque por iniciativa própria — roda apenas por invocação explícita do usuário ou das skills new/next."
 model: claude-opus-5
 effort: high
 ---
@@ -90,7 +90,7 @@ digraph design {
     "Design review loop" [shape=box];
     "Design review passed?" [shape=diamond];
     "User reviews design?" [shape=diamond];
-    "Suggest /afyapowers:next" [shape=doublecircle];
+    "Suggest /afyapowers-dev:next" [shape=doublecircle];
 
     "Offer JIRA issue key" -> "JIRA issue provided?";
     "JIRA issue provided?" -> "Fetch JIRA issue" [label="yes"];
@@ -130,11 +130,11 @@ digraph design {
     "Design review passed?" -> "Design review loop" [label="issues found,\nfix and re-dispatch"];
     "Design review passed?" -> "User reviews design?" [label="approved"];
     "User reviews design?" -> "Write design doc" [label="changes requested"];
-    "User reviews design?" -> "Suggest /afyapowers:next" [label="approved"];
+    "User reviews design?" -> "Suggest /afyapowers-dev:next" [label="approved"];
 }
 ```
 
-**The terminal state is suggesting `/afyapowers:next`.** Do NOT invoke any implementation skill or advance phases. The `/afyapowers:next` command handles phase transitions.
+**The terminal state is suggesting `/afyapowers-dev:next`.** Do NOT invoke any implementation skill or advance phases. The `/afyapowers-dev:next` command handles phase transitions.
 
 ## The Process
 
@@ -297,7 +297,7 @@ choice, even when the recommendation was `FALAR_COM_PD`.
 The feature stays in the design phase. Tell them:
 
 > "Fase design pausada. O relatório lista o que precisa de ajuste — os itens bloqueantes estão
-> marcados como `Bloqueante`. Quando o Product Designer ajustar o arquivo, rode `/afyapowers:design`
+> marcados como `Bloqueante`. Quando o Product Designer ajustar o arquivo, rode `/afyapowers-dev:design`
 > novamente — a revisão de handoff roda de novo e sobrescreve o relatório."
 
 Then stop. Do not continue to clarifying questions, do not start the design, do not advance the phase.
@@ -525,7 +525,7 @@ Wait for the user's response. If they request changes, make them and re-run the 
 
 - Update `state.yaml` to add `design.md` to the design phase's artifacts list (when Figma discovery ran, `figma-handoff-review.md` is already there — it was recorded at the handoff gate)
 - Append `artifact_created` event to `history.yaml`
-- Tell the user: "Fase design concluída. Rode `/afyapowers:next` para avançar para **plan**."
+- Tell the user: "Fase design concluída. Rode `/afyapowers-dev:next` para avançar para **plan**."
 
 ## Key Principles
 

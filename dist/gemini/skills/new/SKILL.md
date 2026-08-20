@@ -1,16 +1,16 @@
-# /afyapowers:new — Start a New Feature
+# /afyapowers-dev:new — Start a New Feature
 
 You are starting a new feature workflow. Follow these steps exactly:
 
 ## Step 0: Verify Python
 
-afyapowers requires Python 3.9+ at runtime (setup and history logging). Check it is available:
+afyapowers-dev requires Python 3.9+ at runtime (setup and history logging). Check it is available:
 
 ```bash
 command -v python3 >/dev/null && echo OK || echo MISSING
 ```
 
-If the result is `MISSING`, tell the user: "O afyapowers requer Python 3.9+, que não está no seu PATH. Instale o Python 3.9 ou mais recente e rode `/afyapowers:new` novamente." Then **stop** — do not create any feature.
+If the result is `MISSING`, tell the user: "O afyapowers-dev requer Python 3.9+, que não está no seu PATH. Instale o Python 3.9 ou mais recente e rode `/afyapowers-dev:new` novamente." Then **stop** — do not create any feature.
 
 ## Step 1: Get Feature Name
 
@@ -66,7 +66,7 @@ events:
   - timestamp: <current-ISO-8601-timestamp>
     event: feature_created
     phase: design
-    command: /afyapowers:new
+    command: /afyapowers-dev:new
     details: "Feature '<feature-name>' created"
   - timestamp: <current-ISO-8601-timestamp>
     event: phase_started
@@ -91,4 +91,4 @@ When the design skill completes and produces the `design.md` artifact:
 1. Save it to `.afyapowers/features/<directory-name>/artifacts/design.md`
 2. Update `state.yaml` to add `design.md` to the design phase artifacts list
 3. Append an `artifact_created` event to `history.yaml`
-4. Tell the user: "Fase design concluída. Rode `/afyapowers:next` para avançar para **plan**."
+4. Tell the user: "Fase design concluída. Rode `/afyapowers-dev:next` para avançar para **plan**."

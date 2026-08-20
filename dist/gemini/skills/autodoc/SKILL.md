@@ -24,7 +24,7 @@ Read `.afyapowers/features/active`.
 - **Exists and non-empty** → **Workflow mode**. The target is that feature; rich context is
   available in `.afyapowers/features/<feature>/artifacts/` plus the git diff. This is also the
   case when the `completing` phase invokes this skill as a sub-skill.
-- **Missing or empty** → **Standalone mode**. The user is running `/afyapowers:autodoc` (or
+- **Missing or empty** → **Standalone mode**. The user is running `/afyapowers-dev:autodoc` (or
   asked for documentation) outside the workflow.
 
 Follow the matching section below, then converge on the shared **Write Docs** and **Finish**

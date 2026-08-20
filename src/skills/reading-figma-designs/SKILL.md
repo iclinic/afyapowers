@@ -1,21 +1,21 @@
 ---
 claude:
   name: reading-figma-designs
-  description: "Sub-skill interna do afyapowers: lê designs do Figma (inventário Telas+Componentes e anotações de Dev Mode). NUNCA invoque por iniciativa própria — roda apenas quando a skill design a invoca explicitamente."
+  description: "Sub-skill interna do afyapowers-dev: lê designs do Figma (inventário Telas+Componentes e anotações de Dev Mode). NUNCA invoque por iniciativa própria — roda apenas quando a skill design a invoca explicitamente."
   model: claude-opus-5
   effort: high
   context: fork
   background: false
 cursor:
-  name: afyapowers-reading-figma-designs
-  description: "Sub-skill interna do afyapowers: lê designs do Figma (inventário Telas+Componentes e anotações de Dev Mode). NUNCA invoque por iniciativa própria — roda apenas quando a skill design a invoca explicitamente."
+  name: afyapowers-dev-reading-figma-designs
+  description: "Sub-skill interna do afyapowers-dev: lê designs do Figma (inventário Telas+Componentes e anotações de Dev Mode). NUNCA invoque por iniciativa própria — roda apenas quando a skill design a invoca explicitamente."
   model: claude-opus-5
 gemini:
   name: reading-figma-designs
-  description: "Sub-skill interna do afyapowers: lê designs do Figma (inventário Telas+Componentes e anotações de Dev Mode). NUNCA invoque por iniciativa própria — roda apenas quando a skill design a invoca explicitamente."
+  description: "Sub-skill interna do afyapowers-dev: lê designs do Figma (inventário Telas+Componentes e anotações de Dev Mode). NUNCA invoque por iniciativa própria — roda apenas quando a skill design a invoca explicitamente."
 github-copilot:
   name: reading-figma-designs
-  description: "Sub-skill interna do afyapowers: lê designs do Figma (inventário Telas+Componentes e anotações de Dev Mode). NUNCA invoque por iniciativa própria — roda apenas quando a skill design a invoca explicitamente."
+  description: "Sub-skill interna do afyapowers-dev: lê designs do Figma (inventário Telas+Componentes e anotações de Dev Mode). NUNCA invoque por iniciativa própria — roda apenas quando a skill design a invoca explicitamente."
 ---
 
 # Reading Figma Designs (Design Phase)

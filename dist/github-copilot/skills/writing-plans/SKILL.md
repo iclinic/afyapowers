@@ -1,6 +1,6 @@
 ---
 name: writing-plans
-description: "Fase plan do afyapowers: transforma o design técnico em tarefas de implementação. NUNCA invoque por iniciativa própria — roda apenas por invocação explícita do usuário ou da skill next."
+description: "Fase plan do afyapowers-dev: transforma o design técnico em tarefas de implementação. NUNCA invoque por iniciativa própria — roda apenas por invocação explícita do usuário ou da skill next."
 ---
 
 # Writing Plans
@@ -15,7 +15,7 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 ## Phase Gate
 
-If this skill was invoked by `/afyapowers:next` (you already know the active feature slug and confirmed the phase is `plan` from the conversation context above):
+If this skill was invoked by `/afyapowers-dev:next` (you already know the active feature slug and confirmed the phase is `plan` from the conversation context above):
 - Skip steps 1-3 — use the slug from context
 - Read the design from `.afyapowers/features/<feature>/artifacts/design.md` as input
 
@@ -190,7 +190,7 @@ File overlap validation is a safety net, not a substitute for thinking about tas
 ```markdown
 # [Feature Name] Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use the afyapowers implementing skill to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use the afyapowers-dev implementing skill to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** [One sentence describing what this builds]
 
@@ -359,4 +359,4 @@ After saving the plan:
 
 1. Update `state.yaml` to add `plan.md` to the plan phase's artifacts list
 2. Append `artifact_created` event to `history.yaml`
-3. Tell the user: "Fase plan concluída. Rode `/afyapowers:next` para avançar para **implement**."
+3. Tell the user: "Fase plan concluída. Rode `/afyapowers-dev:next` para avançar para **implement**."

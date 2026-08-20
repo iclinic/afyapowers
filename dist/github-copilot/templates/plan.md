@@ -1,6 +1,6 @@
 # Plano de Implementação: {{feature_name}}
 
-> **Para workers agênticos:** OBRIGATÓRIO: Use a skill de implementação do afyapowers para implementar este plano. Os passos usam sintaxe de checkbox (`- [ ]`) para rastreamento.
+> **Para workers agênticos:** OBRIGATÓRIO: Use a skill de implementação do afyapowers-dev para implementar este plano. Os passos usam sintaxe de checkbox (`- [ ]`) para rastreamento.
 
 **Objetivo:** [Uma frase descrevendo o que isto constrói]
 

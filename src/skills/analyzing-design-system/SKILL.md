@@ -1,21 +1,21 @@
 ---
 claude:
   name: analyzing-design-system
-  description: "Sub-skill interna do afyapowers: resolve cada instância de componente Figma até o componente original e emite um veredito por nó. NUNCA invoque por iniciativa própria — roda apenas quando as skills design ou figma-component a invocam explicitamente."
+  description: "Sub-skill interna do afyapowers-dev: resolve cada instância de componente Figma até o componente original e emite um veredito por nó. NUNCA invoque por iniciativa própria — roda apenas quando as skills design ou figma-component a invocam explicitamente."
   model: claude-opus-5
   effort: high
   context: fork
   background: false
 cursor:
-  name: afyapowers-analyzing-design-system
-  description: "Sub-skill interna do afyapowers: resolve cada instância de componente Figma até o componente original e emite um veredito por nó. NUNCA invoque por iniciativa própria — roda apenas quando as skills design ou figma-component a invocam explicitamente."
+  name: afyapowers-dev-analyzing-design-system
+  description: "Sub-skill interna do afyapowers-dev: resolve cada instância de componente Figma até o componente original e emite um veredito por nó. NUNCA invoque por iniciativa própria — roda apenas quando as skills design ou figma-component a invocam explicitamente."
   model: claude-opus-5
 gemini:
   name: analyzing-design-system
-  description: "Sub-skill interna do afyapowers: resolve cada instância de componente Figma até o componente original e emite um veredito por nó. NUNCA invoque por iniciativa própria — roda apenas quando as skills design ou figma-component a invocam explicitamente."
+  description: "Sub-skill interna do afyapowers-dev: resolve cada instância de componente Figma até o componente original e emite um veredito por nó. NUNCA invoque por iniciativa própria — roda apenas quando as skills design ou figma-component a invocam explicitamente."
 github-copilot:
   name: analyzing-design-system
-  description: "Sub-skill interna do afyapowers: resolve cada instância de componente Figma até o componente original e emite um veredito por nó. NUNCA invoque por iniciativa própria — roda apenas quando as skills design ou figma-component a invocam explicitamente."
+  description: "Sub-skill interna do afyapowers-dev: resolve cada instância de componente Figma até o componente original e emite um veredito por nó. NUNCA invoque por iniciativa própria — roda apenas quando as skills design ou figma-component a invocam explicitamente."
 ---
 
 # Analyzing Design System
@@ -25,7 +25,7 @@ Resolve every Figma component the layout uses to **its original component, in th
 This is the single design-system brain. Two callers invoke it:
 
 - **The design phase** (`{{skill:design}}`) — entry points are the `### Componentes` entries (`C1`, `C2`…) produced by `{{skill:reading-figma-designs}}`. Output goes back into those entries and into `design.md`.
-- **`/afyapowers:figma-component`** (standalone) — the entry point is one target `COMPONENT`/`COMPONENT_SET`. Output goes into the active feature's `artifacts/` when there is one.
+- **`/afyapowers-dev:figma-component`** (standalone) — the entry point is one target `COMPONENT`/`COMPONENT_SET`. Output goes into the active feature's `artifacts/` when there is one.
 
 Neither caller reimplements these rules. If you are reading a copy of this logic somewhere else, that copy is stale.
 

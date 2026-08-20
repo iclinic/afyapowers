@@ -1,6 +1,6 @@
 ---
-name: afyapowers-subagent-driven-development
-description: "Sub-skill interna do afyapowers: executa as tarefas do plano pelo algoritmo de ondas. NUNCA invoque por iniciativa própria — roda apenas quando a skill implementing a invoca explicitamente."
+name: afyapowers-dev-subagent-driven-development
+description: "Sub-skill interna do afyapowers-dev: executa as tarefas do plano pelo algoritmo de ondas. NUNCA invoque por iniciativa própria — roda apenas quando a skill implementing a invoca explicitamente."
 model: claude-opus-5
 ---
 

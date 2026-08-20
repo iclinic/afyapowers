@@ -1,6 +1,6 @@
-# 🚀 afyapowers — Guia do Workflow
+# 🚀 afyapowers-dev — Guia do Workflow
 
-O **afyapowers** e um plugin que organiza o desenvolvimento assistido por IA em 5 fases bem definidas. Em vez de deixar a IA escrever codigo livremente, ele guia voce por um caminho estruturado — do design ate a entrega — com documentacao automatica e rastreamento completo.
+O **afyapowers-dev** e um plugin que organiza o desenvolvimento assistido por IA em 5 fases bem definidas. Em vez de deixar a IA escrever codigo livremente, ele guia voce por um caminho estruturado — do design ate a entrega — com documentacao automatica e rastreamento completo.
 
 Funciona com **Claude Code**, **Cursor**, **Gemini** e **GitHub Copilot**.
 
@@ -11,14 +11,14 @@ Funciona com **Claude Code**, **Cursor**, **Gemini** e **GitHub Copilot**.
 O fluxo basico e simples:
 
 ```
-/afyapowers:new  →  🎨 Design  →  📋 Plan  →  ⚙️ Implement  →  🔍 Review  →  ✅ Complete
+/afyapowers-dev:new  →  🎨 Design  →  📋 Plan  →  ⚙️ Implement  →  🔍 Review  →  ✅ Complete
                          ↓             ↓             ↓              ↓             ↓
                     design.md      plan.md     codigo pronto    review.md   completion.md
 ```
 
-1. Use `/afyapowers:new` para iniciar uma feature
+1. Use `/afyapowers-dev:new` para iniciar uma feature
 2. Trabalhe em cada fase ate concluir
-3. Use `/afyapowers:next` para avancar para a proxima fase
+3. Use `/afyapowers-dev:next` para avancar para a proxima fase
 4. Repita ate chegar ao final
 
 > 💡 **Dica:** Cada fase produz um artefato (arquivo Markdown). Voce so avanca quando o artefato da fase atual estiver pronto.
@@ -55,7 +55,7 @@ O fluxo basico e simples:
 | **Progressao sequencial** | As fases seguem uma ordem fixa. Nao da pra pular nem voltar. |
 | **Artefatos obrigatorios** | Cada fase gera um documento. Sem ele, voce nao avanca. |
 | **Auditoria completa** | Tudo que acontece fica registrado com data e contexto. |
-| **Verificacao antes de avancar** | O comando `/afyapowers:next` checa se a fase foi realmente concluida. |
+| **Verificacao antes de avancar** | O comando `/afyapowers-dev:next` checa se a fase foi realmente concluida. |
 | **Execucao paralela** | Na implementacao, tarefas independentes rodam ao mesmo tempo. |
 | **Auto-revisao** | Subagentes revisam o proprio trabalho durante a implementacao. |
 | **Continuidade de sessao** | Se voce fechar e abrir a IDE, o plugin restaura onde voce parou. |
@@ -235,14 +235,14 @@ O plugin usa um algoritmo de execucao em ondas (**wave execution**):
 - `artifacts/completion.md`
 - Documentacao em `docs/afyapowers/` (atualizada automaticamente)
 
-> ⚠️ **Para finalizar:** Use `/afyapowers:next` uma ultima vez apos o `completion.md` existir. A feature sera marcada como concluida.
+> ⚠️ **Para finalizar:** Use `/afyapowers-dev:next` uma ultima vez apos o `completion.md` existir. A feature sera marcada como concluida.
 
 ---
 
 ## 2. 🗺️ Diagrama de Transicao
 
 ```
-                      /afyapowers:new
+                      /afyapowers-dev:new
                            |
                            v
                     +-------------+
@@ -251,7 +251,7 @@ O plugin usa um algoritmo de execucao em ondas (**wave execution**):
                            |
                       design.md existe?
                            |
-                     /afyapowers:next
+                     /afyapowers-dev:next
                            |
                            v
                     +-------------+
@@ -260,7 +260,7 @@ O plugin usa um algoritmo de execucao em ondas (**wave execution**):
                            |
                       plan.md existe?
                            |
-                     /afyapowers:next
+                     /afyapowers-dev:next
                            |
                            v
                     +-------------+
@@ -269,7 +269,7 @@ O plugin usa um algoritmo de execucao em ondas (**wave execution**):
                            |
                       tudo marcado - [x]?
                            |
-                     /afyapowers:next
+                     /afyapowers-dev:next
                            |
                            v
                     +-------------+
@@ -278,7 +278,7 @@ O plugin usa um algoritmo de execucao em ondas (**wave execution**):
                            |
                       veredicto = "Approved"?
                            |
-                     /afyapowers:next
+                     /afyapowers-dev:next
                            |
                            v
                     +-------------+
@@ -287,7 +287,7 @@ O plugin usa um algoritmo de execucao em ondas (**wave execution**):
                            |
                       completion.md existe?
                            |
-                     /afyapowers:next
+                     /afyapowers-dev:next
                            |
                            v
                    🏁 Feature Concluida!
@@ -297,7 +297,7 @@ O plugin usa um algoritmo de execucao em ondas (**wave execution**):
 
 | Transicao | Skill usado |
 |-----------|-------------|
-| `/afyapowers:new` → Design | `design` |
+| `/afyapowers-dev:new` → Design | `design` |
 | Design → Plan | `writing-plans` |
 | Plan → Implement | `implementing` + `subagent-driven-development` |
 | Implement → Review | `reviewing` |
@@ -307,7 +307,7 @@ O plugin usa um algoritmo de execucao em ondas (**wave execution**):
 
 ## 3. 💾 Sistema de Estado
 
-O afyapowers rastreia o progresso de cada feature usando dois arquivos YAML.
+O afyapowers-dev rastreia o progresso de cada feature usando dois arquivos YAML.
 
 ### state.yaml — Estado atual
 
@@ -376,27 +376,27 @@ O arquivo `.afyapowers/features/active` contem o slug da feature ativa (ex: `202
 
 | Comando | O que faz |
 |---------|-----------|
-| `/afyapowers:new` | 🆕 Inicia uma nova feature |
-| `/afyapowers:next` | ⏭️ Avanca para a proxima fase |
-| `/afyapowers:status` | 📊 Mostra o status da feature atual |
-| `/afyapowers:history` | 📜 Mostra a timeline de eventos |
-| `/afyapowers:switch` | 🔀 Troca a feature ativa |
-| `/afyapowers:features` | 📋 Lista todas as features |
-| `/afyapowers:abort` | ❌ Aborta a feature atual |
-| `/afyapowers:figma-component` | 🧩 Cria componente Figma standalone |
+| `/afyapowers-dev:new` | 🆕 Inicia uma nova feature |
+| `/afyapowers-dev:next` | ⏭️ Avanca para a proxima fase |
+| `/afyapowers-dev:status` | 📊 Mostra o status da feature atual |
+| `/afyapowers-dev:history` | 📜 Mostra a timeline de eventos |
+| `/afyapowers-dev:switch` | 🔀 Troca a feature ativa |
+| `/afyapowers-dev:features` | 📋 Lista todas as features |
+| `/afyapowers-dev:abort` | ❌ Aborta a feature atual |
+| `/afyapowers-dev:figma-component` | 🧩 Cria componente Figma standalone |
 
-> 💡 **Nomes variam por IDE:** No Cursor, o prefixo e `afyapowers-` (ex: `/afyapowers-new`). No GitHub Copilot, sem prefixo (ex: `/new`).
+> 💡 **Nomes variam por IDE:** No Cursor, o prefixo e `afyapowers-dev-` (ex: `/afyapowers-dev-new`). No GitHub Copilot, sem prefixo (ex: `/new`).
 
 ### Detalhes de cada comando
 
-#### 🆕 `/afyapowers:new` — Iniciar feature
+#### 🆕 `/afyapowers-dev:new` — Iniciar feature
 
 1. Voce informa o nome e uma breve descricao
 2. O plugin cria o diretorio da feature com `state.yaml` e `history.yaml`
 3. A feature e marcada como ativa
 4. A fase de Design comeca automaticamente
 
-#### ⏭️ `/afyapowers:next` — Avancar fase
+#### ⏭️ `/afyapowers-dev:next` — Avancar fase
 
 1. Verifica se a fase atual foi concluida:
    - **Design:** `design.md` existe
@@ -407,27 +407,27 @@ O arquivo `.afyapowers/features/active` contem o slug da feature ativa (ex: `202
 2. Se tudo ok, marca a fase como concluida e inicia a proxima
 3. Invoca o skill correspondente a nova fase
 
-#### 📊 `/afyapowers:status` — Ver status
+#### 📊 `/afyapowers-dev:status` — Ver status
 
 Exibe: nome da feature, fase atual, status de cada fase (com indicadores visuais), artefatos gerados e progresso de tarefas (na fase de implementacao).
 
-#### 🔀 `/afyapowers:switch` — Trocar feature
+#### 🔀 `/afyapowers-dev:switch` — Trocar feature
 
 Se voce tem multiplas features, use este comando para alternar entre elas. Pode passar o slug diretamente ou escolher de uma lista.
 
-#### 📋 `/afyapowers:features` — Listar features
+#### 📋 `/afyapowers-dev:features` — Listar features
 
 Tabela com todas as features, mostrando fase atual, status e data de criacao. A feature ativa fica destacada.
 
-#### 📜 `/afyapowers:history` — Timeline
+#### 📜 `/afyapowers-dev:history` — Timeline
 
 Exibe a timeline cronologica de eventos da feature ativa.
 
-#### ❌ `/afyapowers:abort` — Abortar feature
+#### ❌ `/afyapowers-dev:abort` — Abortar feature
 
 Marca a feature como abortada. **Irreversivel!** O plugin pede confirmacao antes de executar.
 
-#### 🧩 `/afyapowers:figma-component` — Componente Figma
+#### 🧩 `/afyapowers-dev:figma-component` — Componente Figma
 
 Cria um componente a partir do Figma **fora do workflow de 5 fases**. Util para implementar componentes isolados rapidamente. Veja a [secao de Skills Extras](#figma-component) para mais detalhes.
 
@@ -446,7 +446,7 @@ Quando voce abre uma nova sessao na IDE, o plugin automaticamente restaura o con
 3. Se nao encontrar, procura features em andamento automaticamente
 4. Injeta no agente: nome da feature, fase atual, progresso de tarefas e artefatos disponiveis
 
-> 💡 **Multiplas features em andamento?** O hook pede para voce escolher com `/afyapowers:switch`.
+> 💡 **Multiplas features em andamento?** O hook pede para voce escolher com `/afyapowers-dev:switch`.
 
 ### Exemplo do contexto injetado
 
@@ -537,7 +537,7 @@ O Figma e usado em 3 fases, com niveis de acesso diferentes:
 
 ## 8. 🧩 Skills Extras
 
-Alem dos skills das 5 fases, o afyapowers inclui skills autonomos que podem ser usados a qualquer momento.
+Alem dos skills das 5 fases, o afyapowers-dev inclui skills autonomos que podem ser usados a qualquer momento.
 
 ### 🌳 Using Git Worktrees
 
@@ -566,7 +566,7 @@ Gera e atualiza documentacao viva em `docs/afyapowers/` com base nas mudancas fe
 
 ### 🧩 Figma Component {#figma-component}
 
-**Quando usar:** Para desenvolver um componente Figma isolado, fora do workflow de 5 fases. Acionado apenas manualmente via `/afyapowers:figma-component` (nunca invocado automaticamente).
+**Quando usar:** Para desenvolver um componente Figma isolado, fora do workflow de 5 fases. Acionado apenas manualmente via `/afyapowers-dev:figma-component` (nunca invocado automaticamente).
 
 **Protocolo em 3 fases:**
 
@@ -584,7 +584,7 @@ Orquestra a execucao de todas as tarefas do plano usando o algoritmo de ondas: p
 
 ## 9. 🤖 Subagentes
 
-O afyapowers usa subagentes extensivamente. Aqui esta o mapa completo:
+O afyapowers-dev usa subagentes extensivamente. Aqui esta o mapa completo:
 
 ### Por fase
 
@@ -645,10 +645,10 @@ Cada comando e skill tem frontmatter multi-agente embutido no proprio arquivo `.
 ```markdown
 ---
 claude:
-  name: afyapowers:new
+  name: afyapowers-dev:new
   description: Start a New Feature
 cursor:
-  name: afyapowers-new
+  name: afyapowers-dev-new
   description: Start a New Feature
 github-copilot:
   name: new
@@ -661,7 +661,7 @@ github-copilot:
 | IDE | Prefixo de comando | Prefixo de skill | Manifesto |
 |-----|---------------------|-------------------|-----------|
 | Claude Code | `:` (padrao) | Nenhum | `.claude-plugin/plugin.json` |
-| Cursor | `afyapowers-` | `afyapowers-` | `.cursor-plugin/plugin.json` |
+| Cursor | `afyapowers-dev-` | `afyapowers-dev-` | `.cursor-plugin/plugin.json` |
 | Gemini | Nenhum | Nenhum | — |
 | GitHub Copilot | Nenhum | Nenhum | `plugin.json` |
 
@@ -699,14 +699,14 @@ python3 sync.py cursor --clean   # Limpar + agente especifico
 
 | # | Comando (Claude Code) | Arquivo |
 |---|----------------------|---------|
-| 1 | `/afyapowers:new` | `src/commands/new.md` |
-| 2 | `/afyapowers:next` | `src/commands/next.md` |
-| 3 | `/afyapowers:status` | `src/commands/status.md` |
-| 4 | `/afyapowers:history` | `src/commands/history.md` |
-| 5 | `/afyapowers:switch` | `src/commands/switch.md` |
-| 6 | `/afyapowers:features` | `src/commands/features.md` |
-| 7 | `/afyapowers:abort` | `src/commands/abort.md` |
-| 8 | `/afyapowers:figma-component` | `src/skills/figma-component/SKILL.md` |
+| 1 | `/afyapowers-dev:new` | `src/commands/new.md` |
+| 2 | `/afyapowers-dev:next` | `src/commands/next.md` |
+| 3 | `/afyapowers-dev:status` | `src/commands/status.md` |
+| 4 | `/afyapowers-dev:history` | `src/commands/history.md` |
+| 5 | `/afyapowers-dev:switch` | `src/commands/switch.md` |
+| 6 | `/afyapowers-dev:features` | `src/commands/features.md` |
+| 7 | `/afyapowers-dev:abort` | `src/commands/abort.md` |
+| 8 | `/afyapowers-dev:figma-component` | `src/skills/figma-component/SKILL.md` |
 
 ### Todos os templates
 

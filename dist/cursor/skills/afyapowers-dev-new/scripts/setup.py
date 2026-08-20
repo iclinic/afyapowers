@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""afyapowers project scaffolding.
+"""afyapowers-dev project scaffolding.
 
 Idempotently create the content-free `.afyapowers/` structure for the current
 working directory: the state dir, `features/`, `history/`, an empty Jira ticket
 pointer, and a `.gitignore` that keeps the active-feature pointer, the Jira
 ticket pointer, and conversation
 logs out of version control. Feature-specific files (state.yaml, history.yaml, features/active) are
-written by the `/afyapowers:new` skill, which needs timestamps and the feature
+written by the `/afyapowers-dev:new` skill, which needs timestamps and the feature
 name, so this script deliberately does not touch them.
 
 Run from the project root: `python3 setup.py`. Prints `ok=true` on success.
@@ -76,5 +76,5 @@ if __name__ == "__main__":
         main()
     except OSError as exc:
         print("ok=false")
-        sys.stderr.write("afyapowers setup failed: %s\n" % exc)
+        sys.stderr.write("afyapowers-dev setup failed: %s\n" % exc)
         sys.exit(1)

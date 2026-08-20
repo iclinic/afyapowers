@@ -1,21 +1,21 @@
 ---
-name: afyapowers-next
+name: afyapowers-dev-next
 description: Advance to Next Phase
 disable-model-invocation: true
 ---
-# /afyapowers:next — Advance to Next Phase
+# /afyapowers-dev:next — Advance to Next Phase
 
 You are advancing the active feature to the next workflow phase. Follow these steps exactly:
 
 ## Step 0: Verify Python
 
-afyapowers requires Python 3.9+ at runtime (the preflight validator is Python). Check it is available:
+afyapowers-dev requires Python 3.9+ at runtime (the preflight validator is Python). Check it is available:
 
 ```bash
 command -v python3 >/dev/null && echo OK || echo MISSING
 ```
 
-If the result is `MISSING`, tell the user: "O afyapowers requer Python 3.9+, que não está no seu PATH. Instale o Python 3.9 ou mais recente e rode `/afyapowers:next` novamente." Then **stop**.
+If the result is `MISSING`, tell the user: "O afyapowers-dev requer Python 3.9+, que não está no seu PATH. Instale o Python 3.9 ou mais recente e rode `/afyapowers-dev:next` novamente." Then **stop**.
 
 ## Step 1: Preflight Validation
 
@@ -26,8 +26,8 @@ python3 "<preflight-script-path>"
 ```
 
 Parse the key=value output (one `KEY=VALUE` per line):
-- If the only line is `error=no_active_feature`: tell the user "Nenhuma feature ativa. Rode `/afyapowers:new` para começar uma, ou `/afyapowers:switch` para selecionar uma existente." Stop.
-- If the only line is `error=no_state_file`: tell the user "O arquivo de estado da feature está faltando. A feature pode estar corrompida. Rode `/afyapowers:features` para verificar." Stop.
+- If the only line is `error=no_active_feature`: tell the user "Nenhuma feature ativa. Rode `/afyapowers-dev:new` para começar uma, ou `/afyapowers-dev:switch` para selecionar uma existente." Stop.
+- If the only line is `error=no_state_file`: tell the user "O arquivo de estado da feature está faltando. A feature pode estar corrompida. Rode `/afyapowers-dev:features` para verificar." Stop.
 - If `valid=false`: report the `error` value. For implement phase, also show `task_progress`. Stop.
 - If `valid=true`: proceed to Step 2.
 
@@ -48,7 +48,7 @@ If `current_phase` is `complete` and `next_phase` is `finalize`:
    - Set next phase's `status` to `in_progress` and `started_at` to current timestamp
    - Set `current_phase` to `next_phase`
 3. Append to `history.yaml`:
-   - `phase_completed` event for the current phase (include `command: /afyapowers:next`)
+   - `phase_completed` event for the current phase (include `command: /afyapowers-dev:next`)
    - `phase_started` event for the next phase
 
 ## Step 4: Invoke Next Phase Skill
@@ -66,8 +66,8 @@ When the skill completes and produces its artifact:
 1. Save the artifact to `.afyapowers/features/<slug>/artifacts/`
 2. Update `state.yaml` to add the artifact to the current phase's artifacts list
 3. Append an `artifact_created` event to `history.yaml`
-4. Tell the user: "Fase '<phase-that-just-ran>' concluída. Rode `/afyapowers:next` para avançar para **<phase-after-that>**."
+4. Tell the user: "Fase '<phase-that-just-ran>' concluída. Rode `/afyapowers-dev:next` para avançar para **<phase-after-that>**."
 
 Use the phase names from the table above — the phase that just ran is the one you invoked the skill for (from the `next_phase` in the preflight output), and the phase after that is one step further in the workflow.
 
-For the `complete` phase, instead say: "Fase concluída. Rode `/afyapowers:next` para finalizar a feature."
+For the `complete` phase, instead say: "Fase concluída. Rode `/afyapowers-dev:next` para finalizar a feature."

@@ -3,7 +3,7 @@ name: switch
 description: Switch Active Feature
 disable-model-invocation: true
 ---
-# /afyapowers:switch — Switch Active Feature
+# /afyapowers-dev:switch — Switch Active Feature
 
 Switch the active feature context. This command accepts an optional argument: the feature name or slug.
 
@@ -19,9 +19,9 @@ Switch the active feature context. This command accepts an optional argument: th
 ### Once a feature is selected (by argument or user choice):
 
 1. Find the matching feature directory under `.afyapowers/features/` (match by slug or feature name)
-2. Verify the feature is not aborted. If it is, tell the user: "A feature '<name>' está abortada e não pode ser selecionada. Rode `/afyapowers:new` para começar uma nova feature."
+2. Verify the feature is not aborted. If it is, tell the user: "A feature '<name>' está abortada e não pode ser selecionada. Rode `/afyapowers-dev:new` para começar uma nova feature."
 3. Write the feature's directory name to `.afyapowers/features/active`
 4. Read the feature's `state.yaml`
-5. Display its status (same format as `/afyapowers:status`)
+5. Display its status (same format as `/afyapowers-dev:status`)
 
 This command does NOT modify either feature's `state.yaml`. Switching is purely a pointer change.

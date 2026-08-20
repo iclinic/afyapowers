@@ -4,7 +4,7 @@ claude:
   description: Show Feature History
   disable-model-invocation: true
 cursor:
-  name: afyapowers-history
+  name: afyapowers-dev-history
   description: Show Feature History
   disable-model-invocation: true
 github-copilot:
@@ -12,14 +12,14 @@ github-copilot:
   description: Show Feature History
   disable-model-invocation: true
 ---
-# /afyapowers:history — Show Feature History
+# /afyapowers-dev:history — Show Feature History
 
 Display the full event timeline for the active feature.
 
 ## Steps
 
 1. Read `.afyapowers/features/active` to get the active feature slug
-2. If no active feature, tell the user: "Nenhuma feature ativa. Rode `/afyapowers:switch` para selecionar uma."
+2. If no active feature, tell the user: "Nenhuma feature ativa. Rode `/afyapowers-dev:switch` para selecionar uma."
 3. Read `.afyapowers/features/<slug>/history.yaml`
 4. Display the events in chronological order:
 
@@ -27,10 +27,10 @@ Display the full event timeline for the active feature.
 Feature: <feature-name>
 History:
 
-  [2026-03-12 10:30:00] feature_created — Feature 'add-submit-button' created (via /afyapowers:new)
+  [2026-03-12 10:30:00] feature_created — Feature 'add-submit-button' created (via /afyapowers-dev:new)
   [2026-03-12 10:30:00] phase_started — design
   [2026-03-12 10:42:00] artifact_created — design.md (design phase)
-  [2026-03-12 10:45:00] phase_completed — design (via /afyapowers:next)
+  [2026-03-12 10:45:00] phase_completed — design (via /afyapowers-dev:next)
   [2026-03-12 10:45:00] phase_started — plan
   [2026-03-12 10:50:00] artifact_created — plan.md (plan phase)
 ```
