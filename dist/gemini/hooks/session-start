@@ -25,25 +25,18 @@ PREFLIGHT=$(find "$PLUGIN_ROOT/skills" -name "preflight.py" -path "*next*" 2>/de
 # Discover setup script path (handles agent-specific directory prefixes)
 SETUP=$(find "$PLUGIN_ROOT/skills" -name "setup.py" -path "*new*" 2>/dev/null | head -1)
 
-# Warn if Python 3 is unavailable — afyapowers setup and history logging require it.
+# Warn if Python 3 is unavailable — afyapowers setup requires it.
 # SessionStart cannot block, so this is a non-blocking warning only.
 PYWARN=""
 if ! command -v python3 >/dev/null 2>&1; then
-  PYWARN="\\n$(json_escape "⚠️ Python 3 not found on PATH — afyapowers setup and history logging will not work. Install Python 3.9+.")"
+  PYWARN="\\n$(json_escape "⚠️ Python 3 not found on PATH — afyapowers setup will not work. Install Python 3.9+.")"
 fi
 
 # Find .afyapowers directory relative to working directory
 AFYA_DIR=".afyapowers"
 
-# Refresh the user-level plugin-root pointer (used by the opt-in status
-# line, installed globally in ~/.claude/settings.json) so it survives
-# plugin version upgrades that change the versioned install path.
-mkdir -p "$HOME/.claude/afyapowers" 2>/dev/null || true
-printf '%s\n' "$PLUGIN_ROOT" > "$HOME/.claude/afyapowers/plugin-root" 2>/dev/null || true
-
-# Jira ticket context lives entirely in the jira-context UserPromptSubmit
-# hook: instructions injected at SessionStart arrive before the first prompt
-# and the model does not act on them (same lesson as lang-directive).
+# Jira ticket context, language re-injection, history rendering, telemetry and
+# the status line live in the separate afyapowers-core plugin.
 
 # Shared context suffix carried by every exit path.
 CTX_SUFFIX="Plugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")\\nSetup script: $(json_escape "$SETUP")${PYWARN}\\n\\n${LANG_RULE}"

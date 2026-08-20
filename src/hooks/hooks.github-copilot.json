@@ -9,15 +9,6 @@
         "cwd": ".",
         "timeoutSec": 10
       }
-    ],
-    "sessionEnd": [
-      {
-        "type": "command",
-        "bash": "./hooks/render-history github-copilot",
-        "powershell": "bash ./hooks/render-history github-copilot",
-        "cwd": ".",
-        "timeoutSec": 30
-      }
     ]
   }
 }

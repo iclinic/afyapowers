@@ -197,7 +197,7 @@ mkdir -p .afyapowers && printf '%s' 'none' > .afyapowers/current-jira-ticket
 
 Then proceed directly to Figma discovery.
 
-**Why this file matters:** `.afyapowers/current-jira-ticket` is the project's ticket pointer. The `jira-context` hook reads it on every prompt (and re-asks the user whenever it is missing or holds garbage), and telemetry attaches the key to the work done in this session. The design phase is where the ticket is established, so the pointer MUST end this step either holding a validated key or the literal `none` — never left unset, and never set to an unverified key. The file is gitignored; it is a local pointer, not a project artifact.
+**Why this file matters:** `.afyapowers/current-jira-ticket` is the project's ticket pointer. The `jira-context` hook of the afyapowers-core plugin reads it on every prompt (and re-asks the user whenever it is missing or holds garbage), and its telemetry attaches the key to the work done in this session. The design phase is where the ticket is established, so the pointer MUST end this step either holding a validated key or the literal `none` — never left unset, and never set to an unverified key. The file is gitignored; it is a local pointer, not a project artifact.
 
 **If the Atlassian MCP server is unavailable:** Warn the user and **stop the JIRA discovery flow**. Do not attempt to proceed without it — the user asked for JIRA context, so a silent fallback would undermine the purpose. Do NOT write `.afyapowers/current-jira-ticket` in this case: the key was never validated, and writing `none` would wrongly record "no ticket". Suggest the user check their MCP server connection and retry.
 

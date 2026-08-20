@@ -9,27 +9,6 @@
           }
         ]
       }
-    ],
-    "BeforeTool": [
-      {
-        "matcher": "activate_skill",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$GEMINI_PROJECT_DIR/hooks/lang-directive gemini"
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$GEMINI_PROJECT_DIR/hooks/render-history gemini"
-          }
-        ]
-      }
     ]
   }
 }

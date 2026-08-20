@@ -5,11 +5,6 @@
       {
         "command": "./hooks/session-start"
       }
-    ],
-    "sessionEnd": [
-      {
-        "command": "./hooks/render-history cursor"
-      }
     ]
   }
 }

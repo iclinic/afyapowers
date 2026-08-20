@@ -29,7 +29,8 @@ def ensure_jira_pointer():
     """Create `current-jira-ticket` EMPTY when absent, never touching an
     existing one.
 
-    Empty is the "nobody has been asked yet" state: the jira-context hook reads
+    Empty is the "nobody has been asked yet" state: the afyapowers-core
+    plugin's jira-context hook reads
     an empty/garbage/missing pointer the same way and asks the user, while the
     literal `none` means the user explicitly works without a ticket and must
     not be asked again. Pre-creating the file only saves the design phase (and

@@ -307,7 +307,7 @@ def process_hooks(
     else:
         print(
             f"  WARNING: hooks.{config.agent}.json not found — no hooks.json emitted "
-            f"(phase-context injection and history logging disabled for this agent)"
+            f"(phase-context injection disabled for this agent)"
         )
     return sum(1 for _ in hooks_out.rglob("*") if _.is_file())
 
