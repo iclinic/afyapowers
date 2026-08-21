@@ -70,6 +70,12 @@ For each lens, list concrete findings. Every finding must be **specific** (point
 input/annotation/AC) and phrased as a **question the user can answer**. Tag each **BLOCKING** (the
 design cannot be correct without an answer) or **non-blocking** (worth confirming, not a blocker).
 
+When several findings share **one product decision** (same screen/component, or the same underlying
+rule), emit them as **one composite finding with sub-items** instead of N separate findings: a single
+question that covers all the sub-items, each sub-item still stated explicitly. Tag the composite
+BLOCKING if any sub-item is BLOCKING. Group only findings that genuinely share a decision — never to
+shorten the list; findings with independent answers stay separate.
+
 1. **Contradictions** — between JIRA and Figma, among annotations, or internal to one source. (e.g.
    "JIRA says list is paginated; Figma shows an infinite-scroll annotation — which is it?")
 2. **Gaps / missing business rules** — unspecified states, transitions, permissions/roles, defaults,
@@ -107,6 +113,17 @@ design cannot be correct without an answer) or **non-blocking** (worth confirmin
 
 BLOCKING items: <N>
 ```
+
+Composite finding form (findings sharing one product decision, any lens):
+
+```
+- [BLOCKING] <shared decision> — Question: <one question covering all sub-items>
+  - <sub-item 1>
+  - <sub-item 2>
+```
+
+Each sub-item counts individually toward `BLOCKING items: <N>` — grouping changes the packaging,
+never the count.
 
 - Omit a lens's bullets only if you genuinely found nothing for it (say "- (none found)").
 - If you were re-dispatched with new user answers, only report **new** findings those answers expose

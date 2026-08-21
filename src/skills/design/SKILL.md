@@ -49,7 +49,7 @@ You MUST complete these items in order. **Requirements first (1-6), code explora
 2. **Figma discovery (trigger-based)** — check user request against trigger keywords (see below); if match, ask about Figma and collect the URL(s)
 3. **Revisão de handoff do Figma (REQUIRED quando há URLs)** — dispatch @"figma-handoff-reviewer (agent)"; it discovers the file's own design libraries via `get_libraries`, writes `figma-handoff-review.md` into the feature's artifacts and returns only a status block. On `BLOQUEADO` (Figma MCP down) or `SEM_BIBLIOTECAS` (file has no library enabled) the phase stops with no artifact. On `OK` the status block carries blocking/suggestion counts and a `Recomendação`, and the phase STOPS until the user reviews the report and decides whether to continue or talk to the Product Designer — both options always offered, the recommended one first (see HARD-GATE-HANDOFF)
 4. **Ler os designs do Figma** — invoke `{{skill:reading-figma-designs}}` to produce `## Recursos do Figma` and `## Contrato de Layout` (only after the user chose to continue)
-5. **Ask clarifying questions** — confirm **and challenge** the inputs (see below); one question at a time
+5. **Ask clarifying questions** — confirm **and challenge** the inputs (see below); in batches of up to 4 independent questions (see BATCHED-QUESTIONS)
 6. **Interrogate requirements (REQUIRED)** — dispatch @"requirements-interrogator (agent)" on the gathered inputs, then drive a question loop with the user until every BLOCKING contradiction / gap / edge case / ambiguity / risky assumption is resolved or explicitly deferred (see REQUIREMENTS-GATE)
 7. **Análise de Design System (só quando há Figma)** — invoke `{{skill:analyzing-design-system}}` on the `### Componentes` entries. **HARD GATE:** every component instance whose original is not declared in the file you read requires a direct node link from the user. Check JIRA and the initial request first, then ask for **all** pending components in one open-question message (validating each answer on arrival, re-asking only failures); the phase stops until all are resolved. Then confirm **every** node's verdict with the user — in compact batches of up to 4 nodes per prompt, one explicit answer per node — and record the completed `### Componentes` entries + `## Árvore de Componentes de DS`. Skip entirely when there is no Figma (see below)
 8. **Explore the codebase** — ONLY now, with the requirement locked. Read files, docs, recent commits. Identify reuse candidates and evaluate each against the requirement/Figma — never let existing code become the starting point (see REQUIREMENTS-BEFORE-CODE). Apply the **Component Reuse Gate**: ask the user before adopting **any** candidate, without exception
@@ -146,14 +146,24 @@ digraph design {
 
 ## The Process
 
+**How to ask questions:**
+
+<BATCHED-QUESTIONS>
+Ask in batches of up to 4. Group mutually independent questions (one answer does not change
+another) into a single `AskUserQuestion` call — up to 4 questions, each with its own options and
+its own explicit answer. Chained questions (one answer determines the next) stay sequential.
+Batching groups the questions; it never converts a decision into an assumption, filters the list,
+or creates a "confirm all" shortcut. Never re-ask what was already answered.
+</BATCHED-QUESTIONS>
+
 **Understanding the idea:**
 
 - Do NOT read project files, docs, or git history yet (see REQUIREMENTS-BEFORE-CODE). Work from the user's request, JIRA, and Figma until the dedicated codebase-exploration step.
 - Before asking detailed questions, assess scope from the request/JIRA: if it describes multiple independent subsystems (e.g., "build a platform with chat, file storage, billing, and analytics"), flag this immediately. Don't spend questions refining details of a project that needs to be decomposed first.
 - If the project is too large for a single spec, help the user decompose into sub-projects: what are the independent pieces, how do they relate, what order should they be built? Then design the first sub-project through the normal flow. Each sub-project gets its own design → plan → implementation cycle.
-- For appropriately-scoped projects, ask questions one at a time to refine the idea
+- For appropriately-scoped projects, ask questions in batches of up to 4 independent questions to refine the idea (see BATCHED-QUESTIONS)
 - Prefer multiple choice questions when possible, but open-ended is fine too
-- Only one question per message - if a topic needs more exploration, break it into multiple questions
+- Batch only independent questions — if answers chain (one determines the next), split into sequential messages
 - Focus on understanding: purpose, constraints, success criteria
 
 **JIRA discovery (offer-based):**
@@ -411,21 +421,21 @@ When JIRA and/or Figma data was gathered, do NOT just play it back for confirmat
 - **Confirm the baseline:** present the ticket's requirements/AC/scope and what the design shows (structure, breakpoints, hierarchy, annotations) and ask the user to confirm, correct, or extend. Surface annotations explicitly — they encode business rules, behavior, animations, accessibility, dev instructions the user must validate.
 - **Then challenge every input.** For each requirement, acceptance criterion, and annotation, actively probe: Does it conflict with another source? What states does it not mention (empty, loading, error, zero/one/many, unauthorized)? What business rule is implied but unstated? What term is vague? What is it quietly assuming (API shape, data presence, layout host)? Confirming "yes that's what it says" is not enough — find what it leaves out.
 - Ask about things no source covers: technical constraints, architecture preferences, performance, security/permissions.
-- One question at a time. Prefer multiple choice when possible.
+- Batches of up to 4 independent questions (see BATCHED-QUESTIONS). Prefer multiple choice when possible.
 
 Examples (challenge, not just confirm):
 - **With JIRA:** "PROJ-123 says '[summary]'. The AC cover [X, Y] but say nothing about what happens when the list is empty or the request fails — what should those show?"
 - **With Figma:** "The Figma annotation says 'disabled until valid', but no validation rules are given. What exactly makes the form valid?"
 - **Contradiction:** "JIRA says results are paginated; the Figma annotation describes infinite scroll. Which is correct?"
 
-When neither JIRA nor Figma is available, ask questions one at a time to understand purpose, constraints, and success criteria — and still probe for edge cases, states, and assumptions.
+When neither JIRA nor Figma is available, ask questions — in batches of up to 4 independent ones — to understand purpose, constraints, and success criteria — and still probe for edge cases, states, and assumptions.
 
 **Requirements Interrogation (REQUIRED):**
 
 After the baseline confirm+challenge pass, run a dedicated adversarial analysis before writing anything. This is a hard gate (see REQUIREMENTS-GATE) — the design doc may not be written while any BLOCKING item is open.
 
 1. **Dispatch @"requirements-interrogator (agent)".** Announce: "Usando o requirements-interrogator para estressar os requisitos." Paste the raw inputs only (NO codebase — exploration comes later): the user's request, the JIRA context, the Figma Telas + Componentes inventory + verbatim annotations, and the user answers gathered so far. It returns findings across five lenses (contradictions, gaps/business rules, edge cases, ambiguities, risky assumptions), each tagged BLOCKING or non-blocking, plus a `BLOCKING items: N` count.
-2. **Drive the loop with the user.** Ask **every** finding — BLOCKING and non-blocking alike — one question at a time. Record each answer. Do not filter the list by what you judge cheap or obvious: deciding an item is not worth asking is itself a decision about the requirement, and it is not yours to make. A non-blocking item the user waves off costs one exchange; a non-blocking item you drop silently costs a wrong assumption baked into the design.
+2. **Drive the loop with the user.** Ask **every** finding — BLOCKING and non-blocking alike — in batches of up to 4 findings per `AskUserQuestion` call, grouping related findings (same lens or same screen/component) into a single question when they share one decision. Record an explicit answer for every finding. Do not filter the list by what you judge cheap or obvious: deciding an item is not worth asking is itself a decision about the requirement, and it is not yours to make. A non-blocking item the user waves off costs one exchange; a non-blocking item you drop silently costs a wrong assumption baked into the design.
 3. **Re-dispatch to catch second-order gaps.** Feed the new answers back to the interrogator; it reports only new findings the answers expose and anything still unresolved. Repeat until it returns `BLOCKING items: 0` (loop-until-dry, max 5 re-dispatches). If the loop reaches 5 re-dispatches with BLOCKING items still open, surface all remaining items to the user and ask them to resolve or explicitly defer each one before proceeding — do not keep looping.
 4. **Resolve or defer.** Every BLOCKING item must end resolved (user answered) or explicitly deferred (user chose to). Only then proceed. Reflect confirmed business rules into Requirements, and record the outcomes in the design doc's `## Casos de Borda & Estados`, `## Premissas & Riscos`, and `## Questões em Aberto` sections (Status: resolved / deferred).
 
@@ -435,7 +445,7 @@ Now — and only now — read the project: files, docs, recent commits, existing
 
 - Explore the current structure and conventions so the design fits the project.
 - Identify reuse candidates (existing components, utilities, patterns) — but treat each as a *candidate measured against the requirement*, not as the thing the design must bend toward. A candidate that doesn't match the requirement/Figma is not a fit; prefer building to the requirement over retrofitting a near-match.
-- Run the **Component Reuse Gate** above on every candidate you would reuse: ask the user before adopting **any** of them, one at a time, no exceptions. Never settle on a reuse the user hasn't approved — and never conclude that a candidate is close enough that asking would be a formality.
+- Run the **Component Reuse Gate** above on every candidate you would reuse: ask the user before adopting **any** of them — batched up to 4 candidates per prompt as NO-SILENT-REUSE specifies, one explicit answer per candidate, no exceptions. Never settle on a reuse the user hasn't approved — and never conclude that a candidate is close enough that asking would be a formality.
 - Where existing code has problems that affect the work (a file grown too large, tangled responsibilities), note targeted improvements — but don't propose unrelated refactoring.
 
 **Exploring approaches:**
@@ -537,7 +547,7 @@ Wait for the user's response. If they request changes, make them and re-run the 
 
 ## Key Principles
 
-- **One question at a time** - Don't overwhelm with multiple questions
+- **Batch independent questions (up to 4)** - One `AskUserQuestion` call per batch; chained questions stay sequential; every question still gets its own explicit answer
 - **Multiple choice preferred** - Easier to answer than open-ended when possible
 - **YAGNI ruthlessly** - Remove unnecessary features from all designs
 - **Assume nothing — confirm everything** - Every substantive decision in this phase belongs to the user: which component gets adopted, every DS verdict, every derive-vs-update cut, every proposed name, every interrogation finding. You analyze and recommend; they decide. There is no confidence level, match quality, or "obvious case" that converts a decision into an assumption
