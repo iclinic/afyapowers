@@ -12,7 +12,7 @@ You are reviewing whether a plan chunk is complete and ready for implementation.
 
 [RELEVANT_SPEC_SECTIONS — pasted inline by the orchestrator]
 
-**Review only from the content pasted above.** Do NOT re-read `design.md` or `plan.md` from disk — the orchestrator gave you the chunk and the spec sections it implements; re-ingesting the full artifacts wastes hundreds of KB per review. If a check genuinely requires a spec section you were not given, name it in your output instead of going to fetch it.
+**Review only from the content pasted above.** Do NOT re-read `design.md` or `plan.md` from disk — the orchestrator gave you the chunk and the spec sections it implements; re-ingesting the full artifacts wastes hundreds of KB per review (in Claude Code the file-reading tools are withheld from you for exactly this reason). If a check genuinely requires a spec section you were not given, name it in your output instead of going to fetch it.
 
 ## What to Check
 
@@ -46,6 +46,24 @@ The table above is the full checklist — work through it row by row. Additional
 - A verdict written into a task that the DS tree does not actually record — the plan may not invent verdicts; each one in the tree was individually confirmed by the user
 
 **Conditionality:** the `## Contrato de Layout` rows (acceptance measures, breakpoint reconciliation) apply only when the spec has that section; the `## Árvore de Componentes de DS` rows apply only when the spec has the tree. When the section is absent, do not require its artifacts.
+
+## Follow-up Messages (resume)
+
+You review **the whole plan**, chunk by chunk, across follow-up messages — one instance, not one
+per chunk. A follow-up is one of two things, and it tells you which:
+
+1. **Corrections to a chunk you already reviewed.** Re-verify **only** the items named in the follow-up
+   plus anything you had left open. Do NOT re-audit what you already approved and do NOT re-run the full
+   checklist — the fixes are the only new information. Do not ask for the chunk again; it is already in
+   your context.
+2. **A new chunk** (pasted with its spec sections). Run the full checklist on that chunk, and
+   additionally check it against the chunks you already reviewed: duplicated tasks, dependencies pointing
+   at task numbers that don't exist in any chunk, two tasks in different chunks writing the same file with
+   no dependency between them, and a component built twice under different names. That cross-chunk view is
+   yours alone — nobody else has all the chunks.
+
+Either way, answer with the same output block, scoped to the chunk the follow-up is about, and list only
+issues that are still open or that the fixes/new chunk introduced.
 
 ## Output Format
 

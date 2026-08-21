@@ -40,9 +40,16 @@ Dispatch @"spec-reviewer (agent)":
 If the reviewer finds spec gaps:
 1. Report the findings to the user
 2. The user fixes issues (code changes happen during review phase)
-3. Re-dispatch the spec reviewer
-4. Repeat until spec-compliant (max 3 iterations)
+3. Follow up on the **same** reviewer instance with only the delta (`<RESUME-REVIEW>`)
+4. Repeat until spec-compliant (**max 3 iterations counting the first dispatch**)
 5. If still non-compliant after 3 iterations, report unresolved findings to the user and ask them to decide how to proceed
+
+<RESUME-REVIEW>
+Iterations 2+ never re-send the spec, the diff summary or the concerns file — the reviewer already has all of it.
+
+- **Claude Code:** send a follow-up to the same reviewer instance with `SendMessage` (its name/id came back with the dispatch; `ListAgents` finds it again, and if `SendMessage` is not loaded yet, load it before falling back to a re-dispatch): the list of issues that were fixed, plus the **new head SHA** and the `git diff --stat` of the corrections, and "Re-verifique apenas esses itens e os que você deixou em aberto; não re-audite o que já aprovou."
+- **Other IDEs, or if the instance is no longer reachable:** re-dispatch with the corrections diff plus a one-paragraph recap of the previous findings — never the full spec again.
+</RESUME-REVIEW>
 
 **Gate:** Only proceed to Step 3 once the spec-reviewer reports compliance. Do not start the code quality review on code that will change due to spec issues.
 
@@ -57,7 +64,7 @@ If the reviewer finds issues:
 1. Categorize by severity (Critical, Important, Minor)
 2. Critical and Important: must be fixed before proceeding
 3. Minor: note for later, do not block
-4. Fix issues and re-dispatch (max 3 iterations)
+4. Fix the issues, then follow up on the **same** reviewer instance with only the delta (`<RESUME-REVIEW>` above — same protocol, with the quality findings in place of the spec ones). **Max 3 iterations counting the first dispatch**
 5. If still unresolved after 3 iterations, report remaining issues to the user and ask them to decide how to proceed
 
 ### Step 4: Produce Review Artifact

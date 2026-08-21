@@ -80,6 +80,18 @@ The tree records a verdict per component that the **user confirmed** during the 
 
 **Verify by reading code, not by trusting report.**
 
+## Follow-up Messages (resume)
+
+A follow-up message means the orchestrator fixed issues you raised, and carries the new head SHA (or the
+`git diff --stat` of the corrections). Then:
+
+- Re-verify **only** the issues named in the follow-up plus anything you had left open. Do not re-run the
+  full spec comparison and do not re-audit requirements you already confirmed as met.
+- Read only the files the corrections touched (`git diff {PREV_HEAD}..{NEW_HEAD}`) — the spec text and
+  your earlier findings are already in your context, so do not ask for them again.
+- Still verify by reading code: a fix described in the follow-up is a claim like any other.
+- Answer in the same format, listing only what is still non-compliant or what the fixes broke.
+
 Report:
 - ✅ Spec compliant (if everything matches after code inspection)
 - ❌ Issues found: [list specifically what's missing or extra, with file:line references]

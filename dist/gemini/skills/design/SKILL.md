@@ -36,14 +36,14 @@ You MUST complete these items in order. **Requirements first (1-6), code explora
 3. **Revisão de handoff do Figma (REQUIRED quando há URLs)** — dispatch @"figma-handoff-reviewer (agent)"; it discovers the file's own design libraries via `get_libraries`, writes `figma-handoff-review.md` into the feature's artifacts and returns only a status block. On `BLOQUEADO` (Figma MCP down) or `SEM_BIBLIOTECAS` (file has no library enabled) the phase stops with no artifact. On `OK` the status block carries blocking/suggestion counts and a `Recomendação`, and the phase STOPS until the user reviews the report and decides whether to continue or talk to the Product Designer — both options always offered, the recommended one first (see HARD-GATE-HANDOFF)
 4. **Ler os designs do Figma** — invoke `afyapowers-dev:reading-figma-designs` to produce `## Recursos do Figma` and `## Contrato de Layout` (only after the user chose to continue)
 5. **Ask clarifying questions** — confirm **and challenge** the inputs (see below); in batches of up to 4 independent questions (see BATCHED-QUESTIONS)
-6. **Interrogate requirements (REQUIRED)** — dispatch @"requirements-interrogator (agent)" on the gathered inputs, then drive a question loop with the user until every BLOCKING contradiction / gap / edge case / ambiguity / risky assumption is resolved or explicitly deferred (see REQUIREMENTS-GATE)
+6. **Interrogate requirements (REQUIRED)** — dispatch @"requirements-interrogator (agent)" **once** on the gathered inputs, then drive a question loop with the user, resuming the same agent with only the new answers each round (max 3 rounds), until every BLOCKING contradiction / gap / edge case / ambiguity / risky assumption is resolved or explicitly deferred (see REQUIREMENTS-GATE)
 7. **Análise de Design System (só quando há Figma)** — invoke `afyapowers-dev:analyzing-design-system` on the `### Componentes` entries. **HARD GATE:** every component instance whose original is not declared in the file you read requires a direct node link from the user. Check JIRA and the initial request first, then ask for **all** pending components in one open-question message (validating each answer on arrival, re-asking only failures); the phase stops until all are resolved. Then confirm **every** node's verdict with the user — in compact batches of up to 4 nodes per prompt, one explicit answer per node — and record the completed `### Componentes` entries + `## Árvore de Componentes de DS`. Skip entirely when there is no Figma (see below)
 8. **Explore the codebase** — ONLY now, with the requirement locked. Read files, docs, recent commits. Identify reuse candidates and evaluate each against the requirement/Figma — never let existing code become the starting point (see REQUIREMENTS-BEFORE-CODE). Apply the **Component Reuse Gate**: ask the user before adopting **any** candidate, without exception
 9. **Propose 2-3 approaches** — with trade-offs and your recommendation
 10. **Present design** — in sections scaled to their complexity, get user approval after each section
 11. **Confirm the Layout Contract (when Figma is present)** — if Figma discovery ran, confirm `## Contrato de Layout` (derived by `reading-figma-designs` from `get_metadata`) is present and complete in the design doc; if there is no Figma reference, omit the section (see below)
 12. **Write design doc** — save to `.afyapowers/features/<feature>/artifacts/design.md` (only once no BLOCKING interrogation item remains open)
-13. **Design review loop** — dispatch @"design-reviewer (agent)"; fix issues and re-dispatch until approved (max 5 iterations, then surface to human)
+13. **Design review loop** — dispatch @"design-reviewer (agent)"; fix issues and follow up on the same instance with only the corrections until approved (max 3 iterations, then surface to human)
 14. **User reviews written spec** — ask user to review the spec file before proceeding
 
 **Why the DS analysis comes after the interrogation (item 7, not item 5):** it reads the codebase to
@@ -104,7 +104,7 @@ digraph design {
     "Confirm + challenge questions" -> "Interrogate requirements (agent + user loop)";
     "Standard clarifying questions" -> "Interrogate requirements (agent + user loop)";
     "Interrogate requirements (agent + user loop)" -> "BLOCKING items resolved?";
-    "BLOCKING items resolved?" -> "Interrogate requirements (agent + user loop)" [label="no — ask user, re-run"];
+    "BLOCKING items resolved?" -> "Interrogate requirements (agent + user loop)" [label="no — ask user,\nresume o mesmo agente (máx. 3 rodadas)"];
     "BLOCKING items resolved?" -> "Figma present?" [label="yes / deferred"];
     "Figma present?" -> "Detectar componentes NÃO RESOLVIDOS" [label="yes"];
     "Figma present?" -> "Explore codebase (requirement locked)" [label="no — skip DS analysis"];
@@ -121,7 +121,7 @@ digraph design {
     "User approves design?" -> "Write design doc" [label="yes"];
     "Write design doc" -> "Design review loop";
     "Design review loop" -> "Design review passed?";
-    "Design review passed?" -> "Design review loop" [label="issues found,\nfix and re-dispatch"];
+    "Design review passed?" -> "Design review loop" [label="issues found,\nfix e follow-up no mesmo agente"];
     "Design review passed?" -> "User reviews design?" [label="approved"];
     "User reviews design?" -> "Write design doc" [label="changes requested"];
     "User reviews design?" -> "Suggest /afyapowers-dev:next" [label="approved"];
@@ -422,8 +422,13 @@ After the baseline confirm+challenge pass, run a dedicated adversarial analysis 
 
 1. **Dispatch @"requirements-interrogator (agent)".** Announce: "Usando o requirements-interrogator para estressar os requisitos." Paste the raw inputs only (NO codebase — exploration comes later): the user's request, the JIRA context, the Figma Telas + Componentes inventory + verbatim annotations, and the user answers gathered so far. It returns findings across five lenses (contradictions, gaps/business rules, edge cases, ambiguities, risky assumptions), each tagged BLOCKING or non-blocking, plus a `BLOCKING items: N` count.
 2. **Drive the loop with the user.** Ask **every** finding — BLOCKING and non-blocking alike — in batches of up to 4 findings per `AskUserQuestion` call, grouping related findings (same lens or same screen/component) into a single question when they share one decision. Record an explicit answer for every finding. Do not filter the list by what you judge cheap or obvious: deciding an item is not worth asking is itself a decision about the requirement, and it is not yours to make. A non-blocking item the user waves off costs one exchange; a non-blocking item you drop silently costs a wrong assumption baked into the design.
-3. **Re-dispatch to catch second-order gaps.** Feed the new answers back to the interrogator; it reports only new findings the answers expose and anything still unresolved. Repeat until it returns `BLOCKING items: 0` (loop-until-dry, max 5 re-dispatches). If the loop reaches 5 re-dispatches with BLOCKING items still open, surface all remaining items to the user and ask them to resolve or explicitly defer each one before proceeding — do not keep looping.
+3. **Retome o interrogator (resume) para pegar lacunas de segunda ordem.** Send **only the new answers** back to the *same* interrogator instance — the raw inputs and its previous findings are already in its context (see `<RESUME-INTERROGATOR>` below). It reports only findings the new answers expose plus anything still unresolved. Repeat until it returns `BLOCKING items: 0` (loop-until-dry, **max 3 rounds counting the first dispatch**). Round 3 is scoped to BLOCKING items; whatever it lists under `### Não-bloqueante remanescente` goes straight to `## Questões em Aberto` as deferred, without another round of questions. If round 3 still has BLOCKING items open, surface all remaining items to the user and ask them to resolve or explicitly defer each one before proceeding — do not keep looping.
 4. **Resolve or defer.** Every BLOCKING item must end resolved (user answered) or explicitly deferred (user chose to). Only then proceed. Reflect confirmed business rules into Requirements, and record the outcomes in the design doc's `## Casos de Borda & Estados`, `## Premissas & Riscos`, and `## Questões em Aberto` sections (Status: resolved / deferred).
+
+<RESUME-INTERROGATOR>
+- **Claude Code:** send the new answers to the same agent with `SendMessage` (its name/id came back with the dispatch; `ListAgents` finds it again, and if `SendMessage` is not loaded yet, load it before falling back to a re-dispatch). Message content is the new answers and nothing else — never re-paste the request, JIRA, the Figma inventory, the annotations, the previous answers, or its own previous findings.
+- **Other IDEs, or if the instance is no longer reachable:** re-dispatch with the new answers plus a one-paragraph recap of the findings still open — never the full raw inputs again.
+</RESUME-INTERROGATOR>
 
 **Explore the codebase (only after the requirement is locked):**
 
@@ -499,8 +504,15 @@ invoking `afyapowers-dev:reading-figma-designs` — it is the first thing that h
 - Announce: "Usando o design-reviewer para validar o design."
 - Dispatch @"design-reviewer (agent)":
   - Provide the design document content (the file just written to `.afyapowers/features/<feature>/artifacts/design.md`)
-- If issues found: fix and re-dispatch (max 5 iterations, then surface to human)
+- If issues found: fix, then send the corrections as a follow-up to the **same** instance (`<RESUME-REVIEW>`) — max 3 iterations counting the first dispatch, then surface the open items to the user
 - After approval: resume the parent flow (user review gate)
+
+<RESUME-REVIEW>
+Iterations 2+ never re-send the artifact.
+
+- **Claude Code:** send a follow-up to the **same** reviewer instance with `SendMessage` (its name/id came back with the dispatch; `ListAgents` finds it again, and if `SendMessage` is not loaded yet, load it before falling back to a re-dispatch), containing only what changed: "Corrigi: <lista dos issues>. Re-verifique apenas esses itens e os que você deixou em aberto; não re-audite o que já aprovou."
+- **Other IDEs, or if the instance is no longer reachable:** re-dispatch with the corrections plus a one-paragraph recap of the previous findings — never the full document again.
+</RESUME-REVIEW>
 
 ## After the Design
 
@@ -515,8 +527,8 @@ After writing the design document:
 
 1. Dispatch @"design-reviewer (agent)":
    - Provide the design document file path or content
-2. If Issues Found: fix, re-dispatch, repeat until Approved
-3. If loop exceeds 5 iterations, surface to human for guidance
+2. If Issues Found: fix, then follow up on the same instance (`<RESUME-REVIEW>`), repeat until Approved
+3. If the loop reaches 3 iterations, surface the open items to the user for guidance
 
 **User Review Gate:**
 After the design review loop passes, ask the user to review the written design before proceeding:

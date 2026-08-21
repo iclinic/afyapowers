@@ -112,6 +112,19 @@ git diff {BASE_SHA}..{HEAD_SHA}
 
 **Reasoning:** [Technical assessment in 1-2 sentences]
 
+## Follow-up Messages (resume)
+
+A follow-up message means the orchestrator fixed issues you raised, and carries the new head SHA (or the
+`git diff --stat` of the corrections). Then:
+
+- Re-verify **only** the issues named in the follow-up plus anything you had left open. Do not re-review
+  the whole diff and do not re-raise Minor items already noted as non-blocking.
+- Read only the files the corrections touched (`git diff {PREV_HEAD}..{NEW_HEAD}`) — the earlier review is
+  already in your context, so do not ask for it again.
+- A fix can introduce new problems; judge the correction itself, don't just check the old issue is gone.
+- Answer in the same format, with the Issues section limited to what is still open or newly introduced,
+  and give the verdict again.
+
 ## Critical Rules
 
 **DO:**

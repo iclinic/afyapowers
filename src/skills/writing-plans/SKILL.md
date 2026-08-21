@@ -335,32 +335,38 @@ Use this format for tasks that implement UI components with Figma designs. The d
 
 ## Required Sub-Skills
 
-**REQUIRED:** Dispatch @"plan-reviewer (agent)" after writing each plan chunk.
+**REQUIRED:** Every plan chunk is validated by @"plan-reviewer (agent)" — **one single instance for the whole plan**, not one per chunk.
 
-- Announce: "Usando o plan-reviewer para validar o plano."
-- Dispatch @"plan-reviewer (agent)":
+- Announce (first chunk only): "Usando o plan-reviewer para validar o plano."
+- Dispatch @"plan-reviewer (agent)" **once**, for chunk 1:
   - Paste the **full chunk content** and the **spec sections relevant to that chunk** (the requirements/telas/componentes the chunk implements) directly into the prompt
-  - Instruct explicitly: "Review only from the content pasted here — do NOT re-read design.md or plan.md from disk." (Each chunk reviewer that re-ingests both full artifacts costs hundreds of KB of redundant reads.)
-- If issues found: fix and re-dispatch (max 5 iterations, then surface to human)
-- After approval: proceed to next chunk or completion
+  - Instruct explicitly: "Review only from the content pasted here — do NOT re-read design.md or plan.md from disk." (The agent has no file-reading tools; a reviewer that re-ingests both full artifacts would cost hundreds of KB of redundant reads.)
+- Chunks 2+ and every fix iteration go to that **same instance** as a follow-up — see `<RESUME-LOOP>` below
+- Max 3 review iterations per chunk, then surface to the user
 
 ## Plan Review Loop
 
 After completing each chunk of the plan:
 
-1. Dispatch @"plan-reviewer (agent)":
-   - Provide: chunk content pasted inline + the spec sections relevant to the chunk (not file paths to re-read)
-2. If Issues Found:
-   - Fix the issues in the chunk
-   - Re-dispatch reviewer for that chunk
-   - Repeat until Approved
-3. If Approved: proceed to next chunk (or completion if last chunk)
+1. **Chunk 1:** dispatch @"plan-reviewer (agent)" with the chunk content pasted inline + the spec sections relevant to the chunk (not file paths to re-read).
+2. **Chunks 2+:** send the new chunk to the *same* reviewer instance as a follow-up (`<RESUME-LOOP>`), pasting only the new chunk and its spec sections. It already has the conventions and the previous chunks in context, so it also catches what nobody else can see: duplicated tasks, dependencies pointing at task numbers no chunk defines, and two chunks writing the same file with no dependency between them.
+3. **If Issues Found:** fix the chunk, then send the corrections as a follow-up (`<RESUME-LOOP>`) — never re-paste the chunk. Repeat until Approved, max 3 iterations for that chunk.
+4. **If Approved:** proceed to next chunk (or completion if last chunk).
+
+<RESUME-LOOP>
+Follow-ups NEVER re-send content the reviewer already has.
+
+- **Claude Code:** send the follow-up to the **same** reviewer instance with `SendMessage` (its name/id is in the dispatch result; `ListAgents` finds it again, and if `SendMessage` is not loaded yet, load it before falling back to a re-dispatch). For a fix iteration, send only what changed: "Corrigi no chunk N: <lista>. Re-verifique apenas esses itens e os que você deixou em aberto; não re-audite o que já aprovou." For a new chunk, send the chunk plus its spec sections.
+- **Other IDEs, or if the instance is no longer reachable:** re-dispatch, pasting the chunk plus a one-paragraph recap of the previous findings — never the whole plan.
+
+A new instance is also the right answer when the reviewer's context is getting close to full after many chunks: start one, tell it which chunks it did not see, and continue. That is a normal outcome, not a failure.
+</RESUME-LOOP>
 
 **Chunk boundaries:** Use `## Chunk N: <name>` headings to delimit chunks. Each chunk should be ≤1000 lines and logically self-contained.
 
 **Review loop guidance:**
 - Same agent that wrote the plan fixes it (preserves context)
-- If loop exceeds 5 iterations, surface to human for guidance
+- If a chunk exceeds 3 review iterations, surface the open items to the user and ask how to proceed
 - Reviewers are advisory - explain disagreements if you believe feedback is incorrect
 
 ## Completion
