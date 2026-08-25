@@ -19,11 +19,9 @@ PLUGIN_ROOT=$(cd "$(dirname "$0")/.." && pwd)
 LANG_RULE_RAW='Idioma / Language: Fale com o usuário em português do Brasil (pt-BR) por padrão. Se o usuário escrever em outro idioma, espelhe o idioma dele na conversa. Independente do idioma da conversa, TODOS os artefatos do afyapowers-dev (design.md, plan.md, review.md, completion.md, implementation-concerns.md e docs) DEVEM ser escritos SEMPRE em português do Brasil, seguindo estritamente os templates. Mantenha em inglês os termos técnicos/de produto usados convencionalmente em inglês (ex.: Tech Stack, endpoint, deploy, payload, breakpoint, Node Map, PR, merge, changelog); nunca traduza código, identificadores ou caminhos de arquivo.'
 LANG_RULE=$(json_escape "$LANG_RULE_RAW")
 
-# Discover preflight script path (handles agent-specific directory prefixes)
-PREFLIGHT=$(find "$PLUGIN_ROOT/skills" -name "preflight.py" -path "*next*" 2>/dev/null | head -1)
-
-# Discover setup script path (handles agent-specific directory prefixes)
-SETUP=$(find "$PLUGIN_ROOT/skills" -name "setup.py" -path "*new*" 2>/dev/null | head -1)
+# Feature state-machine script — fixed path, identical for every agent
+# (src/scripts/ is copied verbatim and unprefixed to dist/<agent>/scripts/).
+FEATURE="$PLUGIN_ROOT/scripts/feature.py"
 
 # Warn if Python 3 is unavailable — afyapowers-dev setup requires it.
 # SessionStart cannot block, so this is a non-blocking warning only.
@@ -39,7 +37,7 @@ AFYA_DIR=".afyapowers"
 # the status line live in the separate afyapowers-core plugin.
 
 # Shared context suffix carried by every exit path.
-CTX_SUFFIX="Plugin root: $(json_escape "$PLUGIN_ROOT")\\nPreflight script: $(json_escape "$PREFLIGHT")\\nSetup script: $(json_escape "$SETUP")${PYWARN}\\n\\n${LANG_RULE}"
+CTX_SUFFIX="Plugin root: $(json_escape "$PLUGIN_ROOT")\\nFeature script: $(json_escape "$FEATURE")${PYWARN}\\n\\n${LANG_RULE}"
 
 # If no .afyapowers directory, still provide plugin root for script access
 if [ ! -d "$AFYA_DIR" ]; then

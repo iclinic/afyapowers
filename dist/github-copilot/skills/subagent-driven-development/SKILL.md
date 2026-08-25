@@ -15,7 +15,7 @@ Execute plan by dispatching subagents per task. Tasks with no mutual dependencie
 digraph process {
     rankdir=TB;
 
-    "Analyze commit conventions (Step 0)" [shape=box];
+    "Analyze conventions + build primer (Steps 0, 0.5)" [shape=box];
     "Read plan, parse tasks and dependencies" [shape=box];
     "Check for circular dependencies" [shape=diamond];
     "Report cycle, stop" [shape=box, style=filled, fillcolor=red, fontcolor=white];
@@ -30,7 +30,7 @@ digraph process {
     "Write implementation-concerns.md" [shape=box];
     "Complete" [shape=doublecircle];
 
-    "Analyze commit conventions (Step 0)" -> "Read plan, parse tasks and dependencies";
+    "Analyze conventions + build primer (Steps 0, 0.5)" -> "Read plan, parse tasks and dependencies";
     "Read plan, parse tasks and dependencies" -> "Check for circular dependencies";
     "Check for circular dependencies" -> "Report cycle, stop" [label="cycle found"];
     "Check for circular dependencies" -> "Compute ready set" [label="no cycles"];
@@ -56,107 +56,50 @@ Follow these steps exactly to resolve dependencies and dispatch tasks in paralle
 
 ### Step 0: Analyze Commit Conventions
 
-Before parsing tasks, analyze the project's commit conventions **once**. The result is a text block **you (the orchestrator) use when committing completed tasks in Step 6.5**. Subagents do not commit, so this block is your own reference — it is not pasted into subagent prompts.
+Before parsing tasks, detect the project's commit conventions **once** by running the deterministic detector (plugin root is in your session context):
 
-**Run this analysis:**
-
-1. **Detect commit message pattern** — run `git log --oneline -20` and identify the pattern:
-   - Conventional Commits: `type(scope): description` or `type: description` (look for prefixes like feat, fix, chore, refactor, test, docs, style, ci, build, perf)
-   - Ticket-prefixed: `[PROJ-123] description` or `PROJ-123: description`
-   - Other patterns: any consistent prefix or structure
-   - Freeform: no discernible pattern
-   - Note which types/prefixes appear most often, whether scope is used, and whether messages are lowercase or capitalized
-   - **Check if commit messages include a Jira/ticket ID** (e.g., `feat(ABC-123): ...` or `[ABC-123] fix: ...`). If they do, extract the ticket ID from the current branch name — run `git branch --show-current` and look for a pattern like `ABC-123` (uppercase letters, dash, digits). Include the extracted ticket ID in the conventions block so subagents can use it in their commit messages
-
-2. **Detect commit hook tooling** — check for these files (existence only, don't parse deeply):
-   - `.lefthook.yml` or `lefthook.yml` — Lefthook
-   - `.husky/pre-commit` — Husky
-   - `.pre-commit-config.yaml` — pre-commit framework
-   - `package.json` field `scripts.prepare` containing `husky` or `lefthook`
-
-3. **Detect commitlint** — check for:
-   - `commitlint.config.js`, `.cjs`, `.mjs`, `.ts`
-   - `.commitlintrc`, `.commitlintrc.json`, `.commitlintrc.yml`, `.commitlintrc.js`
-   - `package.json` field `commitlint`
-   - If found, note it — subagents need to match the format strictly
-
-4. **Build the Commit Conventions block** — assemble a `## Commit Conventions` text block:
-
-When conventions are detected:
-```markdown
-## Commit Conventions
-
-**Message format:** <detected format, e.g. "conventional commits — type(scope): description">
-**Common types:** <list of types seen in git log, e.g. feat, fix, chore, refactor, test>
-**Scope:** <"commonly used" or "rarely used" or "not used">
-**Ticket ID:** <extracted ID from branch name if the convention requires it, e.g. "ABC-123 (from branch feature/ABC-123-new-login)" or "none detected">
-**Examples from this repo:**
-- <3-5 real examples from git log>
-
-**Pre-commit hooks:** <tool name and what it runs, e.g. "Husky runs lint-staged (eslint + prettier) and commitlint">
-**Commitlint:** <"yes — messages must follow conventional commits format" or "not detected">
-
-**If a commit fails:**
-1. Read the error output — it tells you exactly what's wrong
-2. Commitlint rejection → rewrite the message to match the format above and retry
-3. Lint/format failure → fix the reported issues or run the suggested fix command, re-stage **only the same task's files** (`git add -- <files>`), retry
-4. Other hook failure → read the error, apply the fix, re-stage the same task's files, retry
-5. After 3 failed attempts → leave the changes staged and surface the full error to the user. Never use `--no-verify`
+```bash
+python3 "<plugin-root>/scripts/detect-commit-conventions.py"
 ```
 
-When no conventions are detected:
-```markdown
-## Commit Conventions
+It inspects `git log`, the branch name, hook tooling (Lefthook/Husky/pre-commit) and commitlint configs, and prints a ready `## Commit Conventions` block — message format, common types, scope usage, ticket ID (or an instruction to ask the user when history references tickets but the branch has none), real examples, hook/commitlint status, and the commit-failure rules (max 3 attempts, never `--no-verify`).
 
-**Message format:** no enforced convention detected
-**Pre-commit hooks:** none detected
-**Commit freely** using clear, descriptive messages. If a commit fails unexpectedly, read the error and retry up to 3 times before surfacing the error to the user.
+Store the printed block verbatim — **you (the orchestrator) use it when writing commit messages in Step 6.5**. Subagents do not commit, so it is never pasted into subagent prompts.
+
+### Step 0.5: Build the Project Primer
+
+Gather, **once**, the project facts every implementer otherwise re-discovers per task. Run ONE batched discovery command (a single Bash call combining the `ls`/`grep`/`cat` checks — never one call per fact) covering:
+
+1. **Test setup** — runner + config path (`jest.config.*`, `vitest.config.*`, or the `package.json` field), the canonical test command (`package.json` scripts), and the test-utils/render-helper path if one exists.
+2. **Design tokens / theme** — where token and theme definitions live (`tailwind.config.*`, `theme/`, `tokens/`, CSS-variable files).
+3. **Canonical format + lint commands** — the exact invocations, stated once so every agent runs the identical command.
+4. **Assets directory** — the existing convention (`src/assets`, `public/`, an `icons/` folder).
+5. **Framework + conventions** — framework, component directory layout, path aliases (`tsconfig.json` `paths`).
+
+Assemble a `## Project Primer` block: **at most ~20 lines, paths and commands only, no prose** — every byte is re-sent on every subagent turn. **Omit any line you could not determine** — a wrong path is worse than a missing one; implementers fall back to their own single batched discovery for omitted facts. If the design/plan artifacts already record a fact (e.g. token locations via `## Árvore de Componentes de DS`), copy it instead of re-deriving. Store the block — you paste it into every implementer dispatch in Step 5.
+
+### Steps 1-4: Resolve the Graph (script)
+
+The task graph — parsing, cycle detection, ready set, and file-overlap filtering — is resolved deterministically by a script. At the start of execution and again **at every wave**, run:
+
+```bash
+python3 "<plugin-root>/scripts/plan-graph.py" ".afyapowers/features/<feature>/artifacts/plan.md" --completed <comma-separated task numbers completed so far this run>
 ```
 
-Store this block — you will use it when committing completed tasks in Step 6.5.
+(Omit `--completed` on the first wave. Tasks whose checkboxes are already all `- [x]` in plan.md count as completed automatically.)
 
-### Step 1: Parse Tasks
+The contract it implements: a task is **ready** when its status is `pending` (or `needs-retry` — the script cannot see retries, so re-include those numbers yourself) and every task in its `**Depends on:**` / `**Depende de:**` list is `completed`; two ready tasks that share any `**Files:**` path never run in the same wave (the script keeps the lower-numbered one). **Asset files are excluded from overlap** — they are additive, dedup-checked before writing, and idempotent, so they don't need serialization; the sequential commits in Step 6.5 ensure only the last version persists.
 
-Read the plan and extract all tasks. For each task, record:
-- Task number (from `### Task N:` or `### Tarefa N:` heading)
-- Dependencies (from `**Depends on:**` or `**Depende de:**` line — parse as list of task numbers, or empty if `none` / `nenhuma`)
-- File list (from `**Files:**` section — all file paths mentioned)
-- Status: pending, in-flight, completed, or needs-retry
+Read the output:
+- One `task=N type=... status=... deps=... files=...` line per task — this is your task table (numbers, types for Step 5 classification, file lists for Step 6.5 staging).
+- `ready=<numbers>` — the wave candidates, already filtered for file overlap.
+- `cycle=<N->M->...->N>` with exit code 1 — report: "Circular dependency detected — the following tasks form a cycle: [list]. Please fix the plan." Do NOT proceed until cycles are resolved.
 
-Example:
-```
-Task 1: deps=[]      files=[src/a.py, tests/test_a.py]     status=pending
-Task 2: deps=[]      files=[src/b.py, tests/test_b.py]     status=pending
-Task 3: deps=[1,2]   files=[src/c.py, tests/test_c.py]     status=pending
-Task 4: deps=[1,2]   files=[src/d.py, tests/test_d.py]     status=pending
-Task 5: deps=[3,4]   files=[src/e.py, tests/test_e.py]     status=pending
-```
-
-### Step 2: Check for Cycles
-
-Before executing anything, verify no circular dependencies exist. If task A depends on B and B depends on A (directly or transitively), report: "Circular dependency detected — the following tasks form a cycle: [list]. Please fix the plan." Do NOT proceed until cycles are resolved.
-
-### Step 3: Compute Ready Set
-
-A task is **ready** if:
-- Status is `pending` or `needs-retry`
-- All tasks in its `deps` list have status `completed`
-
-```
-Completed: [1, 2]
-Ready: [3, 4]    (deps [1,2] all completed)
-Waiting: [5]     (dep 3 not completed)
-```
-
-### Step 4: Validate File Overlap
-
-Check every pair of tasks in the ready set. If two tasks share any file path in their file lists, remove one from the ready set (move it back to waiting). It will be picked up in the next cycle.
-
-Overlap validation covers `**Files:**` (source) paths only. **Asset files are excluded** — they are additive, dedup-checked before writing, and idempotent, so they don't need serialization. If two parallel Figma tasks download the same icon, they produce functionally identical files (same node → same export + same fixes). Exports may not be byte-identical across calls (e.g., non-deterministic SVG attribute ordering), but the sequential commits in Step 6.5 ensure only the last version persists — no data corruption. No locking needed.
+Track task status yourself across waves (pending / in-flight / completed / needs-retry) and pass the completed numbers back via `--completed` each wave. A task you marked `needs-retry` is dispatchable again once you have addressed its blocker — treat it as ready even though the script lists it as pending.
 
 ### Step 5: Dispatch
 
-**Type-aware concurrency:** After file overlap validation, classify each task in the ready set by its `**Type:**` line:
+**Type-aware concurrency:** After file overlap validation, classify each task in the ready set by its `**Type:**` line (the `type=` field in the plan-graph output):
 - **MCP-capped task**: `Type` is `UI Screen` or `UI Component` — these implementers make Figma MCP calls
 - **Uncapped task**: `Type` is `UI Logic`, `Backend`, or `General` — no Figma MCP calls
 - **Legacy fallback**: if a task has NO `**Type:**` line, classify by the legacy heuristic — a task whose text contains a `**Figma:**` section counts as **MCP-capped**; otherwise **uncapped**
@@ -206,6 +149,7 @@ Also pass `[NODE_TYPE]`, `[FRAMEWORK]` and `[GENERATE_STORYBOOK]` from the task/
 
 Each agent gets:
 - Full task text (steps, file list, code/Figma metadata, and the `**Design System:**` block if present) — paste directly, don't make agent read files
+- **The `## Project Primer` block from Step 0.5** — paste verbatim into every implementer dispatch. This is what stops each implementer from spending its first dozen turns re-discovering the jest config, the test-utils path, and the token files.
 - **Task-relevant design spec excerpts — not the whole spec.** Paste only the sections the task actually needs: for Figma tasks, the task's screen/section context plus — from `## Árvore de Componentes de DS` — **only the rows for this task's node and its `**Depends on:**` nodes**, and — from `## Decisões de Reúso de Componentes` — only the decisions citing those nodes (these record which components exist, their import paths, and which reuses the user approved; an implementer that can't see its rows re-derives those decisions by guessing). For `UI Screen` tasks also paste the relevant Layout Contract row(s). `tdd-implementer` tasks do NOT get the DS tree — only the spec sections describing the behavior they implement. Never paste the full design.md: every byte you paste is re-sent on all of the subagent's turns
 - File constraint: "You may ONLY modify these files: [list from task's Files: section]". **For Figma tasks, append:** "— plus you MAY create asset files (icons/images) under the project's assets directory as needed; list every asset file you create in your report."
 - Return format: status (DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED) + summary, **including the exact list of files changed**. For Figma tasks, the report must **separately list any asset files created** (the "Assets created" line) — these are usually not in the Files: section and the orchestrator needs them to stage the assets.
@@ -215,7 +159,7 @@ Each agent gets:
 ### Step 6: Wait and Process Results
 
 All Agent calls return together. For each result:
-- **DONE**: mark task `completed`, update plan checkbox to `- [x]`
+- **DONE**: mark task `completed`. (The plan checkbox flip happens automatically in the Step 6.5 commit — do not edit plan.md by hand.)
 - **DONE_WITH_CONCERNS**: read concerns and sort each by the severity the implementer tagged it with (**BLOCKING** vs non-blocking **CONCERN**). Mark the task `completed` and commit its work (Step 6.5) so it isn't lost — but track BLOCKING and non-blocking concerns in **separate** lists. If a concern indicates the task is fundamentally broken, treat as `BLOCKED` instead.
   - **BLOCKING concern examples (collect as blocking, do not bury):** "I reused `DropdownPicker` as instructed but its drawer+search interaction model doesn't match the Figma chip+popover", "this component assumes a bounded-height parent the host doesn't provide", "output behaves differently from the design". These do not stop the wave, but the implement phase cannot cleanly advance until the user resolves or explicitly accepts them (enforced by the `implementing` skill).
   - **Treat as BLOCKED examples:** "I couldn't get tests to pass", "Tests fail and I can't figure out why", "Core dependency is missing and I had to stub the entire integration"
@@ -231,22 +175,34 @@ returned `DONE` or `DONE_WITH_CONCERNS` this wave — **one commit per task, str
 sequentially** (never in parallel). Sequential commits are what eliminate the
 index-lock races and cross-task contamination that parallel committing causes.
 
-For each completed task, in order:
+For each completed task, in order, run ONE call (plugin root is in your session context):
 
-1. **Stage only that task's files** — `git add -- <files from the task's **Files:** section (Create/Modify/Test)> <asset files from the task's "Assets created" report line>`. Never `git add .` or `git add -A`; that would sweep in other tasks' changes. For Figma tasks, the reported asset files are a legitimate, expected part of the task's output — stage them alongside the source files.
-2. **Verify staging** — run `git diff --cached --name-only` and confirm only this task's files are staged. The task's Files: entries **and** its reported "Assets created" paths are expected. If any *other* file appears (outside the Files list AND not a reported asset — e.g. an agent edited outside its constraint), stop and surface it to the user instead of committing.
-3. **Commit** — write a message following the `## Commit Conventions` block from Step 0, with the subject derived from the task name (`### Task N:` heading).
-4. **Handle hook failures** (safe to retry now, since commits are sequential):
-   - Commitlint rejection → rewrite the message to match the format, retry.
-   - Lint/format failure → fix the reported issues or run the formatter, re-stage **only this task's files** (`git add -- <files>`), retry.
-   - Other hook failure → read the error, apply the fix, re-stage this task's files, retry.
-   - Max 3 attempts. After that, leave the changes staged and surface the full error to the user. **Never use `--no-verify`.**
+```bash
+python3 "<plugin-root>/scripts/commit-task.py" \
+  --files "<comma-separated paths from the task's **Files:** section (Create/Modify/Test)>" \
+  --assets "<comma-separated paths from the task's 'Assets created' report line, if any>" \
+  --message "<message following the ## Commit Conventions block from Step 0, subject derived from the ### Task N: heading>" \
+  --task <N> --plan ".afyapowers/features/<feature>/artifacts/plan.md"
+```
+
+The script does the whole cycle deterministically: stages ONLY the listed files (never `git add .`/`-A`), verifies the staging, commits, and on success flips the task's plan.md checkboxes to `- [x]`. For Figma tasks, the reported asset files are a legitimate, expected part of the task's output — pass them via `--assets`.
+
+Route on the output:
+- `ok=true sha=...` — the task is committed and its checkboxes flipped. Move on.
+- `error=unexpected_staged_file:<path>` — a file outside the task's Files list AND not a reported asset is staged (e.g. an agent edited outside its constraint). **Stop and surface it to the user** instead of committing.
+- `hook_error=<output>` — a pre-commit hook or commitlint rejected the commit; the task's files are left staged. **Handle it yourself** (safe to retry now, since commits are sequential):
+  - Commitlint rejection → re-run `commit-task.py` with a message rewritten to match the format.
+  - Lint/format failure → fix the reported issues or run the formatter, then re-run `commit-task.py` with the same arguments (it re-stages only this task's files).
+  - Other hook failure → read the error, apply the fix, re-run `commit-task.py`.
+  - Max 3 attempts. After that, leave the changes staged and surface the full error to the user. **Never use `--no-verify`.**
+
+(Repair mode: `commit-task.py --flip-only --task <N> --plan <path>` flips a task's checkboxes without committing — use it only to reconcile plan.md if a session died between a commit and its flip.)
 
 Do **not** commit `BLOCKED` or `needs-retry` tasks — their work stays uncommitted until a later wave completes them successfully.
 
 ### Step 7: Repeat
 
-Go back to Step 3. Recompute the ready set from scratch based on current task statuses. Continue until all tasks are `completed`.
+Go back to Steps 1-4: re-run `plan-graph.py` with the updated `--completed` list. Continue until all tasks are `completed`.
 
 If no tasks are ready and not all tasks are completed, there's a problem:
 - If tasks are `needs-retry`: surface all blockers to the user
@@ -336,7 +292,7 @@ Use the least powerful model that can handle each role to conserve cost and incr
 
 Implementer subagents report one of four statuses:
 
-**DONE:** Mark task `completed`, update plan checkbox. No review dispatch.
+**DONE:** Mark task `completed` (the Step 6.5 commit flips the plan checkbox). No review dispatch.
 
 **DONE_WITH_CONCERNS:** Read concerns and sort by severity (**BLOCKING** vs non-blocking **CONCERN**). Store them in separate lists and mark `completed`. If the concern indicates the task is fundamentally broken (e.g., "I couldn't get tests to pass", "Core dependency is missing and I had to stub the entire integration"), treat as `BLOCKED` instead. BLOCKING concerns (e.g. a component substitution that doesn't match Figma, an unconfirmed host-height assumption, behavior that differs from the design) are collected separately and gate the phase via the `implementing` skill. Examples of non-blocking concerns: "I'm not sure this edge case is handled correctly", "The API response format might differ in production", "This works but the approach feels fragile." A concern that **defers verification** to a later phase instead of performing it (e.g. "vou validar isso na review", "will check this later") is always **BLOCKING**, never non-blocking — even if the implementer filed it as a routine ressalva — because it is a verification requirement that only closes with actual evidence, not a promise to verify eventually.
 
@@ -362,7 +318,7 @@ Implementer subagents report one of four statuses:
 - Start implementation on main/master branch without explicit user consent
 - Dispatch implementation subagents that modify the same files in parallel (file overlap = sequential)
 - Let subagents commit — committing is the orchestrator's job, done sequentially after the wave (Step 6.5)
-- Stage with `git add .` / `git add -A` — always stage a task's specific files (`git add -- <files>`)
+- Commit by hand with raw `git add`/`git commit` — always go through `scripts/commit-task.py`, which stages only the task's specific files and verifies the staging
 - Make subagent read plan file (provide full text instead)
 - Skip scene-setting context
 - Ignore subagent questions

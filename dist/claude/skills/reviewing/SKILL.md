@@ -3,6 +3,7 @@ name: reviewing
 description: "Fase review do afyapowers-dev: code review em 2 etapas (aderência à spec + qualidade). NUNCA invoque por iniciativa própria — roda apenas por invocação explícita do usuário ou da skill next."
 model: sonnet
 effort: medium
+allowed-tools: Bash(command -v python3 *), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/*)
 ---
 
 # Review Phase
@@ -15,9 +16,7 @@ If this skill was invoked by `/afyapowers-dev:next` (you already know the active
 - Skip steps 1-3 and proceed to Gather Context
 
 Otherwise (direct invocation):
-1. Read `.afyapowers/features/active` to get the active feature
-2. Read `.afyapowers/features/<feature>/state.yaml` — confirm `current_phase` is `review`
-3. If not in review phase, tell the user the current phase and stop
+1. Run `python3 "<plugin-root>/scripts/feature.py" gate review` (plugin root is in your session context). If `match=false`, tell the user the current phase and stop. Use the returned `slug` as the active feature.
 
 ## Process
 
@@ -82,8 +81,7 @@ Save to `.afyapowers/features/<feature>/artifacts/review.md`
 
 ### Step 5: Complete
 
-Update `state.yaml` to add `review.md` to the review phase's artifacts list.
-Append `artifact_created` event to `history.yaml`.
+Record it: `python3 "<plugin-root>/scripts/feature.py" record-artifact review.md` (updates `state.yaml` and `history.yaml`; confirm `ok=true`).
 
 Tell the user: "Fase review concluída. Rode `/afyapowers-dev:next` para avançar para **complete**."
 

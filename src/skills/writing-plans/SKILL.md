@@ -4,6 +4,7 @@ claude:
   description: "Fase plan do afyapowers-dev: transforma o design técnico em tarefas de implementação. NUNCA invoque por iniciativa própria — roda apenas por invocação explícita do usuário ou da skill next."
   model: claude-opus-5
   effort: high
+  allowed-tools: Bash(command -v python3 *), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/*)
 cursor:
   name: afyapowers-dev-writing-plans
   description: "Fase plan do afyapowers-dev: transforma o design técnico em tarefas de implementação. NUNCA invoque por iniciativa própria — roda apenas por invocação explícita do usuário ou da skill next."
@@ -30,10 +31,8 @@ If this skill was invoked by `/afyapowers-dev:next` (you already know the active
 - Read the design from `.afyapowers/features/<feature>/artifacts/design.md` as input
 
 Otherwise (direct invocation):
-1. Read `.afyapowers/features/active` to get the active feature
-2. Read `.afyapowers/features/<feature>/state.yaml` — confirm `current_phase` is `plan`
-3. If not in plan phase, tell the user the current phase and stop
-4. Read the design from `.afyapowers/features/<feature>/artifacts/design.md` as input
+1. Run `python3 "<plugin-root>/scripts/feature.py" gate plan` (plugin root is in your session context). If `match=false`, tell the user the current phase and stop. Use the returned `slug` as the active feature.
+2. Read the design from `.afyapowers/features/<feature>/artifacts/design.md` as input
 
 **Save plans to:** `.afyapowers/features/<feature>/artifacts/plan.md`
 
@@ -373,6 +372,5 @@ A new instance is also the right answer when the reviewer's context is getting c
 
 After saving the plan:
 
-1. Update `state.yaml` to add `plan.md` to the plan phase's artifacts list
-2. Append `artifact_created` event to `history.yaml`
-3. Tell the user: "Fase plan concluída. Rode `/afyapowers-dev:next` para avançar para **implement**."
+1. Record it: `python3 "<plugin-root>/scripts/feature.py" record-artifact plan.md` (updates `state.yaml` and `history.yaml`; confirm `ok=true`)
+2. Tell the user: "Fase plan concluída. Rode `/afyapowers-dev:next` para avançar para **implement**."
