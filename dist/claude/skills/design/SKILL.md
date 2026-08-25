@@ -346,6 +346,7 @@ Invoke `afyapowers-dev:analyzing-design-system`. Pass it:
 - the `### Componentes` entries `afyapowers-dev:reading-figma-designs` produced — which already separate the locally-declared ones from those marked `NÃO RESOLVIDO`;
 - the `get_metadata` response already in hand, so it does not re-fetch it;
 - **every Figma URL you already have** — from the JIRA issue and from the user's initial request. These are candidate origin files; the sub-skill still validates each one, but handing them over saves the user an exchange;
+- **anything you already read from disk** that bears on the existence check — the feature's `state.yaml`/artifacts, `package.json`, the local component directory listing, the DS package in use. The sub-skill runs in your turn and must not re-read what is already in context;
 - caller mode `design`.
 
 It resolves every instance **to its original component in the file that declares it**, checks the real codebase, recommends a verdict per node (`Implementar` | `Importar` | `Atualizar` | `Derivar`), and **confirms every one of them with the user — in compact batches of up to 4 nodes per prompt, each node with its own explicit answer**. It returns the confirmed tree (with the origin fileKey + original node id per node), the validated origin map, the warnings, the skip set, and the import path of every `Importar` node.
@@ -501,8 +502,9 @@ invoking `afyapowers-dev:reading-figma-designs` — it is the first thing that h
 **REQUIRED when Figma discovery produced the Telas/Componentes inventory:** Invoke `afyapowers-dev:analyzing-design-system` after the interrogation closes and before exploring the codebase.
 
 - Announce: "Usando o analyzing-design-system para resolver os componentes de DS."
-- Pass it the `### Componentes` entries, the `get_metadata` response already in hand, every Figma URL you already have (JIRA + initial request), and caller mode `design`.
+- Pass it the `### Componentes` entries, the `get_metadata` response already in hand, every Figma URL you already have (JIRA + initial request), anything you already read from disk, and caller mode `design`.
 - It confirms every node with the user (in compact batches, one explicit answer per node) and persists each batch as it goes. Do not confirm nodes yourself in parallel with it, and do not accept a tree with unconfirmed rows.
+- It runs **in this turn** — it is not a subagent and it dispatches none. If you see it delegating a codebase sweep or waiting on a background job, that is the bug this ordering exists to avoid.
 - Record the returned tree in `## Árvore de Componentes de DS`, then resume the parent flow (codebase exploration).
 
 **REQUIRED:** Dispatch @"design-reviewer (agent)" after writing the design artifact.
