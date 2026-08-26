@@ -1,7 +1,7 @@
 ---
 name: afyapowers-dev-writing-plans
 description: "Fase plan do afyapowers-dev: transforma o design técnico em tarefas de implementação. NUNCA invoque por iniciativa própria — roda apenas por invocação explícita do usuário ou da skill next."
-model: claude-opus-5
+model: claude-opus-4-8
 ---
 
 # Writing Plans

@@ -2,12 +2,12 @@
 claude:
   name: figma-handoff-reviewer
   description: Figma handoff auditor — scans a Figma handoff file for anti-patterns (frame structure, Auto Layout, design tokens, styles, layer naming, dev annotations), classifies each finding as blocking or suggestion, and writes the handoff review artifact. Requires the Figma MCP server.
-  model: claude-opus-5
+  model: claude-opus-4-8
   effort: high
 cursor:
   name: afyapowers-dev-figma-handoff-reviewer
   description: Figma handoff auditor — scans a Figma handoff file for anti-patterns (frame structure, Auto Layout, design tokens, styles, layer naming, dev annotations), classifies each finding as blocking or suggestion, and writes the handoff review artifact. Requires the Figma MCP server.
-  model: claude-opus-5
+  model: claude-opus-4-8
 gemini:
   name: figma-handoff-reviewer
   description: Figma handoff auditor — scans a Figma handoff file for anti-patterns (frame structure, Auto Layout, design tokens, styles, layer naming, dev annotations), classifies each finding as blocking or suggestion, and writes the handoff review artifact. Requires the Figma MCP server.

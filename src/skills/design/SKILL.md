@@ -2,13 +2,13 @@
 claude:
   name: design
   description: "Fase design do afyapowers-dev: explora intenção e requisitos e produz o design técnico. NUNCA invoque por iniciativa própria — roda apenas por invocação explícita do usuário ou das skills new/next."
-  model: claude-opus-5
+  model: claude-opus-4-8
   effort: high
   allowed-tools: Bash(command -v python3 *), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/*)
 cursor:
   name: afyapowers-dev-design
   description: "Fase design do afyapowers-dev: explora intenção e requisitos e produz o design técnico. NUNCA invoque por iniciativa própria — roda apenas por invocação explícita do usuário ou das skills new/next."
-  model: claude-opus-5
+  model: claude-opus-4-8
 github-copilot:
   name: design
   description: "Fase design do afyapowers-dev: explora intenção e requisitos e produz o design técnico. NUNCA invoque por iniciativa própria — roda apenas por invocação explícita do usuário ou das skills new/next."

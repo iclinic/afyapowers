@@ -1,7 +1,7 @@
 ---
 name: afyapowers-dev-figma-component-implementer
 description: Figma component implementer subagent — translates a single Figma component into production code with self-review. Requires Figma MCP server.
-model: claude-opus-5
+model: claude-opus-4-8
 ---
 # Figma Component Implementer Subagent Prompt Template
 

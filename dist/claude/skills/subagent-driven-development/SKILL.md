@@ -1,7 +1,7 @@
 ---
 name: subagent-driven-development
 description: "Sub-skill interna do afyapowers-dev: executa as tarefas do plano pelo algoritmo de ondas. NUNCA invoque por iniciativa própria — roda apenas quando a skill implementing a invoca explicitamente."
-model: claude-opus-5
+model: claude-opus-4-8
 effort: medium
 allowed-tools: Bash(command -v python3 *), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/*)
 ---

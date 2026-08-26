@@ -1,7 +1,7 @@
 ---
 name: analyzing-design-system
 description: "Sub-skill interna do afyapowers-dev: resolve cada instância de componente Figma até o componente original e emite um veredito por nó. NUNCA invoque por iniciativa própria — roda apenas quando as skills design ou figma-component a invocam explicitamente."
-model: claude-opus-5
+model: claude-opus-4-8
 effort: high
 ---
 
