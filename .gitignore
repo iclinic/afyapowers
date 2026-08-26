@@ -18,3 +18,5 @@ worktrees/
 
 # afyapowers feature state (per-project, not part of plugin)
 .afyapowers/
+.token_optimizations
+.workflow_optimiztions

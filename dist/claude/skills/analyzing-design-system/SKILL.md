@@ -3,8 +3,6 @@ name: analyzing-design-system
 description: "Sub-skill interna do afyapowers-dev: resolve cada instância de componente Figma até o componente original e emite um veredito por nó. NUNCA invoque por iniciativa própria — roda apenas quando as skills design ou figma-component a invocam explicitamente."
 model: claude-opus-5
 effort: high
-context: fork
-background: false
 ---
 
 # Analyzing Design System
@@ -28,6 +26,17 @@ You do NOT decide anything here. You **analyze**, you **recommend**, and the use
 Every verdict, reuse, derive-vs-update cut, grouping, proposed name, and tiebreak is confirmed by the user. Decisions are **presented in compact batches** to spare round-trips, but **each node still gets its own explicit answer** — batching the presentation is fine; batching the *approval* ("confirm all?") is not. There is no "obvious case" that skips its question and no auto-approved default: a component that already exists in code still gets asked, because adopting it IS a decision.
 </NO-SILENT-DECISIONS>
 
+<RUNS-INLINE>
+**This skill runs in the caller's own turn — never in a subagent, and it never spawns one.**
+
+Step 8 is the point of the skill, and it needs the user. A subagent has no way to ask them: it would resolve the whole tree and then be unable to confirm a single row, so the work comes back unconfirmed and has to be redone in the turn that *can* ask. That is why there is no `context: fork` here.
+
+The same rule applies downward:
+
+- **Do not delegate to `Agent`/`Task`.** The existence check (Step 6) is `grep`, `Read`, and `get_code_connect_map` — run them yourself, synchronously. A delegated codebase sweep costs minutes, returns a report you then have to read, and drifts past the budget in "Targeted codebase reads" below.
+- **Never poll.** No loop over a task output file, no `sleep`-and-retry, no waiting on a background job. If you catch yourself checking whether something finished, you have already taken the wrong path — go back and do the work inline.
+</RUNS-INLINE>
+
 ## Input contract
 
 The caller provides:
@@ -35,6 +44,7 @@ The caller provides:
 - **`fileKey`** — the Figma file key of the layout being analyzed.
 - **Entry points** — a single target `nodeId` (standalone) or the `### Componentes` entries (design phase), each already carrying either its original's coordinates or a `Pendência` line.
 - **Stored responses already in hand** — any `get_metadata` and `get_code_connect_map` responses the caller already fetched. **Reuse them. Never re-fetch data the caller already holds.**
+- **Everything the caller already read from disk** — `state.yaml`, `history.yaml`, the artifacts under `artifacts/`, `package.json`, directory listings, the codebase facts it hands you. **Same rule: reuse, never re-read.** "Never re-fetch what the caller already holds" is not about MCP alone — a `cat` of a file already in the turn's context costs a round-trip and buys nothing. Re-read only what you have reason to believe changed since the caller read it.
 - **Origin file URLs already known** — from the JIRA issue, the user's request, or a previous run. Candidate origins; still validated (Step 3).
 - **Caller mode** — `design` or `standalone` (only affects where output is persisted).
 

@@ -34,6 +34,16 @@ The table above is the full checklist. Additionally look for:
 - Units that lack clear boundaries or interfaces — can you understand what each unit does without reading its internals?
 - **Any decision recorded without the user having made it.** This is the highest-value thing you check, because it is invisible in a finished document: a reuse row with a recommendation and no decision, a DS tree row with a verdict nobody confirmed, an `Atualizar` to a shared component with no approval. The design reads perfectly well either way — you are the only check that the human was actually asked
 
+## Follow-up Messages (resume)
+
+A follow-up message means the orchestrator fixed issues you raised. Then:
+
+- Re-verify **only** the sections named in the follow-up plus anything you had left open. Do NOT re-run
+  the full checklist and do NOT re-audit what you already approved.
+- Re-read from disk only the design sections the fixes touched — never the whole document again.
+- Answer with the same output block, listing only issues that are still open or that the fixes
+  introduced.
+
 ## Output Format
 
 ## Design Review
