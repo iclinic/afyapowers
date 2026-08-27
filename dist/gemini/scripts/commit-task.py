@@ -9,7 +9,8 @@ Usage (from the project root):
 
     python3 commit-task.py --files "src/a.ts,src/a.test.ts" \
         [--assets "public/icon.svg"] --message "feat(X): ..." \
-        [--task N --plan .afyapowers/features/<slug>/artifacts/plan.md]
+        [--task N --plan .afyapowers/features/<slug>/artifacts/plan.md] \
+        [--no-verify]
 
     python3 commit-task.py --flip-only --task N --plan <plan.md>   # repair mode
 
@@ -22,7 +23,11 @@ Behavior and output (`key=value` lines):
   - Commits with the given message. On a hook/commitlint failure prints
     `hook_error=<combined output, tail-truncated>` and leaves the task's files
     staged: the RETRY is the model's judgment (max 3 attempts, fix what the
-    hook reported, re-stage only this task's files, NEVER `--no-verify`).
+    hook reported, re-stage only this task's files). `--no-verify` skips the
+    hooks (`git commit --no-verify`) — reserved for failures caused by
+    pre-existing or environment errors, and ONLY with explicit user approval
+    (the orchestrator offers it; never pass it on your own). When used, the
+    output includes `no_verify=true`.
   - On success prints `ok=true` and `sha=<sha>`; when `--task`/`--plan` are
     given, first flips every `- [ ]` to `- [x]` inside that task's block in
     plan.md (`checkboxes_flipped=<n>`). plan.md itself stays uncommitted,
@@ -55,12 +60,16 @@ def run_git(args):
 
 def parse_args(argv):
     opts = {"files": "", "assets": "", "message": "", "task": "",
-            "plan": "", "flip_only": False}
+            "plan": "", "flip_only": False, "no_verify": False}
     i = 0
     while i < len(argv):
         a = argv[i]
         if a == "--flip-only":
             opts["flip_only"] = True
+            i += 1
+            continue
+        if a == "--no-verify":
+            opts["no_verify"] = True
             i += 1
             continue
         key = a.lstrip("-").replace("-", "_")
@@ -107,7 +116,8 @@ def main(argv):
         print("error=bad_arguments")
         sys.stderr.write(
             "usage: commit-task.py --files <csv> [--assets <csv>] --message <msg>"
-            " [--task N --plan <plan.md>] | --flip-only --task N --plan <plan.md>\n"
+            " [--task N --plan <plan.md>] [--no-verify]"
+            " | --flip-only --task N --plan <plan.md>\n"
         )
         return 1
 
@@ -149,7 +159,10 @@ def main(argv):
         print("staged=%s" % ",".join(staged))
         return 0
 
-    commit = run_git(["commit", "-m", opts["message"]])
+    commit_args = ["commit", "-m", opts["message"]]
+    if opts["no_verify"]:
+        commit_args.append("--no-verify")
+    commit = run_git(commit_args)
     if commit.returncode != 0:
         combined = (commit.stdout + "\n" + commit.stderr).strip()
         print("ok=false")
@@ -165,6 +178,8 @@ def main(argv):
 
     print("ok=true")
     print("sha=%s" % sha)
+    if opts["no_verify"]:
+        print("no_verify=true")
     if flipped != "":
         print("checkboxes_flipped=%s" % flipped)
     return 0

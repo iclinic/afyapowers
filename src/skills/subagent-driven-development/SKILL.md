@@ -73,7 +73,7 @@ Before parsing tasks, detect the project's commit conventions **once** by runnin
 python3 "<plugin-root>/scripts/detect-commit-conventions.py"
 ```
 
-It inspects `git log`, the branch name, hook tooling (Lefthook/Husky/pre-commit) and commitlint configs, and prints a ready `## Commit Conventions` block — message format, common types, scope usage, ticket ID (or an instruction to ask the user when history references tickets but the branch has none), real examples, hook/commitlint status, and the commit-failure rules (max 3 attempts, never `--no-verify`).
+It inspects `git log`, the branch name, hook tooling (Lefthook/Husky/pre-commit) and commitlint configs, and prints a ready `## Commit Conventions` block — message format, common types, scope usage, ticket ID (or an instruction to ask the user when history references tickets but the branch has none), real examples, hook/commitlint status, and the commit-failure rules (max 3 attempts; `--no-verify` only with explicit user approval for pre-existing/environment errors — see Step 6.5).
 
 Store the printed block verbatim — **you (the orchestrator) use it when writing commit messages in Step 6.5**. Subagents do not commit, so it is never pasted into subagent prompts.
 
@@ -205,7 +205,8 @@ Route on the output:
   - Commitlint rejection → re-run `commit-task.py` with a message rewritten to match the format.
   - Lint/format failure → fix the reported issues or run the formatter, then re-run `commit-task.py` with the same arguments (it re-stages only this task's files).
   - Other hook failure → read the error, apply the fix, re-run `commit-task.py`.
-  - Max 3 attempts. After that, leave the changes staged and surface the full error to the user. **Never use `--no-verify`.**
+  - Max 3 attempts. After that, leave the changes staged and surface the full error to the user. **Never pass `--no-verify` on your own initiative.**
+  - **Exception — pre-existing or environment errors:** if the hook failure is demonstrably NOT caused by this task's changes — e.g. lint/type errors in files the task never touched, a hook tool that is missing or broken in this environment (`command not found`, version mismatch, network failure) — do not burn the 3 attempts fixing what isn't yours. Verify it is really pre-existing (e.g. the reported file is outside the task's staged set, or the hook fails the same way on an empty change), then **offer the user the choice** (via AskUserQuestion when available): (a) commit this task with `--no-verify` (re-run `commit-task.py` with the same arguments plus `--no-verify`), (b) leave the changes staged and stop so the user fixes the environment/pre-existing issue first. Never skip hooks without the user's explicit approval, and never use `--no-verify` to bypass a failure caused by the task's own files. If the user approves it, the same approval covers the remaining commits of the run that fail with the **same** pre-existing/environment error — do not re-ask per task; record `no_verify=true` commits and mention them in the final summary.
 
 (Repair mode: `commit-task.py --flip-only --task <N> --plan <path>` flips a task's checkboxes without committing — use it only to reconcile plan.md if a session died between a commit and its flip.)
 
@@ -330,6 +331,7 @@ Implementer subagents report one of four statuses:
 - Dispatch implementation subagents that modify the same files in parallel (file overlap = sequential)
 - Let subagents commit — committing is the orchestrator's job, done sequentially after the wave (Step 6.5)
 - Commit by hand with raw `git add`/`git commit` — always go through `scripts/commit-task.py`, which stages only the task's specific files and verifies the staging
+- Pass `--no-verify` to `commit-task.py` without the user's explicit approval, or to bypass a hook failure caused by the task's own changes — it exists only for pre-existing/environment errors the user chose to skip (Step 6.5)
 - Make subagent read plan file (provide full text instead)
 - Skip scene-setting context
 - Ignore subagent questions

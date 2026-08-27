@@ -42,7 +42,8 @@ FAILURE_RULES = """**If a commit fails:**
 2. Commitlint rejection -> rewrite the message to match the format above and retry
 3. Lint/format failure -> fix the reported issues or run the suggested fix command, re-stage **only the same task's files** (`git add -- <files>`), retry
 4. Other hook failure -> read the error, apply the fix, re-stage the same task's files, retry
-5. After 3 failed attempts -> leave the changes staged and surface the full error to the user. Never use `--no-verify`"""
+5. After 3 failed attempts -> leave the changes staged and surface the full error to the user
+6. Never use `--no-verify` on your own initiative. Exception: if the failure is demonstrably pre-existing (files the task never touched) or environmental (hook tool missing/broken), offer the user the choice of committing with `commit-task.py --no-verify` — only with their explicit approval"""
 
 
 def run_git(args):
