@@ -2,7 +2,7 @@
 name: afyapowers-dev-address-review
 description: Triage open-PR review comments one at a time and plan the fixes
 disable-model-invocation: true
-model: claude-opus-5
+model: claude-opus-4-8
 ---
 
 # /afyapowers-dev:address-review — Address PR Review Comments

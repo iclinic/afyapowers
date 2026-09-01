@@ -23,9 +23,7 @@ Requirements are inputs to be challenged, not facts to transcribe. JIRA tickets,
 
 ## Phase Gate
 
-1. Read `.afyapowers/features/active` to get the active feature
-2. Read `.afyapowers/features/<feature>/state.yaml` — confirm `current_phase` is `design`
-3. If not in design phase, tell the user the current phase and stop
+Run `python3 "<plugin-root>/scripts/feature.py" gate design` (plugin root is in your session context). If `match=false`, tell the user the current phase (from `current_phase` in the output) and stop. Use the returned `slug` as the active feature directory.
 
 ## Anti-Pattern: "This Is Too Simple To Need A Design"
 
@@ -259,8 +257,8 @@ Figma has already been paid twice.
    Relaying a `Motivo` here does **not** violate `<HARD-GATE-HANDOFF>`. That rule governs the
    *report's findings*, which never enter this thread. A precondition that stopped the audit from
    running is a fact stated in the status block, not an assessment of what the audit found.
-4. On `Status: OK`, record the artifact immediately: add `figma-handoff-review.md` to the design
-   phase's artifacts list in `state.yaml` and append an `artifact_created` event to `history.yaml`.
+4. On `Status: OK`, record the artifact immediately: run
+   `python3 "<plugin-root>/scripts/feature.py" record-artifact figma-handoff-review.md`.
    Do this before the gate — a phase paused at the gate must still leave a trace.
 
 <HARD-GATE-HANDOFF>
@@ -492,7 +490,7 @@ invoking `afyapowers-dev:reading-figma-designs` — it is the first thing that h
 - Pass every Figma URL you have (initial request + JIRA) and `[ARTIFACT_PATH]` = `.afyapowers/features/<feature>/artifacts/figma-handoff-review.md`.
 - It writes the report itself and returns only a status block — the report does not enter this thread.
 - Two statuses stop the phase before any gate, with no artifact written: `BLOQUEADO` (Figma MCP unavailable / `get_libraries` failed — tell the user to check the connection and retry) and `SEM_BIBLIOTECAS` (the handoff file has no design library enabled — this needs the Product Designer).
-- On `OK`: record `figma-handoff-review.md` in `state.yaml` / `history.yaml`, then apply `<HARD-GATE-HANDOFF>`: present the artifact path plus the `Bloqueantes` / `Sugestões` counts and the `Recomendação`, all transcribed from the status block, ask the user to review the report, and offer both options with the recommended one first — **relaying the block, never opining on a report you did not read**.
+- On `OK`: record `figma-handoff-review.md` (`python3 "<plugin-root>/scripts/feature.py" record-artifact figma-handoff-review.md`), then apply `<HARD-GATE-HANDOFF>`: present the artifact path plus the `Bloqueantes` / `Sugestões` counts and the `Recomendação`, all transcribed from the status block, ask the user to review the report, and offer both options with the recommended one first — **relaying the block, never opining on a report you did not read**.
 - Only after the user chooses to continue do you invoke `afyapowers-dev:reading-figma-designs`.
 
 **REQUIRED:** Dispatch @"requirements-interrogator (agent)" during the Requirements Interrogation step (before exploring the codebase or writing the design) and loop until `BLOCKING items: 0`. See the Requirements Interrogation section above.
@@ -545,8 +543,7 @@ Wait for the user's response. If they request changes, make them and re-run the 
 
 **Completion:**
 
-- Update `state.yaml` to add `design.md` to the design phase's artifacts list (when Figma discovery ran, `figma-handoff-review.md` is already there — it was recorded at the handoff gate)
-- Append `artifact_created` event to `history.yaml`
+- Record the artifact: `python3 "<plugin-root>/scripts/feature.py" record-artifact design.md` (when Figma discovery ran, `figma-handoff-review.md` is already recorded — it happened at the handoff gate)
 - Tell the user: "Fase design concluída. Rode `/afyapowers-dev:next` para avançar para **plan**."
 
 ## Key Principles

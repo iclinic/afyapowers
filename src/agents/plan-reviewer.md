@@ -3,7 +3,7 @@ claude:
   name: plan-reviewer
   description: Plan document reviewer — validates that plan chunks are complete, match the spec, and have proper task decomposition.
   model: sonnet
-  effort: high
+  effort: medium
   disallowedTools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, WebSearch
 cursor:
   name: afyapowers-dev-plan-reviewer

@@ -2,12 +2,12 @@
 claude:
   name: spec-reviewer
   description: Spec compliance reviewer — verifies implementation matches requirements by reading actual code, not trusting reports.
-  model: claude-opus-5
+  model: claude-opus-4-8
   effort: high
 cursor:
   name: afyapowers-dev-spec-reviewer
   description: Spec compliance reviewer — verifies implementation matches requirements by reading actual code, not trusting reports.
-  model: claude-opus-5
+  model: claude-opus-4-8
 github-copilot:
   name: spec-reviewer
   description: Spec compliance reviewer — verifies implementation matches requirements by reading actual code, not trusting reports.

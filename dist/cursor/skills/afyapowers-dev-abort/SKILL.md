@@ -17,10 +17,5 @@ Abandon the active feature. This is irreversible — aborted features cannot be 
 
 ### On confirmation:
 
-1. Update `state.yaml`:
-   - Set feature-level `status` to `aborted`
-   - Set the current in_progress phase's `status` to `aborted`
-2. Append to `history.yaml`:
-   - `feature_aborted` event with current timestamp and the phase it was aborted in
-3. Clear `.afyapowers/features/active` (delete the file or empty it)
-4. Tell the user: "A feature '<feature-name>' foi abortada. Rode `/afyapowers-dev:new` para começar uma nova feature."
+1. Run `python3 "<plugin-root>/scripts/feature.py" abort "<short reason, if the user gave one>"` (plugin root is in your session context). It marks the feature and its current phase `aborted` in `state.yaml`, appends the `feature_aborted` event to `history.yaml`, and removes `.afyapowers/features/active`. Confirm `ok=true`.
+2. Tell the user: "A feature '<feature-name>' foi abortada. Rode `/afyapowers-dev:new` para começar uma nova feature."

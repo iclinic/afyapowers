@@ -3,7 +3,7 @@ claude:
   name: code-quality-reviewer
   description: Code quality reviewer — checks implementation for clean code, architecture, testing, and production readiness.
   model: sonnet
-  effort: high
+  effort: medium
 cursor:
   name: afyapowers-dev-code-quality-reviewer
   description: Code quality reviewer — checks implementation for clean code, architecture, testing, and production readiness.

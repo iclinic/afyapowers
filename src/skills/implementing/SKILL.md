@@ -4,6 +4,7 @@ claude:
   description: "Fase implement do afyapowers-dev: orquestra a execução das tarefas do plano. NUNCA invoque por iniciativa própria — roda apenas por invocação explícita do usuário ou da skill next."
   model: sonnet
   effort: medium
+  allowed-tools: Bash(command -v python3 *), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/*)
 cursor:
   name: afyapowers-dev-implementing
   description: "Fase implement do afyapowers-dev: orquestra a execução das tarefas do plano. NUNCA invoque por iniciativa própria — roda apenas por invocação explícita do usuário ou da skill next."
@@ -22,15 +23,13 @@ Orchestrate plan execution by delegating to subagent-driven-development.
 ## Phase Gate
 
 If this skill was invoked by `/afyapowers-dev:next` (you already know the active feature slug and confirmed the phase is `implement` from the conversation context above):
-- Skip steps 1-3 — use the slug from context
-- Read the plan and design (steps 4-5) — these are working content needed for implementation
+- Skip step 1 — use the slug from context
+- Read the plan and design (steps 2-3) — these are working content needed for implementation
 
 Otherwise (direct invocation):
-1. Read `.afyapowers/features/active` to get the active feature
-2. Read `.afyapowers/features/<feature>/state.yaml` — confirm `current_phase` is `implement`
-3. If not in implement phase, tell the user the current phase and stop
-4. Read the plan from `.afyapowers/features/<feature>/artifacts/plan.md`
-5. Read the design from `.afyapowers/features/<feature>/artifacts/design.md` for context
+1. Run `python3 "<plugin-root>/scripts/feature.py" gate implement` (plugin root is in your session context). If `match=false`, tell the user the current phase and stop. Use the returned `slug` as the active feature.
+2. Read the plan from `.afyapowers/features/<feature>/artifacts/plan.md`
+3. Read the design from `.afyapowers/features/<feature>/artifacts/design.md` for context
 
 ## Validate Plan
 
@@ -51,11 +50,11 @@ Otherwise (direct invocation):
 
 1. Verify all plan checkboxes are marked complete (`- [x]`)
 2. If any remain unchecked, report which tasks are incomplete and ask the user how to proceed
-3. Update `state.yaml` to reflect progress
+3. If `.afyapowers/features/<feature>/artifacts/implementation-concerns.md` was created, record it: `python3 "<plugin-root>/scripts/feature.py" record-artifact implementation-concerns.md`
 4. If `.afyapowers/features/<feature>/artifacts/implementation-concerns.md` exists, read it and handle the two severities differently:
    - **Impedimentos** (output diverges from the design/Figma in look or behavior): do **NOT** smoothly advance. Present each blocking concern to the user and require an explicit decision per concern — **fix now** (loop back into implementation to resolve it) or **explicitly accept the divergence** (record the acceptance by appending `[ACCEPTED BY USER: <reason>]` to that concern's line in `implementation-concerns.md`). Only once every blocking concern is resolved or accepted may you suggest `/afyapowers-dev:next`.
      - **Verificação adiada é impedimento:** a concern whose text merely defers verification to a later step (adia verificação) — e.g. "will validate in review", "not verified now, check in review" — is itself an **Impedimento**, never a Ressalva, even if it was filed as non-blocking. Reclassify it under Impedimentos and apply the same fix-now-or-accept gate above before advancing; the phase does not advance on the strength of a promise to verify later.
    - **Ressalvas:** mention them — "Ressalvas foram coletadas — serão priorizadas durante a fase de review." These do not gate advancement.
 5. Tell the user: "Fase implement concluída. Rode `/afyapowers-dev:next` para avançar para **review**." (Only after all blocking concerns are resolved or explicitly accepted.)
 
-**This gate is also enforced in code.** `/afyapowers-dev:next` runs `preflight.py`, which reads `implementation-concerns.md` and refuses the implement→review transition while any line under `## Impedimentos` lacks an `[ACCEPTED BY USER: <reason>]` marker. So skipping step 4 does not let the phase advance — it just produces a confusing error at `/afyapowers-dev:next` instead of the conversation the user should have had here. Do the step properly: present each blocking concern, get a decision per concern, and write the acceptance markers as they are given.
+**This gate is also enforced in code.** `/afyapowers-dev:next` runs `feature.py advance`, which reads `implementation-concerns.md` and refuses the implement→review transition while any line under `## Impedimentos` lacks an `[ACCEPTED BY USER: <reason>]` marker. So skipping step 4 does not let the phase advance — it just produces a confusing error at `/afyapowers-dev:next` instead of the conversation the user should have had here. Do the step properly: present each blocking concern, get a decision per concern, and write the acceptance markers as they are given.
