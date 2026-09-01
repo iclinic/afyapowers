@@ -46,8 +46,8 @@ You MUST complete these items in order. **Requirements first (1-6), code explora
 
 1. **JIRA discovery (offer-based)** — offer the user the chance to provide a JIRA issue key; if provided, fetch the issue (the fetch is what validates the key), summarize it, and record the key in `.afyapowers/current-jira-ticket`; if the user has no ticket, record the literal `none` in that same file (see below)
 2. **Figma discovery (trigger-based)** — check user request against trigger keywords (see below); if match, ask about Figma and collect the URL(s)
-3. **Revisão de handoff do Figma (REQUIRED quando há URLs)** — dispatch @"figma-handoff-reviewer (agent)"; it discovers the file's own design libraries via `get_libraries`, writes `figma-handoff-review.md` into the feature's artifacts and returns only a status block. On `BLOQUEADO` (Figma MCP down) or `SEM_BIBLIOTECAS` (file has no library enabled) the phase stops with no artifact. On `OK` the status block carries blocking/suggestion counts and a `Recomendação`, and the phase STOPS until the user reviews the report and decides whether to continue or talk to the Product Designer — both options always offered, the recommended one first (see HARD-GATE-HANDOFF)
-4. **Ler os designs do Figma** — invoke `{{skill:reading-figma-designs}}` to produce `## Recursos do Figma` and `## Contrato de Layout` (only after the user chose to continue)
+3. **Revisão de handoff do Figma (OPTIONAL — always offered when há URLs)** — the moment URLs are in hand, ask the user via `AskUserQuestion` whether to run the handoff review or skip it and continue trusting the handoff (see OFFER-HANDOFF-REVIEW). If the user chooses to run it: dispatch @"figma-handoff-reviewer (agent)"; it discovers the file's own design libraries via `get_libraries`, writes `figma-handoff-review.md` into the feature's artifacts and returns only a status block. On `BLOQUEADO` (Figma MCP down) or `SEM_BIBLIOTECAS` (file has no library enabled) the phase stops with no artifact. On `OK` the status block carries blocking/suggestion counts and a `Recomendação`, and the phase STOPS until the user reviews the report and decides whether to continue or talk to the Product Designer — both options always offered, the recommended one first (see HARD-GATE-HANDOFF). If the user chooses to skip: proceed directly to reading the designs, with no artifact and no gate
+4. **Ler os designs do Figma** — invoke `{{skill:reading-figma-designs}}` to produce `## Recursos do Figma` and `## Contrato de Layout` (only after the handoff-review choice: immediately when the user skipped the review, or after they chose to continue at the gate when it ran)
 5. **Ask clarifying questions** — confirm **and challenge** the inputs (see below); in batches of up to 4 independent questions (see BATCHED-QUESTIONS)
 6. **Interrogate requirements (REQUIRED)** — dispatch @"requirements-interrogator (agent)" **once** on the gathered inputs, then drive a question loop with the user, resuming the same agent with only the new answers each round (max 3 rounds), until every BLOCKING contradiction / gap / edge case / ambiguity / risky assumption is resolved or explicitly deferred (see REQUIREMENTS-GATE)
 7. **Análise de Design System (só quando há Figma)** — invoke `{{skill:analyzing-design-system}}` on the `### Componentes` entries. **HARD GATE:** every component instance whose original is not declared in the file you read requires a direct node link from the user. Check JIRA and the initial request first, then ask for **all** pending components in one open-question message (validating each answer on arrival, re-asking only failures); the phase stops until all are resolved. Then confirm **every** node's verdict with the user — in compact batches of up to 4 nodes per prompt, one explicit answer per node — and record the completed `### Componentes` entries + `## Árvore de Componentes de DS`. Skip entirely when there is no Figma (see below)
@@ -74,6 +74,8 @@ digraph design {
     "Gravar .afyapowers/current-jira-ticket" [shape=box];
     "Trigger keywords match?" [shape=diamond];
     "Ask Figma question" [shape=box];
+    "Oferecer revisão de handoff (AskUserQuestion)" [shape=box];
+    "Rodar revisão de handoff?" [shape=diamond];
     "Revisar handoff (agent)" [shape=box];
     "Relatório gravado — recomendação no bloco de status" [shape=box];
     "Escolha do usuário (opção recomendada primeiro)" [shape=diamond];
@@ -107,8 +109,11 @@ digraph design {
     "Gravar .afyapowers/current-jira-ticket" -> "Trigger keywords match?";
     "Trigger keywords match?" -> "Ask Figma question" [label="yes"];
     "Trigger keywords match?" -> "Standard clarifying questions" [label="no"];
-    "Ask Figma question" -> "Revisar handoff (agent)" [label="user provides URLs"];
+    "Ask Figma question" -> "Oferecer revisão de handoff (AskUserQuestion)" [label="user provides URLs"];
     "Ask Figma question" -> "Standard clarifying questions" [label="no Figma designs"];
+    "Oferecer revisão de handoff (AskUserQuestion)" -> "Rodar revisão de handoff?";
+    "Rodar revisão de handoff?" -> "Revisar handoff (agent)" [label="rodar a revisão"];
+    "Rodar revisão de handoff?" -> "Ler designs (reading-figma-designs)" [label="pular — confiar no handoff"];
     "Revisar handoff (agent)" -> "Relatório gravado — recomendação no bloco de status";
     "Relatório gravado — recomendação no bloco de status" -> "Escolha do usuário (opção recomendada primeiro)";
     "Escolha do usuário (opção recomendada primeiro)" -> "PARAR: contatar o Product Designer" [label="falar com o PD"];
@@ -233,15 +238,37 @@ If a keyword matches but the request is clearly not UI work (e.g., "write unit t
 
 If no keywords match, skip Figma discovery and proceed to clarifying questions.
 
-If the user provides Figma URL(s), the **handoff review runs first** (next section). Only once the user
-has chosen to continue do you read the designs.
+If the user provides Figma URL(s), the **handoff review is offered first** (next section). Reading
+the designs happens only after that choice — immediately if the user skips the review, or once the
+review's gate clears if they run it.
 
-**Revisão de handoff do Figma (REQUIRED quando há URLs do Figma):**
+**Revisão de handoff do Figma (OPTIONAL — always offered quando há URLs do Figma):**
 
-Before anything reads the *content* of the file, audit its *quality as a handoff*. A file with frames
-missing Auto Layout, spacing and colors off-token, or no dev annotations produces a design doc that
-looks complete and an implementation that cannot be faithful — and by then the cost of fixing it in
-Figma has already been paid twice.
+Before anything reads the *content* of the file, offer to audit its *quality as a handoff*. A file
+with frames missing Auto Layout, spacing and colors off-token, or no dev annotations produces a design
+doc that looks complete and an implementation that cannot be faithful — and by then the cost of fixing
+it in Figma has already been paid twice. Still, the review costs time and MCP calls, so whether to pay
+for the audit is the user's call: a handoff they already trust can skip straight to reading the designs.
+
+<OFFER-HANDOFF-REVIEW>
+**The offer is mandatory even though the review is not.** The moment Figma URLs are in hand — before
+any dispatch — ask via `AskUserQuestion`, with the review as the recommended option:
+
+1. **Rodar a revisão de handoff (recomendado)** — audita o arquivo do Figma contra anti-padrões de
+   handoff (Auto Layout, tokens, styles, nomenclatura, anotações de dev) antes de ler os designs.
+2. **Pular a revisão e confiar no handoff** — segue direto para a leitura dos designs, sem auditoria
+   e sem o artefato `figma-handoff-review.md`.
+
+Never run the review without asking, and never skip it silently — the user decides, every time.
+
+- **If the user chooses to run it:** follow the numbered steps below.
+- **If the user chooses to skip:** proceed directly to `{{skill:reading-figma-designs}}`. No artifact
+  is written, no gate applies, and `<HARD-GATE-HANDOFF>` does not fire. Do not re-offer the review
+  later in the phase, and do not editorialize about the choice — trusting the handoff is a legitimate
+  answer.
+</OFFER-HANDOFF-REVIEW>
+
+When the user chooses to run the review:
 
 1. Announce: "Usando o figma-handoff-reviewer para auditar o handoff."
 2. Dispatch @"figma-handoff-reviewer (agent)", passing:
@@ -319,7 +346,7 @@ The feature stays in the design phase. Tell them:
 
 Then stop. Do not continue to clarifying questions, do not start the design, do not advance the phase.
 
-**Ler os designs do Figma (after the gate clears):**
+**Ler os designs do Figma (after the handoff-review choice — skip chosen, or gate cleared):**
 
 Invoke `{{skill:reading-figma-designs}}`. It parses each URL,
 inventories the screens and components via a single `get_metadata` call, and extracts **all** Dev Mode data
@@ -494,8 +521,12 @@ The design phase's job here is only to GUARANTEE that `## Contrato de Layout` is
 
 ## Required Sub-Skills
 
-**REQUIRED when the user provides Figma URL(s):** Dispatch @"figma-handoff-reviewer (agent)" **before**
-invoking `{{skill:reading-figma-designs}}` — it is the first thing that happens once URLs are in hand.
+**OFFERED when the user provides Figma URL(s):** the first thing that happens once URLs are in hand is
+the `AskUserQuestion` offer from `<OFFER-HANDOFF-REVIEW>` — run the handoff review (recommended) or skip
+it and trust the handoff. The offer itself is mandatory; the review runs only if the user chooses it.
+If they skip, go straight to `{{skill:reading-figma-designs}}` with no artifact and no gate. If they
+choose to run it, dispatch @"figma-handoff-reviewer (agent)" **before** invoking
+`{{skill:reading-figma-designs}}`:
 
 - Announce: "Usando o figma-handoff-reviewer para auditar o handoff."
 - Pass every Figma URL you have (initial request + JIRA) and `[ARTIFACT_PATH]` = `.afyapowers/features/<feature>/artifacts/figma-handoff-review.md`.
@@ -554,7 +585,7 @@ Wait for the user's response. If they request changes, make them and re-run the 
 
 **Completion:**
 
-- Record the artifact: `python3 "<plugin-root>/scripts/feature.py" record-artifact design.md` (when Figma discovery ran, `figma-handoff-review.md` is already recorded — it happened at the handoff gate)
+- Record the artifact: `python3 "<plugin-root>/scripts/feature.py" record-artifact design.md` (when the handoff review ran, `figma-handoff-review.md` is already recorded — it happened at the handoff gate; when the user skipped the review, there is no such artifact to record)
 - Tell the user: "Fase design concluída. Rode `/afyapowers-dev:next` para avançar para **plan**."
 
 ## Key Principles
