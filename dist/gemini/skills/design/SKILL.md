@@ -334,10 +334,11 @@ Then stop. Do not continue to clarifying questions, do not start the design, do 
 **Ler os designs do Figma (after the handoff-review choice — skip chosen, or gate cleared):**
 
 Invoke `afyapowers-dev:reading-figma-designs`. It parses each URL,
-inventories the screens and components via a single `get_metadata` call, and extracts **all** Dev Mode data
-annotations via a read-only `use_figma` call. It returns the complete `## Recursos do Figma` section
+inventories the screens and components via a single `get_metadata` call, extracts **all** Dev Mode data
+annotations via a read-only `use_figma` call, and captures the screens' theme-correct token values via
+one `get_variable_defs` per top-level screen frame. It returns the complete `## Recursos do Figma` section
 — `### Arquivos`, `### Breakpoints`, `### Telas`, `### Componentes` and `### Anotações de Design` — ready to drop into
-the design doc (template: `templates/design.md`).
+the design doc (template: `templates/design.md`), plus the **path** to `artifacts/figma-tokens.md`.
 
 Annotations carry semantic intent: business rules, responsive rules, interactive-state behavior,
 animations, accessibility rules, content rules, development-specific instructions, spacing, and
@@ -354,7 +355,13 @@ It is never called to implement anything.
 
 **If no Figma designs:** Proceed normally. Do not include the Figma Resources section in the design doc.
 
-**Design tokens are NOT extracted during design phase.** They are deferred to implementation time — the implementer subagent will fetch them via `get_variable_defs` when needed.
+**Design token VALUES are extracted exactly once, here, into `artifacts/figma-tokens.md`** — by
+`afyapowers-dev:reading-figma-designs`, via `get_variable_defs` on the top-level screen frames only. That
+artifact is the value authority for every later phase, because only nodes of the screens file resolve
+variables in the screens' actual theme (a design-system original resolves them in the collection's
+DEFAULT mode — wrong values, sometimes different token names). No other design-phase step calls
+`get_variable_defs`, and no phase ever calls it on a design-system original to obtain values.
+Downstream consumers receive the artifact's **path** and read the file — never a pasted copy.
 
 **Análise de Design System (only when Figma is present):**
 
@@ -368,9 +375,20 @@ Invoke `afyapowers-dev:analyzing-design-system`. Pass it:
 - **anything you already read from disk** that bears on the existence check — the feature's `state.yaml`/artifacts, `package.json`, the local component directory listing, the DS package in use. The sub-skill runs in your turn and must not re-read what is already in context;
 - caller mode `design`.
 
-It resolves every instance **to its original component in the file that declares it**, checks the real codebase, recommends a verdict per node (`Implementar` | `Importar` | `Atualizar` | `Derivar`), and **confirms every one of them with the user — in compact batches of up to 4 nodes per prompt, each node with its own explicit answer**. It returns the confirmed tree (with the origin fileKey + original node id per node), the validated origin map, the warnings, the skip set, and the import path of every `Importar` node.
+It resolves every instance **to its original component in the file that declares it**, classifies each node's `Origem` (`local` = team component declared in the screens file; `externa` = design-system component in another file), checks the real codebase, recommends a verdict per node (`Implementar` | `Importar` | `Atualizar` | `Derivar`, plus the user-chosen `Adiado` for external DS components missing from the code), and **confirms every one of them with the user — in compact batches of up to 4 nodes per prompt, each node with its own explicit answer**. It returns the confirmed tree (with the origin fileKey + original node id per node), the validated origin map, the warnings, the skip set, the import path of every `Importar` node, and the **`Adiado` set**.
 
-**Write the confirmed verdicts to `## Árvore de Componentes de DS`** and complete each component's `C#` entry under `### Componentes` (origin, coordinates, type, validation, declared variants) in `design.md` — the sub-skill persists each row as it is confirmed, so an interrupted session resumes instead of restarting. Omit both sections entirely when the layout uses no component instances.
+**Write the confirmed verdicts to `## Árvore de Componentes de DS`** and complete each component's `C#` entry under `### Componentes` (origin coordinates, type, `Origem`, declared variants, and `Variantes a implementar` for reduced-scope verdicts) in `design.md` — the sub-skill persists each row as it is confirmed, so an interrupted session resumes instead of restarting. Omit both sections entirely when the layout uses no component instances.
+
+<HARD-GATE-ADIADO>
+**A non-empty `Adiado` set pauses the design phase.** An `Adiado` node is a design-system component
+the user chose to implement outside the workflow. The design doc may not be finalized, the phase may
+not advance, and **no screen may be planned or implemented** while any node is `Adiado` — a screen
+built against a component that does not exist is exactly the broken state the verdict exists to
+prevent. After persisting everything confirmed so far, stop and tell the user, in pt-BR: which
+components are `Adiado`, that the ideal path is implementing each one in the design-system library,
+and that re-running `/afyapowers-dev:design` after that re-checks **only** the `Adiado` nodes
+(found in code → confirmed as `Importar`; still missing → asked again).
+</HARD-GATE-ADIADO>
 
 <HARD-GATE-ORIGENS>
 **The design phase STOPS while any component instance has no validated origin file.**
@@ -390,10 +408,22 @@ Then **validate** each accepted link: the node must be reachable, it must be a `
 Do not proceed on a partial set, do not defer a component "for later", and never fall back to reading the instance. If the user genuinely cannot produce a link, the analysis stops and reports what is blocked — that is the correct outcome, not a component built from an instance.
 </HARD-GATE-ORIGENS>
 
-**Once every origin is validated, a missing component is not a blocker — it is a task:**
+**Once every origin is validated, what a missing component becomes depends on its `Origem`:**
 
-- `Implementar` / `Derivar` → the plan phase generates a `UI Component` task, pointing at the **original** in its own file. The component gets built **inside** this feature, with plan review, code review and commits, like any other work.
-- `Atualizar` → also a task, but the additive change to a shared component was **approved by the user during this phase**, in the confirmation loop. That approval is what authorizes it; do not let an `Atualizar` reach the plan without it.
+- `Origem: local` (team component) + `Implementar`/`Derivar` → the plan phase generates a
+  **`UI Team Component`** task, pointing at the **original** in the screens file, covering **every
+  declared variant**. The component gets built **inside** this feature, with plan review, code review
+  and commits, like any other work.
+- `Origem: externa` (design-system component) not found in code → the sub-skill's DS warning question
+  already ran: either the node is **`Adiado`** (the phase pauses — see HARD-GATE-ADIADO) or the user
+  chose **`Implementar (escopo reduzido)`** → the plan generates a **`UI DS Component`** task limited
+  to `Variantes a implementar` (the variants the screens use + the declared interactive states), with
+  the code placed near the feature — never as a global shared component.
+- `Atualizar` / `Derivar` on an existing base → also a task (`UI Team Component` or `UI DS Component`
+  by `Origem`; external ones are reduced scope — only what the screens use and the base lacks). The
+  additive change to a shared component was **approved by the user during this phase**, in the
+  confirmation loop. That approval is what authorizes it; do not let an `Atualizar` reach the plan
+  without it.
 - `Importar` → no task. The import path travels into the plan so the consuming screen imports it.
 
 Beyond the origin gate, stop and ask only where the analysis genuinely cannot resolve something: two originals sharing a name, or a tree large enough to need prioritization first.
@@ -481,7 +511,7 @@ Now — and only now — read the project: files, docs, recent commits, existing
 - If JIRA discovery was performed, include the `## Contexto do JIRA` section with issue key, summary, acceptance criteria, and linked issues
 - If Figma discovery was performed, include the `## Recursos do Figma` section with file info, breakpoints, node map, and the `### Anotações de Design` list. Reflect the annotations in the relevant design sections too — business rules in Requirements, the rest wherever they fit (Constraints, Architecture, Error Handling, Testing Strategy) — not just the annotations list.
 - If the design reuses any existing non-DS codebase component, include the `## Decisões de Reúso de Componentes` section recording each candidate, its name/layout/behavior parity per axis, **your recommendation**, and **the user's decision** (per the Component Reuse Gate above). Every row must carry a decision the user actually made.
-- If Figma discovery ran and the layout uses DS components, include the `## Árvore de Componentes de DS` section with the confirmed tree returned by `afyapowers-dev:analyzing-design-system` — every node's verdict, its dependencies, its confirmed code name, and the import path for `Importar` nodes. This is what the plan phase reads to derive `UI Component` tasks.
+- If Figma discovery ran and the layout uses DS components, include the `## Árvore de Componentes de DS` section with the confirmed tree returned by `afyapowers-dev:analyzing-design-system` — every node's verdict, its dependencies, its confirmed code name, and the import path for `Importar` nodes. This is what the plan phase reads to derive `UI Team Component`/`UI DS Component` tasks.
 - If Figma discovery was performed, confirm `## Contrato de Layout` is present and complete (see below); if there is no Figma reference, omit the section
 - Be ready to go back and clarify if something doesn't make sense
 

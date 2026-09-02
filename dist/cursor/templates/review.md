@@ -23,8 +23,13 @@
      Atualizar  → mudança estritamente aditiva, nenhum consumidor existente afetado
      Derivar    → wrapper importa e compõe a base, não a reimplementa
      Implementar (composto) → cada filho de "Compõe de" é importado, não re-inlinado
+     Implementar (escopo reduzido, Origem externa / UI DS Component) → arquivos junto da feature (NUNCA no
+     diretório global/compartilhado), variantes implementadas = exatamente a lista "Variantes a implementar"
+     da C# (incluindo os estados interativos declarados, como estados CSS)
+     Adiado     → NÃO aparece no diff como definição nova (o usuário decidiu implementá-lo fora do workflow)
      Um nó Importar que virou definição nova é um componente duplicado: permanente, invisível, e divergindo
-     do original desde o primeiro dia. Trate como Crítico, não como observação. -->
+     do original desde o primeiro dia. Trate como Crítico, não como observação. O mesmo vale para um nó
+     Adiado implementado, e para um escopo reduzido colocado no diretório compartilhado. -->
 
 | Nó | Veredito confirmado | Encontrado no código (arquivo:linha) | Conforme? |
 |----|---------------------|--------------------------------------|-----------|

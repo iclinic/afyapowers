@@ -74,6 +74,8 @@ The tree records a verdict per component that the **user confirmed** during the 
 - **`Atualizar`** → the change to the existing component must be strictly **additive** (new optional prop / new variant value / new optional slot). A removed prop, a retyped prop, or a changed default means it silently became a breaking change the user never approved.
 - **`Derivar`** → the new component must **import and compose** its recorded base. A wrapper that reimplements the base is not the thing that was specified.
 - **`Implementar` with `Compõe de`** → every listed child must be imported, not re-inlined.
+- **`Implementar (escopo reduzido)` / any code verdict on an `Origem: externa` node (`UI DS Component`)** → the files must sit with the feature's code, **not** in the project's global/shared component or design-system directory; the implemented variants must be exactly the `C#` entry's `Variantes a implementar` list — including every declared interactive state (as CSS states), and nothing beyond the listed semantic values.
+- **`Adiado`** → must not appear in the diff as any new definition: the user decided it would be implemented outside the workflow, and a design carrying it should never have reached implementation.
 - Any component **rejected** by the user (in the tree or in `## Decisões de Reúso de Componentes`) must not appear in the implementation.
 
 **Annotations and edge-case states:** when the task carried `**Anotações do Figma:**` or `**Estados a cobrir:**`, check those specific interactive states, animations, a11y rules and edge-case behaviors are actually implemented — not just the default frame. These were confirmed with the user during design; a missing hover state or unhandled empty state is a missing requirement.

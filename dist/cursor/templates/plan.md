@@ -34,17 +34,21 @@
 - Create: `caminho/exato/do/componente`
 <!-- Para veredito `atualizar`, liste também o componente base como Modify — sem isso o implementer bate na allowlist e reporta NEEDS_CONTEXT: -->
 <!-- - Modify: `caminho/do/componente/base` -->
+<!-- Para Type UI DS Component, os Create ficam JUNTO do código da feature — nunca no diretório
+     global/compartilhado de componentes: é uma cópia local de escopo reduzido, não um componente global. -->
 
 **Assets:** `<diretório de assets do projeto>/` — o implementador pode baixar & criar arquivos de ícone/imagem aqui conforme necessário (arquivos exatos desconhecidos no momento do plano)
 
-**Type:** UI Component
+**Type:** UI Team Component | UI DS Component
+<!-- Copiado da coluna Task Type da Árvore de Componentes de DS (derivado da Origem da C#:
+     local → UI Team Component; externa → UI DS Component). Nunca reclassifique aqui. -->
 
 **Depends on:** none | Task X
 <!-- Reproduz a coluna "Depende de" da Árvore de Componentes de DS. Para `derivar`, a base é a primeira
      dependência. Para composto, todos os filhos são dependências. Ordem folhas→raiz. -->
 
 **Figma:**
-<!-- ATENÇÃO: em task UI Component, File Key e Node ID são os DO ORIGINAL — colunas "Arquivo do original" e
+<!-- ATENÇÃO: em task de componente, File Key e Node ID são os DO ORIGINAL — colunas "Arquivo do original" e
      "Node ID do original" da entrada C# em ### Componentes. NUNCA os de uma instância, e o File Key
      pode ser de OUTRO arquivo (o do DS). A instância mostra só a variante que aquela tela usou; o original
      declara todos os eixos. Apontar para a instância entrega um componente mais pobre que o real — e como
@@ -53,6 +57,10 @@
 - **Node ID:** `<node_id_do_original>`
 - **Breakpoints:** <breakpoint_name> (<width>px), ...
 - **Medidas de aceite:** container max-width `<valor>`, margens laterais `<valor>`, gaps `<valor>`, colunas `<n>`, min/max de `<peça>` no breakpoint `<breakpoint_name>` (do Contrato de Layout)
+- **Tokens do Figma:** `.afyapowers/features/<feature>/artifacts/figma-tokens.md`
+<!-- Caminho do artefato de valores de token no tema das telas. Obrigatório em UI DS Component (é a única
+     fonte de VALOR — o arquivo do DS resolve no modo default); cross-check em UI Team Component.
+     Sempre o CAMINHO — nunca cole a tabela na task. -->
 
 **Design System:**
 <!-- Copiado da linha deste nó na `## Árvore de Componentes de DS` do design. Omita o bloco INTEIRO se o
@@ -61,7 +69,10 @@
 - **Veredito:** implementar | atualizar | derivar
 - **Base:** `<Nome>` (`<import path>`) <!-- só para derivar (base que o wrapper compõe) e atualizar (set estendido) -->
 - **Compõe de:** `<Nome>` (`<import path>`), `<Nome>` (`<import path>`) <!-- só para composto; cada filho já existe no código -->
-- **Variantes:** <todas as variantes/estados que o ORIGINAL declara>
+- **Variantes:** <as variantes que ESTA task implementa>
+<!-- UI Team Component: TODAS as variantes/estados que o original declara.
+     UI DS Component: a linha "Variantes a implementar" da entrada C# — variantes semânticas usadas pelas
+     telas + TODOS os estados interativos que o original declara (hovered, pressed, selected, …). -->
 - **Anotações do Figma:** <anotações do Dev Mode deste nó, verbatim — estados interativos, animação, a11y, regras de conteúdo>
 - **Estados a cobrir:** <linhas de `## Casos de Borda & Estados` que este componente é dono>
 
@@ -81,7 +92,7 @@
 **Type:** UI Screen
 
 **Depends on:** Task X, Task Y
-<!-- As tasks UI Component de todo C# listado no Conteúdo desta T#. -->
+<!-- As tasks de componente (UI Team Component / UI DS Component) de todo C# listado no Conteúdo desta T#. -->
 
 **Figma:**
 <!-- Em task UI Screen, File Key e Node ID são os DA TELA (entrada T# em ### Telas) — o alvo é o frame. -->
@@ -89,6 +100,8 @@
 - **Node ID:** `<id>` (frame raiz da tela)
 - **Breakpoints:** <breakpoint_name> (<width>px), ...
 - **Medidas de aceite:** container max-width `<valor>`, margens laterais `<valor>`, gaps entre seções `<valor>`, colunas `<n>` no breakpoint `<breakpoint_name>` (do Contrato de Layout — input do figma-token-verifier)
+- **Tokens do Figma:** `.afyapowers/features/<feature>/artifacts/figma-tokens.md`
+<!-- Caminho do artefato de valores de token no tema das telas — cross-check dos valores; sempre o CAMINHO, nunca o conteúdo. -->
 
 **Layout de página:**
 <!-- NÃO existe task separada de container/esqueleto. O layout de página é desta task, e a regra é reusar

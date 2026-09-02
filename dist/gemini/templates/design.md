@@ -139,15 +139,22 @@
      no arquivo que o DECLARA — nunca a instância; regras completas na skill analyzing-design-system).
      Identidade = fileKey + node id (a URL de origem não é guardada). Coordenada preenchida = original
      resolvido e validado. Tipo: COMPONENT_SET (eixos de variante) | COMPONENT (único).
-     Coordenada não resolvida → campos `—` + linha `Pendência:`; um componente com Pendência bloqueia a
-     fase design e NÃO entra na Árvore de Componentes de DS. -->
+     Origem: local (original no arquivo das telas — F1, qualquer página; "team component") |
+     externa (original em arquivo de DS — F2+). Decide o Task Type e o contrato de tokens no implement.
+     Variantes a implementar: só para Origem externa com veredito de código em escopo reduzido =
+     variantes semânticas que o layout usa + TODOS os estados interativos que o original declara
+     (hovered, pressed, selected, focused, disabled, …). Origem local implementa o catálogo inteiro
+     (a linha não aparece). Coordenada não resolvida → campos `—` + linha `Pendência:`; um componente
+     com Pendência bloqueia a fase design e NÃO entra na Árvore de Componentes de DS. -->
 
 #### C1 — <component_name>
 - **Arquivo do original:** F2 (`<file_key>`)
 - **Node ID do original:** `<node_id>`
 - **Tipo:** COMPONENT_SET
+- **Origem:** externa
 - **Variantes que o original declara:** <axis>=<v1>|<v2>, <axis>=<v1>|<v2>
 - **Variantes que o layout usa:** <axis>=<valor>, <axis>=<valor>
+- **Variantes a implementar:** <axis>=<valor usado>, state=hovered|pressed|disabled (escopo reduzido)
 - **Instâncias:** 3 em T1, 1 em T2
 
 <!-- ex. de componente declarado no próprio arquivo da tela (nenhum link foi necessário):
@@ -155,6 +162,7 @@
 - **Arquivo do original:** F1 (`eS5l5l…`)
 - **Node ID do original:** `88:2`
 - **Tipo:** COMPONENT
+- **Origem:** local
 - **Variantes que o original declara:** (nenhuma — COMPONENT simples)
 - **Variantes que o layout usa:** —
 - **Instâncias:** 1 em T1
@@ -165,6 +173,7 @@
 - **Arquivo do original:** —
 - **Node ID do original:** —
 - **Tipo:** —
+- **Origem:** —
 - **Pendência:** aguardando link direto do nó (o último link recebido era de arquivo, sem node-id — rejeitado sem chamada MCP)
 - **Variantes que o original declara:** — (sem acesso ao original)
 - **Variantes que o layout usa:** size=md
@@ -181,23 +190,28 @@
 ## Árvore de Componentes de DS
 <!-- Incluída apenas quando a feature tem referência Figma com componentes. Remova esta seção se não se aplicar. -->
 <!-- Produzida pela skill analyzing-design-system (regras completas lá). Nenhuma linha entra sem decisão
-     explícita do usuário — nem Importar. ESTA TABELA SÓ CARREGA DECISÕES: coordenadas vivem em
+     explícita do usuário — nem Importar. ESTA TABELA SÓ CARREGA DECISÕES: coordenadas e Origem vivem em
      ### Componentes, referenciadas pela C# (quem monta a task lê o veredito aqui e o fileKey/node-id lá).
-     Ordem: folhas→raiz. Veredito ∈ Implementar (do zero, a partir do original, todas as variantes;
+     Ordem: folhas→raiz. Veredito ∈ Implementar (do zero, a partir do original; Origem local = todas as
+     variantes do catálogo; Origem externa = escopo reduzido, só "Variantes a implementar" da C#;
      com filhos em "Depende de" = composto: compõe, não reconstrói) | Importar (já existe; sem task, só
-     import path) | Atualizar (falta variante; aditivo; aprovado nesta fase) | Derivar (novo, envolve a
-     base = primeiro item de "Depende de").
+     import path) | Atualizar (falta variante; aditivo; Origem externa = só o que as telas usam e falta;
+     aprovado nesta fase) | Derivar (novo, envolve a base = primeiro item de "Depende de"; Origem externa =
+     wrapper só com o que as telas usam) | Adiado (Origem externa não encontrada no código; usuário optou
+     por implementar fora do workflow — a fase design NÃO CONCLUI enquanto houver linha Adiado).
+     Task Type ∈ UI Team Component (Origem local) | UI DS Component (Origem externa) | — (Importar/Adiado).
      Paridade = campos divergentes instância vs original (justificativa). Nome no código = confirmado;
-     para Importar, o import path. Task Type = "—" para Importar. Override do usuário → registre as duas
+     para Importar, o import path. Override do usuário → registre as duas
      em "Veredito" (ex.: "Derivar (recomendado: Atualizar)"). Componente com Pendência não entra aqui. -->
 
 | # | Componente | Veredito | Depende de | Paridade | Nome no código | Task Type |
 |---|-----------|----------|------------|----------|----------------|-----------|
-<!-- ex.: | C4 | Button      | Importar    | —        | size=lg já existe        | `@ds/Button`           | —            | -->
-<!-- ex.: | C5 | Input       | Atualizar   | —        | falta state=error        | `@ds/Input`            | UI Component | -->
-<!-- ex.: | C6 | Menu        | Implementar | —        | não existe no código     | `Menu`                 | UI Component | -->
-<!-- ex.: | C7 | MultiSelect | Implementar | C5, C6   | composto de 2 filhos     | `MultiSelect`          | UI Component | -->
-<!-- ex.: | C8 | ProfileCard+Badge | Derivar | C2      | badge extra sobre avatar | `ProfileCardWithBadge` | UI Component | -->
+<!-- ex.: | C4 | Button      | Importar    | —        | size=lg já existe        | `@ds/Button`           | —                 | -->
+<!-- ex.: | C5 | Input       | Atualizar   | —        | falta state=error        | `@ds/Input`            | UI DS Component   | -->
+<!-- ex.: | C6 | Menu        | Implementar | —        | não existe no código     | `Menu`                 | UI Team Component | -->
+<!-- ex.: | C7 | MultiSelect | Implementar | C5, C6   | composto de 2 filhos     | `MultiSelect`          | UI Team Component | -->
+<!-- ex.: | C8 | ProfileCard+Badge | Derivar | C2      | badge extra sobre avatar | `ProfileCardWithBadge` | UI DS Component   | -->
+<!-- ex.: | C9 | DataTable   | Adiado      | —        | não existe no código (DS) | —                     | —                 | -->
 
 ### Avisos da análise de DS
 <!-- Omita esta subseção se não houver avisos. -->
