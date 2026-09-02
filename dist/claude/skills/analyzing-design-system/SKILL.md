@@ -191,8 +191,17 @@ For each original, inspect the **real code** — not just Figma — and recommen
 the `C#` entry = the **semantic variant values the screens use** (from `Variantes que o layout usa`)
 **plus every interactive-state value the original declares** (hovered, pressed, selected, focused,
 disabled, …) — interactive states are only visible in the DS file's catalog and must always ship,
-even when no screen renders them. Never expand to unused semantic values, and never write this line
-for `Origem: local` (a team component implements the full catalog).
+even when no screen renders them. Never expand to unused semantic values. For `Origem: local` the
+full catalog is the rule and this line is normally absent — but when the user explicitly chooses a
+reduced scope for a local node, the same computation and the same line apply.
+
+These rules bind **any** reduced scope, however it arises: the used values are the **union of the
+per-instance tuples** in `Variantes que o layout usa` — never a summary or paraphrase of them — and
+an axis whose value varies across the used tuples can never be collapsed: the screens render both
+values, so the scope must express both (validated failure: collapsing `behavior=choosed|unchoosed`
+onto `kind` made the revealed correct answer show a selected radio). Entries still carrying
+`tuplas pendentes` are completed first, from the original's `get_metadata` symbol names — a scope is
+never computed over pending tuples.
 
 **The additive-vs-breaking determination happens here, not at implementation time.** If the variant can only be added by removing a prop, changing a type, or changing a default, recommend **`Derivar`** — never `Atualizar`. Deciding this now keeps the confirmed tree stable so no implementer reclassifies mid-build.
 
@@ -250,6 +259,10 @@ library, **outside this workflow**, and importing it afterwards. The two primary
    `Variantes a implementar` on its `C#` entry (Step 6). Make the scope explicit in the option
    description: only the variants the screens use plus the declared interactive states, code placed
    near the feature — never a global shared component.
+
+Any option that narrows scope — this one, or an ad-hoc "only what the screens use" on a local node —
+**quotes the computed per-instance tuples verbatim** from `Variantes que o layout usa` in its
+description. The user consents to the scope the screens actually render, never to a paraphrase of it.
 
 Other verdicts (`Derivar`/`Atualizar` against some existing base, `Importar` with a user-supplied
 path) remain available as the remaining options when they apply.

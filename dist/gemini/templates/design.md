@@ -141,10 +141,16 @@
      resolvido e validado. Tipo: COMPONENT_SET (eixos de variante) | COMPONENT (único).
      Origem: local (original no arquivo das telas — F1, qualquer página; "team component") |
      externa (original em arquivo de DS — F2+). Decide o Task Type e o contrato de tokens no implement.
-     Variantes a implementar: só para Origem externa com veredito de código em escopo reduzido =
-     variantes semânticas que o layout usa + TODOS os estados interativos que o original declara
-     (hovered, pressed, selected, focused, disabled, …). Origem local implementa o catálogo inteiro
-     (a linha não aparece). Coordenada não resolvida → campos `—` + linha `Pendência:`; um componente
+     Variantes que o layout usa: tuplas COMPLETAS por instância (mecânico: componentId da instância →
+     symbol da variante → nome do symbol = tupla), uma linha por tupla distinta com suas instâncias;
+     nunca resumo em prosa, nunca derivado de anotações; irresolvível na resposta → "tuplas pendentes"
+     com pares instância → componentId.
+     Variantes a implementar: só para veredito de código em escopo reduzido (regra: Origem externa;
+     Origem local implementa o catálogo inteiro e a linha não aparece, salvo escopo reduzido escolhido
+     explicitamente pelo usuário) = variantes semânticas que o layout usa (união das tuplas — eixo que
+     varia entre tuplas usadas NUNCA é colapsado) + TODOS os estados interativos que o original declara
+     (hovered, pressed, selected, focused, disabled, …).
+     Coordenada não resolvida → campos `—` + linha `Pendência:`; um componente
      com Pendência bloqueia a fase design e NÃO entra na Árvore de Componentes de DS. -->
 
 #### C1 — <component_name>
@@ -153,8 +159,8 @@
 - **Tipo:** COMPONENT_SET
 - **Origem:** externa
 - **Variantes que o original declara:** <axis>=<v1>|<v2>, <axis>=<v1>|<v2>
-- **Variantes que o layout usa:** <axis>=<valor>, <axis>=<valor>
-- **Variantes a implementar:** <axis>=<valor usado>, state=hovered|pressed|disabled (escopo reduzido)
+- **Variantes que o layout usa:** <axis>=<v1>, <axis>=<v1> (T1 `<node_id>`, `<node_id>`); <axis>=<v2>, <axis>=<v1> (T2 `<node_id>`)
+- **Variantes a implementar:** <axis>=<v1>|<v2>, state=hovered|pressed|disabled (escopo reduzido)
 - **Instâncias:** 3 em T1, 1 em T2
 
 <!-- ex. de componente declarado no próprio arquivo da tela (nenhum link foi necessário):
@@ -176,7 +182,7 @@
 - **Origem:** —
 - **Pendência:** aguardando link direto do nó (o último link recebido era de arquivo, sem node-id — rejeitado sem chamada MCP)
 - **Variantes que o original declara:** — (sem acesso ao original)
-- **Variantes que o layout usa:** size=md
+- **Variantes que o layout usa:** — (tuplas pendentes — `<node_id>` → componentId `<component_id>`)
 - **Instâncias:** 1 em T1
 -->
 

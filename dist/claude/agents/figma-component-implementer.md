@@ -130,6 +130,8 @@ Report that the verdict was missing and which path you took — a missing verdic
 
 **`[VARIANT_LIST]` is the contract.** In `team` mode it is the original's full catalog — implement all of it, not the subset visible on any one screen. In `ds` mode it is the confirmed reduced scope — implement exactly it: every listed semantic variant and interactive state, and **nothing beyond it** (an unlisted semantic value is out of scope by decision, not an omission).
 
+That decision covers **unused** variants only. If the design data in your context (the original's catalog/pseudocode, the screen instances, the task's design excerpts) shows a screen **rendering** a configuration `[VARIANT_LIST]` cannot express, the contract contradicts the screens — report **NEEDS_CONTEXT** naming the instance, its configuration, and the missing axis/value. Never implement an approximation and file the gap as a concern: a scope that drops a rendered configuration is an upstream error, not a decision to honor.
+
 ### Step 1 — Build Token Reference Table
 
 **`team` mode:** call `get_variable_defs(fileKey, nodeId)` on `[FILE_KEY]`/`[NODE_ID]`. Build a lookup table mapping token name → resolved value for colors, typography, spacing, border radius, shadows, opacity.
@@ -179,6 +181,8 @@ Record in your report which variants were read directly and which were derived b
 3. **No match** → hardcode the table's value.
 
 Never approximate; never use a "closest" project token. Exact match (name + value) or hardcoded table value — nothing in between.
+
+The same discipline applies to token **names**: a name you did not read from the design data is a guess, exactly like an approximated value. The common trap is a baked asset (icon exported as SVG/`<img>`, no color variable exposed) whose token you infer by matching its rendered color — a default-mode render makes distinct tokens identical (validated failure: purple `content/onInteractive/*` and near-black `content/accent` both render black in the DS default theme; the guess shipped gray icons that should be purple). When no authority — design context, token table/artifact, project theme — states the property's token or value, report **NEEDS_CONTEXT** naming the property and the candidate tokens; never pick one silently.
 
 **Value chain in `ds` mode** — for each token *name* the design context reports, resolve the *value* in this order, stopping at the first hit:
 1. `[TOKENS_ARTIFACT]` by exact name (fresh grep — `<ABSENCE-MUST-BE-PROVEN>`).

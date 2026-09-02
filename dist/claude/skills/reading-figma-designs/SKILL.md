@@ -71,12 +71,23 @@ descend into.
 
 ### c. `### Componentes`
 
-One entry per **distinct `componentId`** referenced by an `INSTANCE`, labelled **C1**, **C2**, …
+One entry per **distinct original component**, labelled **C1**, **C2**, … An instance's
+`componentId` may point at a **variant symbol** of a `COMPONENT_SET` (its name reads as an axis
+tuple, `axis=value, axis=value`); every instance whose symbol belongs to the same set is the SAME
+entry, keyed by the set. Otherwise, one entry per distinct `componentId`.
 
 You fill the part you can observe; the DS analysis completes the rest. Write:
 
 - **name** as the instance reports it;
-- **Variantes que o layout usa** — the properties the instances set;
+- **Variantes que o layout usa** — recorded **mechanically, per instance**, never as a prose summary
+  and never derived from annotations: each instance's `componentId` resolves to a variant symbol
+  whose name IS the full axis tuple (e.g. `behavior=unchoosed, state=enabled, kind=correct`). Write
+  one line per distinct tuple with its instances. **Never omit an axis** — a dropped axis silently
+  narrows the scope every later phase inherits (validated failure: summarizing away a `behavior`
+  axis shipped a card whose radio rendered selected when the screen showed it empty). When the tuple
+  is not resolvable from this response (the original and its symbol names are declared elsewhere, or
+  the `componentId` points at the set itself), record each `instância → componentId` pair as
+  `tuplas pendentes` instead — the DS analysis completes them from the original's metadata;
 - **Instâncias** — count per Tela (e.g. `3 em T1, 1 em T2`);
 - **Origem** — `local` when the original is declared in the screens file (F1, any page: a team
   component) or `externa` when it is declared in another file (a design-system component). You can
@@ -170,7 +181,7 @@ Correct output:
 - **Tipo:** COMPONENT_SET
 - **Origem:** local
 - **Variantes que o original declara:** (a completar pela análise de DS)
-- **Variantes que o layout usa:** —
+- **Variantes que o layout usa:** — (tuplas pendentes — `1:5`, `1:6` → componentId `2:10`, o próprio set)
 - **Instâncias:** 2 em T1
 
 #### C2 — CTA Button
@@ -189,7 +200,7 @@ Correct output:
 - **Origem:** —
 - **Pendência:** aguardando link direto do nó
 - **Variantes que o original declara:** —
-- **Variantes que o layout usa:** —
+- **Variantes que o layout usa:** — (tuplas pendentes — `1:8` → componentId `9:44`)
 - **Instâncias:** 1 em T1
 ```
 
@@ -200,7 +211,7 @@ before the analysis can run.
 **Validation (run before finalizing the section):**
 1. `### Arquivos` has F1 with its URL and `fileKey`
 2. Every depth-1 FRAME has a `T#` entry carrying arquivo, node id, tipo, dimensões and breakpoint
-3. Every distinct `componentId` referenced by an INSTANCE has a `C#` entry
+3. Every distinct `componentId` referenced by an INSTANCE maps to a `C#` entry (variant symbols of one COMPONENT_SET share a single entry), and `Variantes que o layout usa` carries either full per-instance tuples or explicit `tuplas pendentes` pairs — never a prose summary
 4. Every depth-2 COMPONENT/COMPONENT_SET has a `C#` entry, even with zero instances
 5. Every `C#` entry either has `Arquivo do original` + `Node ID do original` + `Tipo` filled (with `Origem: local`), or has all three as `—` (with `Origem: —`) plus a `Pendência:` line — never blank, never guessed, never a coordinate you inferred
 6. No `C#` entry carries a `Validação` field or the URL a coordinate came from — the filled coordinate is the record (`Origem` is the local/externa classification, not a provenance note)
