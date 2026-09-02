@@ -53,6 +53,8 @@ Call `get_variable_defs(fileKey, nodeId)` using the single node ID from your tas
 
 Build a lookup table mapping token name → resolved value for colors, typography, spacing, border radius, shadows, opacity. This table is the single source of truth for design values — keep it in context for the whole task (Step 3 cross-reference and Step 5 verification both use it).
 
+**Cross-check against the tokens artifact.** If the task carries a `**Tokens do Figma:**` path, `Read` that file and compare: your screen node lives in the same file the artifact was captured from, so **same token name ⇒ same value**. A divergence means Figma changed since the design phase — treat it like a staleness signal (Step 4): report it, citing the token, the artifact value, its `captured-at`, and the fresh value. Your fresh Step 1 read wins for implementation; the report lets the orchestrator decide whether the artifact needs recapturing. Never paste the artifact's content anywhere — consume it by Read.
+
 ### Step 2 — Capture Visual Reference
 
 Call `get_screenshot(fileKey, nodeId)` using the single node ID from your task's Figma block.
@@ -105,6 +107,7 @@ Dispatch `@"figma-token-verifier (agent)"` (the only subagent you may spawn) and
 - the **token table** from Step 1 plus any raw values you resolved in Step 3;
 - the **acceptance measures** (layout) from the task's `**Figma:**` block;
 - the **design-context values you actually used** (auto-layout direction, sizing modes, hardcoded values);
+- the **`**Tokens do Figma:**` artifact path** from the task (the verifier may Read it as a named source for expected values);
 - the **exact list of files you created/modified** plus the component's entry file.
 
 **Verdict:**
@@ -140,7 +143,7 @@ Report the final verification result (verdict + attempts used + per-requirement 
 1. **Figma overrides codebase patterns.** When they differ, follow Figma.
 2. **Reuse only on an exact match or a user-approved decision.** You may reuse an existing project/DS component for a Figma node in exactly two cases: (a) an **exact match** on all three axes — **name**, **layout/visuals**, AND **behavior/interaction model** (popover vs drawer, inline vs modal, anchored vs full-screen); or (b) the design/plan records the user's **approval** for that specific component on this node (`## Decisões de Reúso de Componentes`). Any other case — near-match, any axis differing, or a reuse the task merely *instructed* without recorded approval — do NOT silently comply: implement what Figma shows and report a **BLOCKING** concern naming the mismatch. "Close enough" is not a match.
 
-   **DS components already exist in code — always import and compose, never reimplement.** Components marked `Importar` in `## Árvore de Componentes de DS`, and any built by earlier `UI Component` tasks in this plan, are already in the working tree. Import them and compose them into the screen, passing the content/props/variant the Figma instance calls for — the tree gives you the import path. Never copy their source, never re-derive them. If you need a variation the component does not offer, that is a derivative — a design decision that is not yours to make here: build to Figma on the screen and flag it.
+   **DS components already exist in code — always import and compose, never reimplement.** Components marked `Importar` in `## Árvore de Componentes de DS`, and any built by earlier component tasks (`UI Team Component`/`UI DS Component`) in this plan, are already in the working tree. Import them and compose them into the screen, passing the content/props/variant the Figma instance calls for — the tree gives you the import path. Never copy their source, never re-derive them. If you need a variation the component does not offer, that is a derivative — a design decision that is not yours to make here: build to Figma on the screen and flag it.
 
    **Precedence, when both rules apply.** A DS component that exists in code but **visibly diverges** from Figma for this node: **import it anyway and report a BLOCKING concern** naming the divergence (axis, expected vs. found). Never fork a duplicate of a DS component on your own authority. The one exception is a **behavior/interaction-model** mismatch severe enough that importing would ship the wrong interaction (a drawer where Figma shows an anchored popover): build to Figma for this screen and flag it BLOCKING.
 

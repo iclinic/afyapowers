@@ -31,8 +31,8 @@ You MUST complete these items in order. **Requirements first (1-6), code explora
 
 1. **JIRA discovery (offer-based)** — offer the user the chance to provide a JIRA issue key; if provided, fetch the issue (the fetch is what validates the key), summarize it, and record the key in `.afyapowers/current-jira-ticket`; if the user has no ticket, record the literal `none` in that same file (see below)
 2. **Figma discovery (trigger-based)** — check user request against trigger keywords (see below); if match, ask about Figma and collect the URL(s)
-3. **Revisão de handoff do Figma (REQUIRED quando há URLs)** — dispatch @"figma-handoff-reviewer (agent)"; it discovers the file's own design libraries via `get_libraries`, writes `figma-handoff-review.md` into the feature's artifacts and returns only a status block. On `BLOQUEADO` (Figma MCP down) or `SEM_BIBLIOTECAS` (file has no library enabled) the phase stops with no artifact. On `OK` the status block carries blocking/suggestion counts and a `Recomendação`, and the phase STOPS until the user reviews the report and decides whether to continue or talk to the Product Designer — both options always offered, the recommended one first (see HARD-GATE-HANDOFF)
-4. **Ler os designs do Figma** — invoke `afyapowers-dev:reading-figma-designs` to produce `## Recursos do Figma` and `## Contrato de Layout` (only after the user chose to continue)
+3. **Revisão de handoff do Figma (OPTIONAL — always offered when há URLs)** — the moment URLs are in hand, ask the user via `AskUserQuestion` whether to run the handoff review or skip it and continue trusting the handoff (see OFFER-HANDOFF-REVIEW). If the user chooses to run it: dispatch @"figma-handoff-reviewer (agent)"; it discovers the file's own design libraries via `get_libraries`, writes `figma-handoff-review.md` into the feature's artifacts and returns only a status block. On `BLOQUEADO` (Figma MCP down) or `SEM_BIBLIOTECAS` (file has no library enabled) the phase stops with no artifact. On `OK` the status block carries blocking/suggestion counts and a `Recomendação`, and the phase STOPS until the user reviews the report and decides whether to continue or talk to the Product Designer — both options always offered, the recommended one first (see HARD-GATE-HANDOFF). If the user chooses to skip: proceed directly to reading the designs, with no artifact and no gate
+4. **Ler os designs do Figma** — invoke `afyapowers-dev:reading-figma-designs` to produce `## Recursos do Figma` and `## Contrato de Layout` (only after the handoff-review choice: immediately when the user skipped the review, or after they chose to continue at the gate when it ran)
 5. **Ask clarifying questions** — confirm **and challenge** the inputs (see below); in batches of up to 4 independent questions (see BATCHED-QUESTIONS)
 6. **Interrogate requirements (REQUIRED)** — dispatch @"requirements-interrogator (agent)" **once** on the gathered inputs, then drive a question loop with the user, resuming the same agent with only the new answers each round (max 3 rounds), until every BLOCKING contradiction / gap / edge case / ambiguity / risky assumption is resolved or explicitly deferred (see REQUIREMENTS-GATE)
 7. **Análise de Design System (só quando há Figma)** — invoke `afyapowers-dev:analyzing-design-system` on the `### Componentes` entries. **HARD GATE:** every component instance whose original is not declared in the file you read requires a direct node link from the user. Check JIRA and the initial request first, then ask for **all** pending components in one open-question message (validating each answer on arrival, re-asking only failures); the phase stops until all are resolved. Then confirm **every** node's verdict with the user — in compact batches of up to 4 nodes per prompt, one explicit answer per node — and record the completed `### Componentes` entries + `## Árvore de Componentes de DS`. Skip entirely when there is no Figma (see below)
@@ -59,6 +59,8 @@ digraph design {
     "Gravar .afyapowers/current-jira-ticket" [shape=box];
     "Trigger keywords match?" [shape=diamond];
     "Ask Figma question" [shape=box];
+    "Oferecer revisão de handoff (AskUserQuestion)" [shape=box];
+    "Rodar revisão de handoff?" [shape=diamond];
     "Revisar handoff (agent)" [shape=box];
     "Relatório gravado — recomendação no bloco de status" [shape=box];
     "Escolha do usuário (opção recomendada primeiro)" [shape=diamond];
@@ -92,8 +94,11 @@ digraph design {
     "Gravar .afyapowers/current-jira-ticket" -> "Trigger keywords match?";
     "Trigger keywords match?" -> "Ask Figma question" [label="yes"];
     "Trigger keywords match?" -> "Standard clarifying questions" [label="no"];
-    "Ask Figma question" -> "Revisar handoff (agent)" [label="user provides URLs"];
+    "Ask Figma question" -> "Oferecer revisão de handoff (AskUserQuestion)" [label="user provides URLs"];
     "Ask Figma question" -> "Standard clarifying questions" [label="no Figma designs"];
+    "Oferecer revisão de handoff (AskUserQuestion)" -> "Rodar revisão de handoff?";
+    "Rodar revisão de handoff?" -> "Revisar handoff (agent)" [label="rodar a revisão"];
+    "Rodar revisão de handoff?" -> "Ler designs (reading-figma-designs)" [label="pular — confiar no handoff"];
     "Revisar handoff (agent)" -> "Relatório gravado — recomendação no bloco de status";
     "Relatório gravado — recomendação no bloco de status" -> "Escolha do usuário (opção recomendada primeiro)";
     "Escolha do usuário (opção recomendada primeiro)" -> "PARAR: contatar o Product Designer" [label="falar com o PD"];
@@ -218,15 +223,37 @@ If a keyword matches but the request is clearly not UI work (e.g., "write unit t
 
 If no keywords match, skip Figma discovery and proceed to clarifying questions.
 
-If the user provides Figma URL(s), the **handoff review runs first** (next section). Only once the user
-has chosen to continue do you read the designs.
+If the user provides Figma URL(s), the **handoff review is offered first** (next section). Reading
+the designs happens only after that choice — immediately if the user skips the review, or once the
+review's gate clears if they run it.
 
-**Revisão de handoff do Figma (REQUIRED quando há URLs do Figma):**
+**Revisão de handoff do Figma (OPTIONAL — always offered quando há URLs do Figma):**
 
-Before anything reads the *content* of the file, audit its *quality as a handoff*. A file with frames
-missing Auto Layout, spacing and colors off-token, or no dev annotations produces a design doc that
-looks complete and an implementation that cannot be faithful — and by then the cost of fixing it in
-Figma has already been paid twice.
+Before anything reads the *content* of the file, offer to audit its *quality as a handoff*. A file
+with frames missing Auto Layout, spacing and colors off-token, or no dev annotations produces a design
+doc that looks complete and an implementation that cannot be faithful — and by then the cost of fixing
+it in Figma has already been paid twice. Still, the review costs time and MCP calls, so whether to pay
+for the audit is the user's call: a handoff they already trust can skip straight to reading the designs.
+
+<OFFER-HANDOFF-REVIEW>
+**The offer is mandatory even though the review is not.** The moment Figma URLs are in hand — before
+any dispatch — ask via `AskUserQuestion`, with the review as the recommended option:
+
+1. **Rodar a revisão de handoff (recomendado)** — audita o arquivo do Figma contra anti-padrões de
+   handoff (Auto Layout, tokens, styles, nomenclatura, anotações de dev) antes de ler os designs.
+2. **Pular a revisão e confiar no handoff** — segue direto para a leitura dos designs, sem auditoria
+   e sem o artefato `figma-handoff-review.md`.
+
+Never run the review without asking, and never skip it silently — the user decides, every time.
+
+- **If the user chooses to run it:** follow the numbered steps below.
+- **If the user chooses to skip:** proceed directly to `afyapowers-dev:reading-figma-designs`. No artifact
+  is written, no gate applies, and `<HARD-GATE-HANDOFF>` does not fire. Do not re-offer the review
+  later in the phase, and do not editorialize about the choice — trusting the handoff is a legitimate
+  answer.
+</OFFER-HANDOFF-REVIEW>
+
+When the user chooses to run the review:
 
 1. Announce: "Usando o figma-handoff-reviewer para auditar o handoff."
 2. Dispatch @"figma-handoff-reviewer (agent)", passing:
@@ -304,13 +331,14 @@ The feature stays in the design phase. Tell them:
 
 Then stop. Do not continue to clarifying questions, do not start the design, do not advance the phase.
 
-**Ler os designs do Figma (after the gate clears):**
+**Ler os designs do Figma (after the handoff-review choice — skip chosen, or gate cleared):**
 
 Invoke `afyapowers-dev:reading-figma-designs`. It parses each URL,
-inventories the screens and components via a single `get_metadata` call, and extracts **all** Dev Mode data
-annotations via a read-only `use_figma` call. It returns the complete `## Recursos do Figma` section
+inventories the screens and components via a single `get_metadata` call, extracts **all** Dev Mode data
+annotations via a read-only `use_figma` call, and captures the screens' theme-correct token values via
+one `get_variable_defs` per top-level screen frame. It returns the complete `## Recursos do Figma` section
 — `### Arquivos`, `### Breakpoints`, `### Telas`, `### Componentes` and `### Anotações de Design` — ready to drop into
-the design doc (template: `templates/design.md`).
+the design doc (template: `templates/design.md`), plus the **path** to `artifacts/figma-tokens.md`.
 
 Annotations carry semantic intent: business rules, responsive rules, interactive-state behavior,
 animations, accessibility rules, content rules, development-specific instructions, spacing, and
@@ -327,7 +355,13 @@ It is never called to implement anything.
 
 **If no Figma designs:** Proceed normally. Do not include the Figma Resources section in the design doc.
 
-**Design tokens are NOT extracted during design phase.** They are deferred to implementation time — the implementer subagent will fetch them via `get_variable_defs` when needed.
+**Design token VALUES are extracted exactly once, here, into `artifacts/figma-tokens.md`** — by
+`afyapowers-dev:reading-figma-designs`, via `get_variable_defs` on the top-level screen frames only. That
+artifact is the value authority for every later phase, because only nodes of the screens file resolve
+variables in the screens' actual theme (a design-system original resolves them in the collection's
+DEFAULT mode — wrong values, sometimes different token names). No other design-phase step calls
+`get_variable_defs`, and no phase ever calls it on a design-system original to obtain values.
+Downstream consumers receive the artifact's **path** and read the file — never a pasted copy.
 
 **Análise de Design System (only when Figma is present):**
 
@@ -341,9 +375,20 @@ Invoke `afyapowers-dev:analyzing-design-system`. Pass it:
 - **anything you already read from disk** that bears on the existence check — the feature's `state.yaml`/artifacts, `package.json`, the local component directory listing, the DS package in use. The sub-skill runs in your turn and must not re-read what is already in context;
 - caller mode `design`.
 
-It resolves every instance **to its original component in the file that declares it**, checks the real codebase, recommends a verdict per node (`Implementar` | `Importar` | `Atualizar` | `Derivar`), and **confirms every one of them with the user — in compact batches of up to 4 nodes per prompt, each node with its own explicit answer**. It returns the confirmed tree (with the origin fileKey + original node id per node), the validated origin map, the warnings, the skip set, and the import path of every `Importar` node.
+It resolves every instance **to its original component in the file that declares it**, classifies each node's `Origem` (`local` = team component declared in the screens file; `externa` = design-system component in another file), checks the real codebase, recommends a verdict per node (`Implementar` | `Importar` | `Atualizar` | `Derivar`, plus the user-chosen `Adiado` for external DS components missing from the code), and **confirms every one of them with the user — in compact batches of up to 4 nodes per prompt, each node with its own explicit answer**. It returns the confirmed tree (with the origin fileKey + original node id per node), the validated origin map, the warnings, the skip set, the import path of every `Importar` node, and the **`Adiado` set**.
 
-**Write the confirmed verdicts to `## Árvore de Componentes de DS`** and complete each component's `C#` entry under `### Componentes` (origin, coordinates, type, validation, declared variants) in `design.md` — the sub-skill persists each row as it is confirmed, so an interrupted session resumes instead of restarting. Omit both sections entirely when the layout uses no component instances.
+**Write the confirmed verdicts to `## Árvore de Componentes de DS`** and complete each component's `C#` entry under `### Componentes` (origin coordinates, type, `Origem`, declared variants, and `Variantes a implementar` for reduced-scope verdicts) in `design.md` — the sub-skill persists each row as it is confirmed, so an interrupted session resumes instead of restarting. Omit both sections entirely when the layout uses no component instances.
+
+<HARD-GATE-ADIADO>
+**A non-empty `Adiado` set pauses the design phase.** An `Adiado` node is a design-system component
+the user chose to implement outside the workflow. The design doc may not be finalized, the phase may
+not advance, and **no screen may be planned or implemented** while any node is `Adiado` — a screen
+built against a component that does not exist is exactly the broken state the verdict exists to
+prevent. After persisting everything confirmed so far, stop and tell the user, in pt-BR: which
+components are `Adiado`, that the ideal path is implementing each one in the design-system library,
+and that re-running `/afyapowers-dev:design` after that re-checks **only** the `Adiado` nodes
+(found in code → confirmed as `Importar`; still missing → asked again).
+</HARD-GATE-ADIADO>
 
 <HARD-GATE-ORIGENS>
 **The design phase STOPS while any component instance has no validated origin file.**
@@ -363,10 +408,22 @@ Then **validate** each accepted link: the node must be reachable, it must be a `
 Do not proceed on a partial set, do not defer a component "for later", and never fall back to reading the instance. If the user genuinely cannot produce a link, the analysis stops and reports what is blocked — that is the correct outcome, not a component built from an instance.
 </HARD-GATE-ORIGENS>
 
-**Once every origin is validated, a missing component is not a blocker — it is a task:**
+**Once every origin is validated, what a missing component becomes depends on its `Origem`:**
 
-- `Implementar` / `Derivar` → the plan phase generates a `UI Component` task, pointing at the **original** in its own file. The component gets built **inside** this feature, with plan review, code review and commits, like any other work.
-- `Atualizar` → also a task, but the additive change to a shared component was **approved by the user during this phase**, in the confirmation loop. That approval is what authorizes it; do not let an `Atualizar` reach the plan without it.
+- `Origem: local` (team component) + `Implementar`/`Derivar` → the plan phase generates a
+  **`UI Team Component`** task, pointing at the **original** in the screens file, covering **every
+  declared variant**. The component gets built **inside** this feature, with plan review, code review
+  and commits, like any other work.
+- `Origem: externa` (design-system component) not found in code → the sub-skill's DS warning question
+  already ran: either the node is **`Adiado`** (the phase pauses — see HARD-GATE-ADIADO) or the user
+  chose **`Implementar (escopo reduzido)`** → the plan generates a **`UI DS Component`** task limited
+  to `Variantes a implementar` (the variants the screens use + the declared interactive states), with
+  the code placed near the feature — never as a global shared component.
+- `Atualizar` / `Derivar` on an existing base → also a task (`UI Team Component` or `UI DS Component`
+  by `Origem`; external ones are reduced scope — only what the screens use and the base lacks). The
+  additive change to a shared component was **approved by the user during this phase**, in the
+  confirmation loop. That approval is what authorizes it; do not let an `Atualizar` reach the plan
+  without it.
 - `Importar` → no task. The import path travels into the plan so the consuming screen imports it.
 
 Beyond the origin gate, stop and ask only where the analysis genuinely cannot resolve something: two originals sharing a name, or a tree large enough to need prioritization first.
@@ -454,7 +511,7 @@ Now — and only now — read the project: files, docs, recent commits, existing
 - If JIRA discovery was performed, include the `## Contexto do JIRA` section with issue key, summary, acceptance criteria, and linked issues
 - If Figma discovery was performed, include the `## Recursos do Figma` section with file info, breakpoints, node map, and the `### Anotações de Design` list. Reflect the annotations in the relevant design sections too — business rules in Requirements, the rest wherever they fit (Constraints, Architecture, Error Handling, Testing Strategy) — not just the annotations list.
 - If the design reuses any existing non-DS codebase component, include the `## Decisões de Reúso de Componentes` section recording each candidate, its name/layout/behavior parity per axis, **your recommendation**, and **the user's decision** (per the Component Reuse Gate above). Every row must carry a decision the user actually made.
-- If Figma discovery ran and the layout uses DS components, include the `## Árvore de Componentes de DS` section with the confirmed tree returned by `afyapowers-dev:analyzing-design-system` — every node's verdict, its dependencies, its confirmed code name, and the import path for `Importar` nodes. This is what the plan phase reads to derive `UI Component` tasks.
+- If Figma discovery ran and the layout uses DS components, include the `## Árvore de Componentes de DS` section with the confirmed tree returned by `afyapowers-dev:analyzing-design-system` — every node's verdict, its dependencies, its confirmed code name, and the import path for `Importar` nodes. This is what the plan phase reads to derive `UI Team Component`/`UI DS Component` tasks.
 - If Figma discovery was performed, confirm `## Contrato de Layout` is present and complete (see below); if there is no Figma reference, omit the section
 - Be ready to go back and clarify if something doesn't make sense
 
@@ -479,8 +536,12 @@ The design phase's job here is only to GUARANTEE that `## Contrato de Layout` is
 
 ## Required Sub-Skills
 
-**REQUIRED when the user provides Figma URL(s):** Dispatch @"figma-handoff-reviewer (agent)" **before**
-invoking `afyapowers-dev:reading-figma-designs` — it is the first thing that happens once URLs are in hand.
+**OFFERED when the user provides Figma URL(s):** the first thing that happens once URLs are in hand is
+the `AskUserQuestion` offer from `<OFFER-HANDOFF-REVIEW>` — run the handoff review (recommended) or skip
+it and trust the handoff. The offer itself is mandatory; the review runs only if the user chooses it.
+If they skip, go straight to `afyapowers-dev:reading-figma-designs` with no artifact and no gate. If they
+choose to run it, dispatch @"figma-handoff-reviewer (agent)" **before** invoking
+`afyapowers-dev:reading-figma-designs`:
 
 - Announce: "Usando o figma-handoff-reviewer para auditar o handoff."
 - Pass every Figma URL you have (initial request + JIRA) and `[ARTIFACT_PATH]` = `.afyapowers/features/<feature>/artifacts/figma-handoff-review.md`.
@@ -539,7 +600,7 @@ Wait for the user's response. If they request changes, make them and re-run the 
 
 **Completion:**
 
-- Record the artifact: `python3 "<plugin-root>/scripts/feature.py" record-artifact design.md` (when Figma discovery ran, `figma-handoff-review.md` is already recorded — it happened at the handoff gate)
+- Record the artifact: `python3 "<plugin-root>/scripts/feature.py" record-artifact design.md` (when the handoff review ran, `figma-handoff-review.md` is already recorded — it happened at the handoff gate; when the user skipped the review, there is no such artifact to record)
 - Tell the user: "Fase design concluída. Rode `/afyapowers-dev:next` para avançar para **plan**."
 
 ## Key Principles

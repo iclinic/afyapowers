@@ -96,7 +96,7 @@ Track task status yourself across waves (pending / in-flight / completed / needs
 ### Step 5: Dispatch
 
 **Type-aware concurrency:** After file overlap validation, classify each task in the ready set by its `**Type:**` line (the `type=` field in the plan-graph output):
-- **MCP-capped task**: `Type` is `UI Screen` or `UI Component` — these implementers make Figma MCP calls
+- **MCP-capped task**: `Type` is `UI Screen`, `UI Team Component` or `UI DS Component` — these implementers make Figma MCP calls
 - **Uncapped task**: `Type` is `UI Logic`, `Backend`, or `General` — no Figma MCP calls
 - **Legacy fallback**: if a task has NO `**Type:**` line, classify by the legacy heuristic — a task whose text contains a `**Figma:**` section counts as **MCP-capped**; otherwise **uncapped**
 
@@ -107,35 +107,38 @@ Apply concurrency caps:
   | Type | Implementer | MCP calls per task | Budget cost |
   |---|---|---|---|
   | `UI Screen` | `figma-design-implementer` | 3 mandatory + occasional `get_metadata` fallback + `download_assets` | **~4** |
-  | `UI Component` | `figma-component-implementer` | 3 mandatory + `download_assets` + fallbacks (self-review reuses data already in context — no extra calls) | **~4** |
+  | `UI Team Component` | `figma-component-implementer` (team mode) | 3 mandatory + `download_assets`; a large `COMPONENT_SET` whose design context returns a variant index adds ~1 call per variant axis | **~4** (estimate axes+3 when `**Variantes:**` lists 3+ axes) |
+  | `UI DS Component` | `figma-component-implementer` (ds mode) | 1 screenshot + 1 design context per variant in `**Variantes:**` + `download_assets` (no `get_variable_defs` — values come from the tokens artifact by Read) | **count the `**Variantes:**` entries + 2** |
 
-  So per cycle: **3 MCP-capped tasks** of either type (≈12). Pick by task number in order; the rest stay in the ready pool for the next cycle.
+  Fill the wave up to ≈12 estimated calls, picking by task number in order; the rest stay in the ready pool for the next cycle. A single `UI DS Component` task whose estimate alone exceeds 12 still dispatches — alone in its wave.
 
 > **Why budget by calls, not tasks?** Both implementers declare 3 mandatory calls, but assets and truncation fallbacks add 1-2 more per task in practice. Four tasks concurrently can exceed 15 req/min: tasks hit 429, back off 30-60s, and the wave serializes anyway — after burning the retries. Budgeting by calls (~4 each, ≤12/wave) keeps the wave under the limit.
 
-**Figma tasks self-verify (with different mechanisms per Type).** `UI Screen` tasks (`figma-design-implementer`) run a fixed fidelity-verification step (its Step 5): after writing the code the implementer spawns a read-only `figma-token-verifier` and loops (max **2** attempts) fixing token/measure mismatches until PASS. `UI Component` tasks (`figma-component-implementer`) do **not** use `figma-token-verifier`; they self-verify via a screenshot self-review (its Step 6 — comparing against the screenshot and token data **already fetched in its Steps 1-2**; no re-fetch). Neither verification makes extra Figma calls. Consequence for you: a Figma task's `DONE` already carries a fidelity self-check, and a `DONE_WITH_CONCERNS` may carry a BLOCKING fidelity concern (e.g. "unresolved fidelity mismatch after 2 attempts", or a screenshot-mismatch concern) — handle it like any other blocking concern. This does not change wave scheduling or the commit flow.
+**Every Figma task ends in an independent fidelity verification.** All three Figma implementers spawn a read-only `figma-token-verifier` after writing the code and loop on it (max **2** attempts) fixing token/measure mismatches until PASS: `UI Screen` in the design implementer's Step 5; `UI Team Component` / `UI DS Component` in the component implementer's Step 8 (after its screenshot self-review, which still covers layout/variants/assets/a11y). On a `UI DS Component` task the verifier resolves the expected values **itself, from the `figma-tokens.md` artifact** — the implementer sends token names, not trusted values — so the theme-correct values are checked by an agent that did not write the code. The verifier is code-level and read-only: none of this adds Figma MCP calls. Consequence for you: a Figma task's `DONE` already carries a fidelity self-check, and a `DONE_WITH_CONCERNS` may carry a BLOCKING fidelity concern (e.g. "unresolved fidelity mismatch after 2 attempts", or a screenshot-mismatch concern) — handle it like any other blocking concern. This does not change wave scheduling or the commit flow.
 
 Dispatch the combined set (all uncapped + the MCP-capped tasks that fit the ≤12-call budget) as parallel Subagent calls in a single message.
 
 **Prompt routing:** Read the task's `**Type:**` line and select the implementer agent from this table:
-- `UI Screen` → dispatch @"figma-design-implementer (agent)". Include the Figma metadata (file key, node ID, breakpoints, acceptance measures) in the agent context.
-- `UI Component` → dispatch @"figma-component-implementer (agent)" (design-system-aware component implementer). Include the Figma metadata **and the full `**Design System:**` block** — see the mapping below.
+- `UI Screen` → dispatch @"figma-design-implementer (agent)". Include the Figma metadata (file key, node ID, breakpoints, acceptance measures, tokens-artifact path) in the agent context.
+- `UI Team Component` / `UI DS Component` → dispatch @"figma-component-implementer (agent)" (design-system-aware component implementer). Include the Figma metadata **and the full `**Design System:**` block** — see the mapping below. The `Type` decides `[NODE_ORIGIN]`.
 - `UI Logic` / `Backend` / `General` → dispatch @"tdd-implementer (agent)" (standard TDD implementer).
 
-**Mapping the `**Design System:**` block into the component implementer's placeholders.** This is the load-bearing part of a `UI Component` dispatch. The agent is organised entirely around its verdict, so an empty verdict changes what it builds:
+**Mapping the task into the component implementer's placeholders.** This is the load-bearing part of a component dispatch. The agent is organised entirely around its verdict and origin, so an empty verdict changes what it builds:
 
 | Task line | Agent placeholder |
 |---|---|
+| `**Type:**` | `[NODE_ORIGIN]` — `team` for `UI Team Component`, `ds` for `UI DS Component` |
 | `**Veredito:**` | `[VERDICT]` (lowercase: `implementar` / `importar` / `atualizar` / `derivar`) |
 | `**Base:**` | `[BASE_COMPONENT]` — name + resolved import path |
 | `**Compõe de:**` | `[COMPOSE_FROM]` — the list of `{ code name, import path }` children |
-| `**Variantes:**` | `[VARIANT_LIST]` — every axis the original declares |
+| `**Variantes:**` | `[VARIANT_LIST]` — the variants THIS task implements (team: the original's full catalog; ds: the reduced list, semantic variants used + declared interactive states) |
+| `**Tokens do Figma:**` | `[TOKENS_ARTIFACT]` — the artifact **path**, exactly as the task carries it. Never read the file yourself to paste its content: the implementer Reads it |
 | task name + `**Files:**` target | `[COMPONENT_NAME]`, `[OUTPUT_DIRECTORY]` |
 | `**Anotações do Figma:**` / `**Estados a cobrir:**` | paste verbatim into the task text — interactive states, animation and a11y rules the implementer cannot see in the default frame |
 
 Also pass `[NODE_TYPE]`, `[FRAMEWORK]` and `[GENERATE_STORYBOOK]` from the task/project context.
 
-**`[FILE_KEY]` and `[NODE_ID]` on a `UI Component` task point at the ORIGINAL component, not at the instance** — and the file key may belong to a **different file** than the screen (the design-system file). Pass them exactly as the task carries them. Do not "correct" them to the screen's file key because they look inconsistent with the other tasks in the wave: that inconsistency is the point. The implementer has to read the component where it is declared, or it only ever sees the one variant that appeared on the screen.
+**`[FILE_KEY]` and `[NODE_ID]` on a component task point at the ORIGINAL component, not at the instance** — and on a `UI DS Component` task the file key belongs to a **different file** than the screen (the design-system file). Pass them exactly as the task carries them. Do not "correct" them to the screen's file key because they look inconsistent with the other tasks in the wave: that inconsistency is the point. The implementer has to read the component where it is declared, or it only ever sees the one variant that appeared on the screen.
 
 **Leaves→root ordering is already enforced by `**Depends on:**`** — the plan derives each component task's dependencies from the DS tree's `Depende de` column, so the normal ready-set rule (a task is ready only when all its deps are `completed`) dispatches bases before derivatives and children before composites. You do not need a separate ordering pass. But do sanity-check it: a `derivar` task whose `[BASE_COMPONENT]` is not among its `**Depends on:**`, or a composite whose `[COMPOSE_FROM]` children are not all dependencies, means the plan dropped an edge. Surface that instead of dispatching — the agent would find the import unresolvable and report BLOCKING anyway, after doing the work.
 
@@ -238,12 +241,12 @@ Completed: [1, 2, 3, 4, 5] → Write implementation-concerns.md → Done
 #### Mixed Type Example
 
 ```
-Ready: [1(Backend), 2(General), 3(UI Screen), 4(UI Component), 5(UI Logic), 6(UI Component)]
+Ready: [1(Backend), 2(General), 3(UI Screen), 4(UI Team Component), 5(UI Logic), 6(UI DS Component, 4 variantes)]
 → Classify by Type: uncapped (no MCP) = [1, 2, 5], MCP-capped = [3, 4, 6]
 → Route: 1,2,5 → tdd-implementer; 3 → figma-design-implementer; 4,6 → figma-component-implementer
-→ Budget the MCP wave (target ≤12 calls): 3(UI Screen)≈4 + 4(UI Component)≈6 = 10 ✓; adding 6(UI Component)≈6 → 16 ✗
+→ Budget the MCP wave (target ≤12 calls): 3(UI Screen)≈4 + 4(UI Team Component)≈4 = 8 ✓; adding 6(UI DS Component)≈6 (4 variantes + 2) → 14 ✗
 → Dispatch: [1, 2, 5] + [3, 4] = 5 parallel agents. Task 6 waits for the next cycle
-→ Next cycle: 6(UI Component)≈6 dispatches alone
+→ Next cycle: 6(UI DS Component)≈6 dispatches alone
 ```
 
 ### Fallback to Sequential
@@ -307,7 +310,7 @@ Implementer subagents report one of four statuses:
 
 - @"tdd-implementer (agent)" - Dispatch standard implementer subagent (TDD workflow) — for `UI Logic` / `Backend` / `General`
 - @"figma-design-implementer (agent)" - Dispatch Figma design implementer subagent (visual fidelity workflow) — for `UI Screen`
-- @"figma-component-implementer (agent)" - Dispatch Figma component implementer subagent (design-system-aware component workflow) — for `UI Component`
+- @"figma-component-implementer (agent)" - Dispatch Figma component implementer subagent (design-system-aware component workflow) — for `UI Team Component` / `UI DS Component`
 
 ## Red Flags
 
@@ -339,7 +342,7 @@ Implementer subagents report one of four statuses:
 **Subagent prompts:**
 - @"tdd-implementer (agent)" — TDD rules are embedded directly in this prompt (used for `UI Logic` / `Backend` / `General` tasks, and legacy non-Figma tasks)
 - @"figma-design-implementer (agent)" — Figma implement-design workflow (used for `UI Screen` tasks, and legacy tasks with a `**Figma:**` section)
-- @"figma-component-implementer (agent)" — design-system-aware component workflow (used for `UI Component` tasks)
+- @"figma-component-implementer (agent)" — design-system-aware component workflow (used for `UI Team Component` / `UI DS Component` tasks)
 
 **Context:** When invoked by implementing, the plan and design are already in the conversation context. Use them directly. If the plan is not in context (e.g., invoked standalone), read it from `.afyapowers/features/<feature>/artifacts/plan.md`.
 

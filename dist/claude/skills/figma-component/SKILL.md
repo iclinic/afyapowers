@@ -14,7 +14,7 @@ Before EVERY Figma MCP tool call, you MUST check:
 2. Is this tool listed in the current phase's MCP_ALLOWLIST?
 3. If NO → STOP. Do not call it. Only the implementer subagent may use it.
 
-NEVER call get_screenshot or get_variable_defs — only the subagent calls these. NEVER call get_design_context yourself — Phase 3 delegates the whole resolution chain to the analyzing-design-system sub-skill, which owns those calls and its own budget. You make Figma MCP calls in Phase 1 only (get_metadata + get_code_connect_map).
+NEVER call get_screenshot — only the subagent calls it. NEVER call get_design_context yourself — Phase 3 delegates the whole resolution chain to the analyzing-design-system sub-skill, which owns those calls and its own budget. You make Figma MCP calls in Phase 1 only (get_metadata + get_code_connect_map), plus the single Phase 4 exception: get_variable_defs on user-provided top-level screen frames to capture the theme-correct tokens artifact (never on a component original).
 NEVER launch Explore agents or scan the codebase for conventions, tokens, or patterns. The targeted existence check (props/types, Storybook argTypes, grep of usages) belongs to the analyzing-design-system sub-skill, not to you.
 NEVER run phases in parallel. Execute Phase 1, then Phase 2, then Phase 3, then Phase 4, then Dispatch, in order.
 NEVER implement the component yourself. You are the orchestrator. The subagent implements. Building the DS tree in Phase 3 is analysis, not implementation.
@@ -49,7 +49,7 @@ Create the following tasks in order:
 | T7 | Phase 2.3: Detect output location, framework, Storybook | Glob for component directories, check package.json, detect Storybook. |
 | T8 | Phase 3: Build Component Tree | Invoke `afyapowers-dev:analyzing-design-system` with the stored T3 metadata and T4 Code Connect map. It resolves every dependency, recurses leaves→root (bounded at depth 2), diffs, recommends a verdict per node, and confirms EVERY node with the user in compact batches. Returns the confirmed `## Árvore de Componentes de DS`. |
 | T9 | Phase 4: Present pre-flight summary | Show the global pre-flight summary (directory, framework, Storybook, resolved origins) and the confirmed DS tree. Confirm the run-level settings. Per-node verdicts were already confirmed in T8. |
-| T10 | Dispatch implementer subagent(s) per node | For each code-task node (leaves→root), build the extended subagent prompt and dispatch. Each subagent includes self-review against Figma data. Handle the results. |
+| T10 | Dispatch implementer subagent(s) per node | For each code-task node (leaves→root), build the extended subagent prompt and dispatch. Each subagent self-reviews against Figma data and then has its token values independently verified by the read-only `figma-token-verifier` it spawns. Handle the results. |
 
 After creating all 10 tasks, set up dependencies using TaskUpdate `addBlockedBy`:
 - T2 blocked by T1
@@ -251,14 +251,20 @@ For a **single self-contained component with no sub-component instances**, the t
 
 Before proceeding: verify task T8 is `completed` and the DS tree is assembled. If any task triggered a hard stop, do NOT continue.
 
+**`Adiado` pauses the run.** If any tree node carries the verdict `Adiado` (an external design-system
+component the user chose to implement outside the workflow), STOP here — do not proceed to Phase 4 or
+Dispatch. Tell the user which nodes are deferred and that re-running the skill after implementing them
+in the design-system library re-resolves only those nodes (expected to become `Importar`).
+
 ---
 
 ## Phase 4 — Present pre-flight & confirm run settings
 
 <MCP_ALLOWLIST>
-Permitted MCP tools in this phase: NONE.
-ALL Figma MCP calls are FORBIDDEN in this phase.
-If you are about to call any Figma MCP tool, STOP. You are violating the skill protocol.
+Permitted MCP tools in this phase: `get_variable_defs`, ONLY on user-provided **top-level screen
+frames** for the tokens artifact (Task T9), one call per frame — NEVER on a component original.
+Every other Figma MCP call is FORBIDDEN in this phase.
+If you are about to call any other Figma MCP tool, STOP. You are violating the skill protocol.
 </MCP_ALLOWLIST>
 
 ### Task T9 — Present pre-flight results & confirm run settings
@@ -300,6 +306,21 @@ point, and each is still a separate question:
 - whether to generate Storybook stories,
 - whether to proceed with the run at all.
 
+**Theme-correct tokens for external nodes (asked only when needed).** If any code-task node's origin
+file differs from the target's file (`Origem: externa` in the tree), its own file resolves token
+values in the collection's DEFAULT mode — wrong theme. Ask the user, openly: a **direct link to a
+top-level frame of the file/screens where the component is used** (right-click the frame → "Copy link
+to selection"), so tokens are captured in the correct theme. Two outcomes:
+
+- **Link provided** → validate it (parse `fileKey`/`node-id`, `^\d+:\d+$`), then make **one
+  `get_variable_defs` call per provided frame** — the single exception to this phase's MCP ban —
+  and write the results to a `figma-tokens.md` artifact (template: `templates/figma-tokens.md`;
+  `captured-at` from a real `date -u`): into the active feature's `artifacts/` when one exists,
+  otherwise a scratch file. Pass its **path** as `[TOKENS_ARTIFACT]` in Dispatch.
+- **User declines** → external nodes will be implemented with values resolving in their file's
+  default theme; record that as a run-level warning and instruct the implementer (via an explicit
+  prompt note) to flag its values as `tema-não-verificado` CONCERNs instead of NEEDS_CONTEXT.
+
 The user may also decline the whole run here. Mark T9 `completed` once the run settings are confirmed.
 
 ---
@@ -314,13 +335,13 @@ Before proceeding: verify task T9 is `completed`, that every tree row carries a 
 
 <MCP_ALLOWLIST>
 Permitted MCP tools in this phase: NONE for the orchestrator.
-The implementer subagent will make its own 3 MCP calls (get_variable_defs, get_screenshot, get_design_context); its self-review reuses that data with no extra calls.
+The implementer subagent makes its own MCP calls per its origin mode (`team`: get_variable_defs + get_screenshot + get_design_context on the original; `ds`: get_screenshot + per-variant get_design_context, values from the tokens artifact by Read); its self-review reuses that data with no extra calls, and its final verification (a read-only `figma-token-verifier` it spawns, max 2 attempts) makes no Figma MCP calls at all.
 You as the orchestrator must NOT call any Figma MCP tools here.
 </MCP_ALLOWLIST>
 
 ### Task T10 — Dispatch implementer subagent(s) per node
 
-Mark T10 `in_progress`. Walk the confirmed DS tree in **leaves→root order** and dispatch @"figma-component-implementer (agent)" **once per code-task node**. A node with a code task is one whose `Task Type` is a code task (e.g. `UI Component`) — i.e. verdict `Implementar`, `Derivar`, or `Atualizar`. **Skip `Importar` nodes** (`Task Type = —`): no new code is dispatched; record the existing import path/symbol so parents reference it.
+Mark T10 `in_progress`. Walk the confirmed DS tree in **leaves→root order** and dispatch @"figma-component-implementer (agent)" **once per code-task node**. A node with a code task is one whose `Task Type` is a code task (`UI Team Component` / `UI DS Component`) — i.e. verdict `Implementar`, `Derivar`, or `Atualizar`. **Skip `Importar` nodes** (`Task Type = —`): no new code is dispatched; record the existing import path/symbol so parents reference it. (`Adiado` nodes never reach this phase — the Phase 3 gate stopped the run.)
 
 **Ordering & dependency rules:**
 - Never dispatch a node before every node in its `Depende de` column has been dispatched (or is an already-satisfied `Importar`). For a `Derivar` node, its base — the **first** item in `Depende de` — must be implemented/imported first so the wrapper can compose it. For a **composite** `Implementar` node, ALL children in `Depende de` must be implemented/imported first; pass them as `[COMPOSE_FROM]` so the subagent imports and composes them.
@@ -332,8 +353,10 @@ Build each subagent prompt filling in **per node** (from that node's tree row / 
 - `[FILE_KEY]` — the node's Figma file key. Same-file/other-page nodes keep the **same `fileKey`** as the target (from Phase 1, Task T1) — a different page is not a different file.
 - `[NODE_ID]` — the node's main node-id. For same-file/other-page nodes this is the **main component node-id resolved via `get_metadata`** in Phase 3 (route 2), not the instance node-id.
 - `[NODE_TYPE]` — COMPONENT or COMPONENT_SET for that node
-- `[VARIANT_LIST]` — variant names for that node (or "N/A — single component")
-- `[OUTPUT_DIRECTORY]` — confirmed path from Phase 4
+- `[NODE_ORIGIN]` — `team` when the node's origin file is the **same file** as the target (any page); `ds` when the analysis resolved it to a **different file** (`Origem: externa`). Selects the implementer's token/scope mode.
+- `[TOKENS_ARTIFACT]` — the **path** to the `figma-tokens.md` captured in Phase 4 (empty when the user declined; in that case, for `ds` nodes, add the explicit prompt note from T9: resolve values from the design context and flag them `tema-não-verificado` instead of reporting NEEDS_CONTEXT — and dispatch the Step 8 `figma-token-verifier` in the **table shape** (resolved values + declared sources) rather than the name-list shape, since no artifact authority exists)
+- `[VARIANT_LIST]` — the variants the node's confirmed verdict covers: full declared catalog for `team` nodes (or "N/A — single component"); for a `ds` node confirmed as reduced scope, its `Variantes a implementar` list (used semantic variants + declared interactive states)
+- `[OUTPUT_DIRECTORY]` — confirmed path from Phase 4. For a `ds` (reduced-scope) node, never the project's global/shared component directory — if the confirmed directory is the shared one, re-confirm with the user for that node before dispatching
 - `[FRAMEWORK]` — confirmed framework from Phase 4
 - `[GENERATE_STORYBOOK]` — yes or no from Phase 4
 - `[COMPONENT_NAME]` — the confirmed code name for the node (proposed name from the tree, as confirmed/overridden in Phase 4)

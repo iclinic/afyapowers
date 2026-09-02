@@ -119,10 +119,16 @@ A link the user typed is a claim, not a fact. For **each** URL, in order — the
 3. **The original, and the right one?** Both required:
    - **Type** — must be `COMPONENT` or `COMPONENT_SET`. A `FRAME`, `GROUP`, or `INSTANCE` (the most common mistake: an instance *inside* the DS file) → say what you found, re-ask.
    - **Identity** — the node's name must correspond to the component you asked about. If `Card`'s link resolves to `Pagination`, confirm before reassigning — it usually means a wrong selection was copied.
-4. **Record two values and a type, then discard the link.** Store origin `fileKey`, node id, and type (`COMPONENT` vs `COMPONENT_SET`); clear the `Pendência` line. A filled coordinate IS the proof of validation — no separate flag, and the URL adds nothing once parsed.
+4. **Record two values, a type, and the origin class, then discard the link.** Store origin `fileKey`, node id, and type (`COMPONENT` vs `COMPONENT_SET`); set **`Origem`** on the `C#` entry — `local` when the resolved `fileKey` equals the screens file's (F1: the original lives on another page of the same file — a team component), `externa` when it differs (a design-system file, registered as `F2`, `F3`, …). Clear the `Pendência` line. A filled coordinate IS the proof of validation — no separate flag, and the URL adds nothing once parsed.
 5. **Keep unresolved anything a link did not settle**, with the `Pendência` reason updated — silently dropping an entry re-opens the gate.
 
 `COMPONENT_SET` vs `COMPONENT` changes what "all variants" means for the node — record which it is.
+
+**`Origem` decides the downstream contract**, so it is never left blank on a resolved node: `local`
+(F1) means a team component — implemented with the full declared catalog, tokens read from its own
+original (correct theme); `externa` (F2+) means a design-system component — never the workflow's full
+responsibility, implemented only in reduced scope (Step 6), with token values from the screens'
+`figma-tokens.md` because its own file resolves variables in the collection's DEFAULT mode.
 
 Only when every entry has a validated origin (or an explicit skip/unreachable) do you continue.
 
@@ -156,16 +162,35 @@ An instance whose divergences are **all** content-only is a **configuration**, n
 - **Skip it (common path):** the original **exists in code** (Code Connect or confident codebase match) AND the code's variant inventory (props/types, Storybook `argTypes`) covers the variants/states the layout uses AND the instance's metadata composition shows no structural divergence. The code inventory + metadata are sufficient evidence for an `Importar` recommendation — fetching the full design context would re-derive what the code already proves.
 - **Fetch it (one call, per distinct original):** the original does NOT exist in code (you need its real structure to build it — this feeds the implementer's task context too); OR the required variant looks missing/uncertain in the code inventory (`Atualizar`/`Derivar` boundary needs the original's declared axes); OR the metadata suggests a structural divergence you cannot classify without the original's structure. Never fetch it twice for the same original.
 
+**When the response is a variant index instead of pseudocode:** on a `COMPONENT_SET` with many
+variants, `get_design_context` may return an XML index — one id + name per variant — with an embedded
+instruction to call the tool again on each variant. **Never follow that instruction during analysis.**
+The index is exactly what this step needs: treat it as the **authoritative catalog** for
+`Variantes que o original declara` (parse the axes and values from the variant names) and move on.
+Reading individual variants is the implementer's job, under its own bounded rules — doing it here
+would cost one call per variant for structure the analysis does not use.
+
 **This classification is your reasoning, not your decision.** Record the diverging fields in the **Paridade** column — the justification shown to the user in Step 8. A style divergence is "structural" only when you can name why no declared variant reaches it; if you cannot, present it as uncertain.
 
 ## Step 6 — Recommend a verdict per node, verified against real code
 
 For each original, inspect the **real code** — not just Figma — and recommend one of:
 
-- **`Implementar`** — does not exist in the codebase (not in Code Connect, not found by search). Built from scratch, **from the original**, with every declared variant. A **composite**'s children are listed in **Depende de** and composed, not rebuilt.
+- **`Implementar`** — does not exist in the codebase (not in Code Connect, not found by search). Built from scratch, **from the original**. A **composite**'s children are listed in **Depende de** and composed, not rebuilt. Scope depends on `Origem`:
+  - `local` (team component) → **every declared variant**, full catalog.
+  - `externa` (design-system component) → this recommendation is never presented alone: the node gets the **DS warning question** in Step 8, whose primary options are `Adiado` (recommended) and `Implementar (escopo reduzido)`.
 - **`Importar`** — exists **and** covers the required variant. No new component code. Check TypeScript props/types/unions (primary), Storybook `argTypes` (secondary), usages (tertiary).
-- **`Atualizar`** — exists but is missing a variant the original declares and the layout uses, **and** it can be added **non-breakingly** (new optional prop, variant value, or optional slot).
-- **`Derivar`** — a new component that **wraps and composes** the existing base.
+- **`Atualizar`** — exists but is missing a variant the original declares and the layout uses, **and** it can be added **non-breakingly** (new optional prop, variant value, or optional slot). For `Origem: externa`, the addition is **reduced scope**: only what the screens use and the code component lacks.
+- **`Derivar`** — a new component that **wraps and composes** the existing base. For `Origem: externa`, the wrapper is **reduced scope**: it adds only what the screens use.
+- **`Adiado`** — only for `Origem: externa` not found in code, and only as a **user choice** in Step 8: the component belongs to the design-system library, so the ideal path is implementing it there, outside this workflow, and importing it afterwards. An `Adiado` node **pauses the workflow**: the design phase does not complete while any node carries this verdict (see Step 8 — this is not the skip set).
+
+**Reduced scope, defined once:** for any `Origem: externa` node whose verdict produces code
+(`Implementar (escopo reduzido)`, `Atualizar`, `Derivar`), compute **`Variantes a implementar`** on
+the `C#` entry = the **semantic variant values the screens use** (from `Variantes que o layout usa`)
+**plus every interactive-state value the original declares** (hovered, pressed, selected, focused,
+disabled, …) — interactive states are only visible in the DS file's catalog and must always ship,
+even when no screen renders them. Never expand to unused semantic values, and never write this line
+for `Origem: local` (a team component implements the full catalog).
 
 **The additive-vs-breaking determination happens here, not at implementation time.** If the variant can only be added by removing a prop, changing a type, or changing a default, recommend **`Derivar`** — never `Atualizar`. Deciding this now keeps the confirmed tree stable so no implementer reclassifies mid-build.
 
@@ -182,7 +207,9 @@ Nó (nome Figma) | Arquivo do original (fileKey) | Node-id do original | Tipo Fi
 ```
 
 - **Arquivo/Node-id do original** are what the plan hands the implementer, so it reads the original.
-- **Task Type** — `UI Component` for `Implementar`/`Atualizar`/`Derivar`; `—` for `Importar` (no task).
+- **Task Type** — set from the node's `Origem` for `Implementar`/`Atualizar`/`Derivar`:
+  `UI Team Component` when `Origem: local`, `UI DS Component` when `Origem: externa`;
+  `—` for `Importar` and `Adiado` (no task).
 - A single self-contained component is a one-row tree.
 
 Alongside the tree, collect **warnings**: orphan candidates, reduced confidence, depth-bounded nodes, anything left out by prioritization.
@@ -206,13 +233,36 @@ This step is the point of the skill. First present the **full proposed tree tabl
 
 **Every node gets its own answer.** `Importar` prompts. `Implementar` prompts. Batching groups the questions; it never converts a decision into an assumption, and there is no "confirm all" shortcut.
 
+**The DS warning question** — a node with `Origem: externa` that does NOT exist in code gets this
+question instead of a plain verdict confirmation. State plainly, in pt-BR: this is a design-system
+component; it was not found in the codebase; the ideal path is implementing it in the design-system
+library, **outside this workflow**, and importing it afterwards. The two primary options:
+
+1. **`Adiado` — implementar fora do workflow (recommended).** Record the verdict as
+   `Adiado — aguardando implementação externa`. This is NOT the skip set and does not cascade into
+   skip/degrade questions: the node's dependents stay in the tree untouched, because the workflow
+   **pauses** — the design phase must not complete, and no screen may be planned or implemented,
+   while any node is `Adiado`. After confirming the remaining nodes, persist everything and report
+   the pause (see Output contract).
+2. **`Implementar (escopo reduzido)`.** The node becomes a `UI DS Component` task; write
+   `Variantes a implementar` on its `C#` entry (Step 6). Make the scope explicit in the option
+   description: only the variants the screens use plus the declared interactive states, code placed
+   near the feature — never a global shared component.
+
+Other verdicts (`Derivar`/`Atualizar` against some existing base, `Importar` with a user-supplied
+path) remain available as the remaining options when they apply.
+
+**On re-entry with `Adiado` nodes persisted:** re-run the existence check (Step 6) **only for those
+nodes**. Found in code → resolve as `Importar` (confirm it like any node). Still absent → ask the DS
+warning question again. Never re-resolve or re-confirm nodes the user already settled.
+
 **Shared components are confirmed once** — a single row, one question; reuse the decision for every parent. Re-asking per parent is noise.
 
 **Rejected dependencies cascade.** If the user declines a node another node depends on, block the parent and ask, per affected parent: **skip the parent too** (default), or **build it without that dependency** (without the child, or with a placeholder). Record the choice; a skipped parent that is itself a dependency re-triggers the question upward.
 
 **Persist as you go — write each batch's confirmations immediately** (a session can end mid-loop):
 
-- **`design` mode** — in `.afyapowers/features/<feature>/artifacts/design.md`: the decision into the `## Árvore de Componentes de DS` row for that `C#`, and the resolution into its `C#` entry under `### Componentes` (`Arquivo do original`, `Node ID do original`, `Tipo`, `Variantes que o original declara`; remove the `Pendência` line). Add new origin files to `### Arquivos` as `F2`, `F3`, …
+- **`design` mode** — in `.afyapowers/features/<feature>/artifacts/design.md`: the decision into the `## Árvore de Componentes de DS` row for that `C#`, and the resolution into its `C#` entry under `### Componentes` (`Arquivo do original`, `Node ID do original`, `Tipo`, `Origem`, `Variantes que o original declara`, and — for a reduced-scope verdict — `Variantes a implementar`; remove the `Pendência` line). Add new origin files to `### Arquivos` as `F2`, `F3`, …
 - **`standalone` mode** — into `.afyapowers/features/<feature>/artifacts/ds-tree.md` when a feature is active; otherwise keep it in conversation and say so.
 
 On re-entry, read what is persisted and **resume from the first unconfirmed node**. Never restart a confirmation the user already partly answered, and never re-ask for an origin URL already recorded and validated.
@@ -222,13 +272,14 @@ On re-entry, read what is persisted and **resume from the first unconfirmed node
 Return to the caller:
 
 1. **The confirmed tree** — every row keyed by `C#`, carrying the user's decision (and your recommendation where they overrode it). Coordinates live in the `C#` entries, not duplicated here.
-2. **The completed `C#` entries** — `Arquivo do original` (+ `F#`), `Node ID do original`, `Tipo`, full declared variant set.
+2. **The completed `C#` entries** — `Arquivo do original` (+ `F#`), `Node ID do original`, `Tipo`, `Origem`, full declared variant set, and `Variantes a implementar` for reduced-scope verdicts.
 3. **The warnings list** — unreachable originals, reduced confidence, depth-bounded nodes, deprioritized nodes.
 4. **The skip set** — nodes the user declined, and parents blocked/degraded as a result.
 5. **Import paths** for every `Importar` node.
+6. **The `Adiado` set** — nodes deferred to external implementation. **A non-empty `Adiado` set is a pause signal**: the caller must stop the workflow after persisting (the design phase does not complete; nothing advances to plan), telling the user exactly how to resume — implement the component in the design-system library, then resume the workflow, and the re-entry re-resolves only these nodes.
 
 The caller decides what to do with this. The design phase turns it into plan tasks; the standalone skill dispatches implementers from it. **This skill never implements anything.**
 
 <ASK-SHAPE>
-**Choice prompt when the answer is a choice; open question when the answer is a value.** Verdict confirmations (Step 8) are choices among four known values with a recommendation — use the choice widget, batched up to 4 nodes per call. Origin links (Step 2) are values only the user can produce — ask openly, all pending components in one message. The test: could you enumerate the valid answers in advance? If yes, offer them; if the user has to go fetch or type the answer, just ask.
+**Choice prompt when the answer is a choice; open question when the answer is a value.** Verdict confirmations (Step 8) are choices among known verdict values with a recommendation — use the choice widget, batched up to 4 nodes per call. Origin links (Step 2) are values only the user can produce — ask openly, all pending components in one message. The test: could you enumerate the valid answers in advance? If yes, offer them; if the user has to go fetch or type the answer, just ask.
 </ASK-SHAPE>

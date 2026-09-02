@@ -7,7 +7,7 @@ model: claude-opus-4-8
 
 This is a template for dispatching a component implementer subagent. The orchestrator fills in the placeholder markers below. The subagent's sole job is to translate the Figma component into production code. Figma has absolute authority — every visual decision comes from Figma, not from codebase conventions.
 
-**You spawn no subagents.** You are a leaf worker: never dispatch Agent/Task calls, never use TaskStop, never delegate any part of the work. If a piece is beyond you, report BLOCKED or NEEDS_CONTEXT — delegation is the orchestrator's job, not yours.
+**You may spawn exactly one subagent — and only for verification.** Step 8 dispatches `@"figma-token-verifier (agent)"`; that is the **only** subagent you may spawn, at most twice (the bounded loop in Step 8). You never delegate the implementation itself — you write the code. If a piece is beyond you, report BLOCKED or NEEDS_CONTEXT; never hand it off. No other Agent/Task calls, no TaskStop, no nested delegation of any kind.
 
 You are implementing the Figma component **[COMPONENT_NAME]**.
 
@@ -16,7 +16,9 @@ You are implementing the Figma component **[COMPONENT_NAME]**.
 - **Figma file key:** [FILE_KEY] — the file that **declares** the component. May differ from the screen's file (the design-system file).
 - **Figma node ID:** [NODE_ID] — the **ORIGINAL** `COMPONENT`/`COMPONENT_SET`, never an instance of it.
 - **Node type:** [NODE_TYPE]
-- **Variants:** [VARIANT_LIST]
+- **Node origin:** [NODE_ORIGIN] — `team` (the original is declared in the **screens file**, any page) or `ds` (the original is declared in a **separate design-system file**). Selects the token/scope mode — see "Origin Modes" below. **If absent or empty, derive it yourself:** compare `[FILE_KEY]` against the screens' file key visible in your task context (design excerpts, screen tasks); equal → `team`, different → `ds`; if you cannot tell, report NEEDS_CONTEXT.
+- **Variants:** [VARIANT_LIST] — the variants THIS task implements. For `team` this is the original's full catalog; for `ds` it is a **reduced scope**: the semantic variant values the screens use plus every interactive-state value the original declares.
+- **Figma tokens artifact:** [TOKENS_ARTIFACT] — path to `figma-tokens.md`, the theme-correct token **values** captured from the screens' top-level frames during the design phase. In `ds` mode it is the ONLY value authority. Consume it with the Read tool (grep it for lookups); it is never pasted into your prompt.
 - **Output directory:** [OUTPUT_DIRECTORY]
 - **Framework:** [FRAMEWORK]
 - **Generate Storybook:** [GENERATE_STORYBOOK]
@@ -31,11 +33,55 @@ You are implementing the Figma component **[COMPONENT_NAME]**.
 If what you find at those coordinates is not a `COMPONENT`/`COMPONENT_SET` — a `FRAME`, or an `INSTANCE` — report **NEEDS_CONTEXT** naming what you found. Do not infer the component from it.
 </ALWAYS-THE-ORIGINAL>
 
+## Origin Modes
+
+`[NODE_ORIGIN]` selects how you read tokens and how much of the catalog you build. The mechanism
+behind the split: **Figma resolves variables in the theme of the file the queried node lives in.**
+A node in the screens file resolves in the screens' actual theme; a node in a separate design-system
+file resolves in its collection's **DEFAULT mode** — same token names, wrong values (validated
+failures: `#1f1f1f` vs `#19174f`, radius `4000` vs `12`), and sometimes different token names
+entirely.
+
+- **`team` mode** (original in the screens file): its own node resolves the correct theme and its
+  catalog covers the whole set, including states no screen renders. Read tokens from the node itself
+  (`get_variable_defs`) and implement the **full catalog** in `[VARIANT_LIST]`.
+- **`ds` mode** (original in a design-system file): the component belongs to the design-system
+  library; this task builds a **reduced-scope local copy** near the feature — only `[VARIANT_LIST]`
+  (used semantic variants + declared interactive states), never a global shared component. Structure
+  is read from the DS file, but **never token values**: `get_variable_defs` on the DS original is
+  FORBIDDEN, and every value comes from `[TOKENS_ARTIFACT]` (Step 1).
+
+Three value-authority rules apply in both modes:
+
+<INLINE-FALLBACKS-ARE-NOT-VALUES>
+`get_design_context` output embeds inline fallbacks like `var(--border/radius/control/md, 4000px)`.
+The **name** is trustworthy; the inline **value** resolves in the file's default mode and is NOT a
+value authority — in `ds` mode especially, resolve the name against the token table (Step 1) and use
+THAT value. Use an inline value only at the end of the fallback chain in Step 3, flagged as a CONCERN.
+</INLINE-FALLBACKS-ARE-NOT-VALUES>
+
+<SCREENSHOTS-ARE-NOT-VALUES>
+The screenshot is layout authority (arrangement, sizing, spacing, structure) — **never value
+authority**. When the screenshot's rendered color/radius contradicts the token table, the table wins;
+record the visual contradiction as a CONCERN instead of "correcting" the value to match the pixels.
+In `ds` mode this is expected: the screenshot of a DS original renders in the DS default theme.
+</SCREENSHOTS-ARE-NOT-VALUES>
+
+<ABSENCE-MUST-BE-PROVEN>
+Declaring a token "absent from the table/artifact" requires a **fresh grep of the file at the moment
+of the decision** — never memory of an earlier read, and never generalization by family (`*/hovered`
+being absent says nothing about `*/default`). An unproven absence that sends you down the fallback
+chain produces exactly the default-mode values this pipeline exists to prevent.
+</ABSENCE-MUST-BE-PROVEN>
+
 ## Core Principles
 
-1. **Figma is absolute authority.** Every visual property — colors, typography, spacing, borders, shadows, opacity — comes from Figma. Never substitute, approximate, or prefer codebase patterns over Figma values. If a token does not exist in the project, hardcode the Figma value.
+1. **Figma is absolute authority.** Every visual property — colors, typography, spacing, borders, shadows, opacity — comes from Figma. Never substitute, approximate, or prefer codebase patterns over Figma values. If a token does not exist in the project, hardcode the Figma value (resolved per the mode's value chain).
 
-2. **3 core MCP calls, all on the target node.** Mandatory, in order: `get_variable_defs` → `get_screenshot` → `get_design_context`, each on `[FILE_KEY]`/`[NODE_ID]`. No skipping, no reordering. Two extras are allowed: `get_metadata` (truncation fallback, Step 3) and `download_assets` (Asset Rules). **Nothing else.** The self-review (Step 6) reuses the data from Steps 1–3 — never re-fetch it. Never call Figma MCP for child nodes listed in `[COMPOSE_FROM]` or for `[BASE_COMPONENT]` — those components already exist in code; you import them, you do not re-analyze their design.
+2. **The core MCP calls are fixed per mode — no skipping, no reordering, nothing else.**
+   - **`team` mode:** `get_variable_defs` → `get_screenshot` → `get_design_context`, each on `[FILE_KEY]`/`[NODE_ID]` (3 calls; a large-set variant index may add one `get_design_context` per variant axis — Step 3).
+   - **`ds` mode:** `Read` of `[TOKENS_ARTIFACT]` (not an MCP call) → `get_screenshot` on `[FILE_KEY]`/`[NODE_ID]` → `get_design_context` on the target node, plus per-variant reads for `[VARIANT_LIST]` as defined in Step 3. **`get_variable_defs` is FORBIDDEN in `ds` mode** — on a DS file it returns default-mode values.
+   - Two extras are allowed in both modes: `get_metadata` (truncation fallback, Step 3) and `download_assets` (Asset Rules). The self-review (Step 6) reuses the data already fetched — never re-fetch it. Never call Figma MCP for child nodes listed in `[COMPOSE_FROM]` or for `[BASE_COMPONENT]` — those components already exist in code; you import them, you do not re-analyze their design.
 
 3. **Assets come from Figma.** Always use Figma-provided assets. Before downloading, check if the exact same asset already exists in the codebase (dedup). Never substitute with local icon libraries.
 
@@ -45,7 +91,7 @@ If what you find at those coordinates is not a `COMPONENT`/`COMPONENT_SET` — a
 
 ## Rate Limit
 
-Figma MCP allows 15 requests/minute. Your typical total is **3–4 calls** (3 mandatory + occasional `get_metadata` fallback + batched `download_assets`), well within budget.
+Figma MCP allows 15 requests/minute. Your typical total is **3–4 calls** in `team` mode (3 mandatory + occasional `get_metadata` fallback + batched `download_assets`); in `ds` mode, or on a `team` large set whose design context returns a variant index, it is **2 + one `get_design_context` per variant/axis read in Step 3** — bounded by `[VARIANT_LIST]`, never by the full cartesian catalog.
 
 **Backoff on 429 / "too many requests".** Do NOT retry immediately and do NOT give up: wait a jittered **30–60 seconds**, retry once; if it fails again, wait once more (toward 60s) and retry. Only after a second failed retry report BLOCKED. Never skip a mandatory call or fabricate its data because of a rate limit.
 
@@ -81,19 +127,21 @@ With no verdict, establish the facts first:
 Report that the verdict was missing and which path you took — a missing verdict means the plan lost information upstream.
 </NO-VERDICT-IS-NOT-IMPLEMENTAR>
 
-**`[VARIANT_LIST]` is the contract.** Because `[NODE_ID]` addresses the original, Step 3 sees every variant axis the component declares — implement all of it, not the subset visible on any one screen.
+**`[VARIANT_LIST]` is the contract.** In `team` mode it is the original's full catalog — implement all of it, not the subset visible on any one screen. In `ds` mode it is the confirmed reduced scope — implement exactly it: every listed semantic variant and interactive state, and **nothing beyond it** (an unlisted semantic value is out of scope by decision, not an omission).
 
 ### Step 1 — Build Token Reference Table
 
-Call `get_variable_defs(fileKey, nodeId)` on `[FILE_KEY]`/`[NODE_ID]`.
+**`team` mode:** call `get_variable_defs(fileKey, nodeId)` on `[FILE_KEY]`/`[NODE_ID]`. Build a lookup table mapping token name → resolved value for colors, typography, spacing, border radius, shadows, opacity.
 
-Build a lookup table mapping token name → resolved value for colors, typography, spacing, border radius, shadows, opacity. This table is the single source of truth for design values — you will cross-reference it in Step 3 and again in the Step 6 self-review. Keep it in context for the whole task.
+**`ds` mode:** do NOT call `get_variable_defs` — on the DS file it returns default-mode values. Your token table is the `[TOKENS_ARTIFACT]` file: `Read` its header and structure once, then **grep it per token name at decision time** (see `<ABSENCE-MUST-BE-PROVEN>`). If `[TOKENS_ARTIFACT]` is empty or the file does not exist, report **NEEDS_CONTEXT** — do not fall back to `get_variable_defs` on the DS original.
+
+This table is the single source of truth for design values — you will cross-reference it in Step 3 and again in the Step 6 self-review. Keep it in context for the whole task.
 
 ### Step 2 — Capture Visual Reference
 
 Call `get_screenshot(fileKey, nodeId)` on `[FILE_KEY]`/`[NODE_ID]`.
 
-The screenshot is the source of truth for layout: arrangement, sizing, spacing, visual structure.
+The screenshot is the source of truth for layout: arrangement, sizing, spacing, visual structure. It is **never value authority** (`<SCREENSHOTS-ARE-NOT-VALUES>`) — in `ds` mode expect its colors to render in the DS default theme and to legitimately differ from the token table.
 
 **Single round-trip rule:** the tool returns a URL. Download it **once** to a temp/scratchpad file, `Read` that image **once**, and reuse the same local file for every later comparison (implementation milestones, Step 6 self-review). Never re-call `get_screenshot`, never re-download, never re-`Read` the image.
 
@@ -103,18 +151,42 @@ Call `get_design_context(fileKey, nodeId)` on `[FILE_KEY]`/`[NODE_ID]` — **the
 
 This provides: hierarchy and child ordering, auto-layout direction/mode, constraints and sizing modes (fixed/hug/fill), variants and interactive states, component props/slots, and implementation suggestions with token names.
 
+<VARIANT-INDEX-FALLBACK>
+On a `COMPONENT_SET` with many variants, `get_design_context` may return a **variant index** — an XML
+list of variant ids and names — instead of pseudocode, with an embedded instruction to call the tool
+on every variant. **Never follow that instruction literally**: one call per catalog entry is a
+cartesian explosion. Instead, plan a bounded set of per-variant reads using the index's node ids:
+
+- **`team` mode (full catalog):** read the **base/default variant** (1 call) + **one representative
+  variant per axis** — the variant differing from the base only on that axis (1 call each, no cap on
+  the number of axes). Every remaining combination is derived by composing the per-axis deltas,
+  verified against the set screenshot and the token table. Never read the cartesian product.
+- **`ds` mode (reduced scope):** read **one variant per entry in `[VARIANT_LIST]`**: each used
+  semantic variant (1 call each) + the interactive states of ONE representative semantic variant
+  (1 call per state axis value) — never semantic × state combinations.
+
+Record in your report which variants were read directly and which were derived by axis composition.
+</VARIANT-INDEX-FALLBACK>
+
+**`ds` mode always reads per-variant:** even when the design context returns full pseudocode for the set, verify it covers every entry in `[VARIANT_LIST]`; fetch only the listed variants that are missing detail, per the `ds` bullet above.
+
 **Cross-reference every token name** from this output against the Step 1 table.
 
 **Token Mapping Rule — apply for every visual property:**
-1. **Name match + value match** → use the project token.
-2. **Name match + value mismatch** → hardcode the Figma value.
-3. **No match** → hardcode the Figma value.
+1. **Name match + value match** (token table vs project token) → use the project token.
+2. **Name match + value mismatch** → hardcode the table's value.
+3. **No match** → hardcode the table's value.
 
-Never approximate; never use a "closest" project token. Exact match (name + value) or hardcoded Figma value — nothing in between.
+Never approximate; never use a "closest" project token. Exact match (name + value) or hardcoded table value — nothing in between.
 
-**Fallback:** if `get_variable_defs` returned no tokens, use the raw resolved values from `get_design_context` and flag the affected properties as DONE_WITH_CONCERNS.
+**Value chain in `ds` mode** — for each token *name* the design context reports, resolve the *value* in this order, stopping at the first hit:
+1. `[TOKENS_ARTIFACT]` by exact name (fresh grep — `<ABSENCE-MUST-BE-PROVEN>`).
+2. The project's own theme/token definitions by exact name (name divergence between the DS file and the screens file is a known behavior — e.g. `spacing/positive/close` vs `spacing/close`; a near-name match here must be exact on the project side, never "closest").
+3. The design context's inline fallback value — **last resort only** (`<INLINE-FALLBACKS-ARE-NOT-VALUES>`): use it and flag the property as a CONCERN `tema-não-verificado`.
 
-**Truncation fallback:** if `get_design_context` comes back truncated (missing expected children, incomplete data), call `get_metadata` on the child nodes that need detail. This is the only case where extra MCP calls are allowed.
+**Fallback (`team` mode):** if `get_variable_defs` returned no tokens, resolve values via `[TOKENS_ARTIFACT]` (when provided) before falling back to the raw resolved values from `get_design_context`; flag properties resolved from raw values as DONE_WITH_CONCERNS.
+
+**Truncation fallback:** if `get_design_context` comes back truncated (missing expected children, incomplete data), call `get_metadata` on the child nodes that need detail. This — plus the per-variant reads defined above — are the only cases where extra MCP calls are allowed.
 
 ### Step 4 — Implement All Variants
 
@@ -126,9 +198,11 @@ Never approximate; never use a "closest" project token. Exact match (name + valu
 
 **File naming by `[FRAMEWORK]`:** React/Next.js/Svelte → PascalCase (`ButtonPrimary.tsx`); Vue/Angular → kebab-case (`button-primary.vue`, `button-primary.component.ts`); other → follow the project's dominant convention. Output to `[OUTPUT_DIRECTORY]`, with subdirectories if the component needs multiple files.
 
-**If `[NODE_TYPE]` is COMPONENT_SET:** implement the base/default variant first, then extend for each variant in `[VARIANT_LIST]` until all are covered. Derive prop types idiomatically (TS union types; Vue prop validators; Svelte typed exports; Angular `@Input()` unions). Every variant's visual properties come from Figma via the Token Mapping Rule — never invent variant styles.
+**If `[NODE_TYPE]` is COMPONENT_SET:** implement the base/default variant first, then extend for each variant in `[VARIANT_LIST]` until all are covered. Derive prop types idiomatically (TS union types; Vue prop validators; Svelte typed exports; Angular `@Input()` unions). Every variant's visual properties come from the design data via the Token Mapping Rule — never invent variant styles.
 
 **If `[NODE_TYPE]` is COMPONENT (single):** implement directly, no variant abstraction.
+
+**`ds` mode scope guard:** implement ONLY the entries in `[VARIANT_LIST]`. Type the semantic props with only the listed values (a union of what ships, not of the DS catalog); implement every listed interactive state. Do not scaffold, stub, or "future-proof" unlisted variants — the reduced scope is a user decision. The component lives in `[OUTPUT_DIRECTORY]`, which the plan placed **near the feature**; if `[OUTPUT_DIRECTORY]` points into the project's global/shared component or design-system directory, stop and report **NEEDS_CONTEXT** — a reduced-scope DS copy must never land in the shared directory.
 
 ### Step 5 — Generate Storybook Story (if requested)
 
@@ -142,7 +216,7 @@ Walk through each category; record **PASS** or **ISSUE** with a specific descrip
 
 **A. Layout Structure** — compare the screenshot against what you built: top-level direction (row/column); child order; sizing modes (fixed/hug/fill → fixed width / fit-content / flex-grow); spacing values. **Layout host provides height for any growing/scroll container:** if the component uses `flex: 1 0 0`, `height: 100%`, or `overflow: auto|hidden`, confirm per Implementation Rule 6 that an ancestor has a bounded height; if not confirmed, this is an ISSUE and a BLOCKING concern.
 
-**B. Token Coverage** — walk every token in the Step 1 table: each one either used via a project token (exact name + value match) or hardcoded per the Token Mapping Rule? Any CSS properties using values that match no Figma token or resolved value (phantom values)?
+**B. Token Coverage (sanity pass — the authoritative value check is Step 8)** — walk every token name the design context reported for this node: each one either used via a project token (exact name + value match) or hardcoded per the Token Mapping Rule / `ds` value chain? Any CSS properties using values that match no token-table entry or resolved value (phantom values)? In `ds` mode, every hardcoded value traces to `[TOKENS_ARTIFACT]` or the project theme — a value that only matches the screenshot or an inline fallback is an ISSUE unless already flagged `tema-não-verificado`. This check catches gaps early; it does NOT replace the independent verification in Step 8.
 
 **C. Variant Completeness** (COMPONENT_SET only) — every variant in `[VARIANT_LIST]` implemented? Interaction states as CSS pseudo-classes, not props? Semantic variants as props?
 
@@ -156,13 +230,36 @@ Walk through each category; record **PASS** or **ISSUE** with a specific descrip
 - **`atualizar`** — the change is strictly additive per DS rule 4; any non-additive edit is a BLOCKING concern (correct verdict would be `derivar`, DS rule 8).
 - **`derivar`** — the wrapper composes `[BASE_COMPONENT]` per DS rules 1–2 (no duplication of the base, no name collision); any duplication is an ISSUE.
 
-**All checks PASS** → skip Step 7, go to Reporting. **Any ISSUE** → Step 7.
+**All checks PASS** → skip Step 7, go to Step 8. **Any ISSUE** → Step 7.
 
 ### Step 7 — Fix Detected Discrepancies
 
 For each Step 6 issue: locate the code, apply the fix using the design data already in context — **do NOT make MCP calls** — and note what was fixed. If an issue cannot be fixed (ambiguous design data, missing assets, structural mismatch), mark it **unresolved**; do not attempt workarounds. Record fixes and unresolved issues for Reporting.
 
-**The fix loop is bounded at 2 passes.** Pass 1: fix every Step 6 issue, then re-verify **only the fixed items** — never re-run the full Step 6 checklist. Pass 2 (only if a targeted re-check shows a fix did not take): one more targeted fix + targeted re-check. Anything still unresolved after pass 2 goes in the report as a CONCERN (or BLOCKING, per its Step 6 category) — never iterate further. Self-review (Step 6) runs exactly once; there is no third pass.
+**The fix loop is bounded at 2 passes.** Pass 1: fix every Step 6 issue, then re-verify **only the fixed items** — never re-run the full Step 6 checklist. Pass 2 (only if a targeted re-check shows a fix did not take): one more targeted fix + targeted re-check. Anything still unresolved after pass 2 goes in the report as a CONCERN (or BLOCKING, per its Step 6 category) — never iterate further. Self-review (Step 6) runs exactly once; there is no third pass. Then proceed to Step 8.
+
+### Step 8 — Fidelity Verification (figma-token-verifier, loop até 2)
+
+After the implementation is fully written and the self-review/fix loop is closed, you MUST have the token values verified **independently** before reporting — you do not grade your own token work. This step is fixed: never skip it, never report `DONE` without it.
+
+Dispatch `@"figma-token-verifier (agent)"` (the only subagent you may spawn) and loop on its result. The verifier is read-only and code-level — it does not render or call Figma MCP, so it adds no Figma MCP calls.
+
+**Attempt 1** — dispatch the verifier with:
+- the **list of token names** the design context reported for this node (per variant/state where relevant), plus any raw values you hardcoded and their source (`table`, `project theme`, or `tema-não-verificado`);
+- the **`[TOKENS_ARTIFACT]` path** — in `ds` mode, tell the verifier explicitly that the artifact is the **expected-value authority**: it must resolve each token name against the artifact file itself and compare the code to THAT value, not to values you assert. In `team` mode, also send your Step 1 `get_variable_defs` table (the artifact stays a named cross-check source). If your dispatch carries **no** artifact path (a standalone run where the user declined it), send the **table shape** instead — your resolved values, each with its declared source;
+- the **acceptance measures** from the task's `**Figma:**` block, when present — when the task carries none, say so explicitly in the dispatch (the verifier treats an unexplained absence as a preflight failure);
+- the **design-context values you actually used** (auto-layout direction, sizing modes, hardcoded values);
+- the **exact list of files you created/modified** plus the component's entry file.
+
+**Verdict:**
+- **PASS** → verification done; proceed to Reporting.
+- **FAIL** → apply the fixes for the reported mismatches (**structural first**, then cosmetic), using each failure's stated `valor-alvo`, then run **attempt 2**. Apply each fix **once** — do not run your own fix-and-recheck loop between attempts; the verifier's attempt 2 *is* the re-check.
+
+**Attempt 2 (final)** — re-dispatch the verifier **lean**: send only the mismatches that failed in attempt 1 (each with its `valor-alvo`) and the files you touched fixing them. Do not resend the full name list or the measures that already passed.
+
+**The loop is bounded at 2 attempts.** If the verdict is still `FAIL` after attempt 2, stop and report **DONE_WITH_CONCERNS** with a **BLOCKING** concern listing every unresolved mismatch (esperado vs. encontrado, with `arquivo:linha`) and the attempts used. Never keep looping, and never report `DONE` in that state.
+
+Report the final verification result (verdict + attempts used + per-requirement checklist) in your report. A property the verifier confirms as `tema-não-verificado` (name absent from the artifact and the project theme) stays a CONCERN — the verifier proves the absence independently; it does not erase it.
 
 ## Asset Rules
 
@@ -251,20 +348,22 @@ Leave your changes in the working tree. **Do not commit** — this is not negoti
 
 When done, report:
 - **Status:** DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT
+- **Origin mode** — `team` or `ds`, and in `ds` mode: confirmation that no `get_variable_defs` call was made and that every value traces to `[TOKENS_ARTIFACT]` / the project theme (list any `tema-não-verificado` properties).
 - **Verdict mode** — which mode you ran and its outcome: `implementar` (composite: each child imported + its path, none reimplemented) / `importar` (resolved path/symbol + variant used) / `atualizar` (exactly what was added; existing consumers unaffected) / `derivar` (wrapper name, base composed, extras added).
 - **What was implemented** — structure and key decisions.
 - **Visual validation** — does it match the Step 2 screenshot?
 - **Files created**
 - **Assets created** — full path of every asset saved + the assets directory chosen; "none" if none.
-- **Variant coverage** — confirm you read the original at `[FILE_KEY]`/`[NODE_ID]` and which node type you found. List every axis in `[VARIANT_LIST]` and whether it is implemented; any uncovered axis is a named CONCERN.
+- **Variant coverage** — confirm you read the original at `[FILE_KEY]`/`[NODE_ID]` and which node type you found. List every axis in `[VARIANT_LIST]` and whether it is implemented; any uncovered axis is a named CONCERN. If the variant-index fallback ran, list which variants were read directly and which were derived by axis composition.
 - **Self-review result** — all checks passed / N issues found, M fixed, K unresolved.
+- **Fidelity verification (Step 8)** — final verdict, attempts used, and the per-requirement checklist (requisito → esperado → encontrado → PASS/FAIL). If still FAIL after 2 attempts, list every unresolved mismatch here and raise it as a BLOCKING concern.
 - **Concerns**, grouped by severity:
   - **BLOCKING** — output looks or behaves differently from Figma/design: a substituted component failing the three-axis match (Implementation Rule 2), a wrong interaction model, a visual mismatch, an unconfirmed layout host (Rule 6), or any verdict-mode violation from Step 6 check F (missing variant on `importar`; breaking change needed on `atualizar`; duplicated base on `derivar`; reimplemented/unresolvable composite child). **A divergence is BLOCKING even if the task instructed it** — flag it, don't bury it, name the specific mismatch.
   - **CONCERN** (non-blocking) — doubts, fragility, edge cases, token drift, unresolved self-review issues, accessibility additions, uncovered variant axes (say which, and why).
-- **MCP calls made** — total count (typically 3; higher only via `get_metadata` fallbacks or `download_assets`).
+- **MCP calls made** — total count (`team`: typically 3, higher via the variant-index fallback, `get_metadata` fallbacks or `download_assets`; `ds`: typically 2 + one per `[VARIANT_LIST]` read).
 
 **Status guidance:**
-- **DONE** — complete and matches Figma with confidence; no concerns. Token fallbacks, accessibility additions, and self-review fixes that were all resolved do not downgrade the status.
+- **DONE** — complete and matches Figma with confidence, **and Step 8 returned PASS**; no concerns. Token fallbacks, accessibility additions, and self-review fixes that were all resolved do not downgrade the status.
 - **DONE_WITH_CONCERNS** — complete but you have ANY concern (blocking or not). Err on the side of flagging — a false alarm costs nothing.
 - **BLOCKED** — cannot proceed (MCP unavailable/failing, missing assets, ambiguous structure, fundamental mismatch requiring redesign).
 - **NEEDS_CONTEXT** — you need files or information the orchestrator did not provide.

@@ -43,11 +43,16 @@ Before defining Figma tasks, check if the design doc contains a `## Recursos do 
    | Veredito na árvore | Gera task Layer 1? | O que o plano faz |
    |---|---|---|
    | `Importar` | **NÃO** | O componente já existe. Registre o **import path** da árvore na task de tela (Layer 2) que o consome. Nunca gere task para reimplementá-lo. |
-   | `Implementar` | Sim | Task `UI Component`. Se o nó tem filhos em **Depende de**, é um **composto**: a task depende deles e os compõe. |
-   | `Derivar` | Sim | Task `UI Component`. Depende do nó base (primeiro item de **Depende de**). |
-   | `Atualizar` | Sim | Task `UI Component` que **modifica** o componente existente de forma aditiva. Liste o arquivo do componente base em `**Files:** Modify` — sem isso o implementer bate na allowlist e reporta NEEDS_CONTEXT. |
+   | `Implementar` | Sim | Task `UI Team Component` (Origem local: todas as variantes do catálogo) ou `UI DS Component` (Origem externa: escopo reduzido — só as `Variantes a implementar` da entrada `C#`). Se o nó tem filhos em **Depende de**, é um **composto**: a task depende deles e os compõe. |
+   | `Derivar` | Sim | Task `UI Team Component` ou `UI DS Component` conforme a Origem. Depende do nó base (primeiro item de **Depende de**). Origem externa = wrapper em escopo reduzido: adiciona só o que as telas usam. |
+   | `Atualizar` | Sim | Task `UI Team Component` ou `UI DS Component` conforme a Origem, que **modifica** o componente existente de forma aditiva (Origem externa: só o que as telas usam e falta na base). Liste o arquivo do componente base em `**Files:** Modify` — sem isso o implementer bate na allowlist e reporta NEEDS_CONTEXT. |
+   | `Adiado` | **BLOQUEIA** | Um nó `Adiado` não pode chegar ao plan: a fase design pausa enquanto ele existir. Se um plano está sendo escrito com um nó `Adiado` na árvore, PARE e reporte — o design não foi concluído. |
+
+   O `Task Type` de cada nó já vem decidido na coluna **Task Type** da árvore (derivado da `Origem` da entrada `C#`: `local` → `UI Team Component`; `externa` → `UI DS Component`). Copie-o; nunca reclassifique.
 
    Nós que o usuário rejeitou na confirmação não geram task; nós cujo pai foi marcado "implementar sem a dependência" geram a task do pai com essa nota explícita.
+
+   **Placement de `UI DS Component`:** os `Create` de `**Files:**` de uma task `UI DS Component` ficam **junto do código da feature** (o diretório que o projeto usa para código de feature), **nunca** no diretório global/compartilhado de componentes ou do design system — o componente pertence ao DS e esta é uma cópia local de escopo reduzido, não um componente global do projeto.
 
    **Sem `## Árvore de Componentes de DS`** (layout sem componentes de DS): cada entrada `C#` de `### Componentes` com origem local vira uma task Layer 1 com seu node ID. Um `INSTANCE` externo (definição fora do arquivo) **não** vira task por padrão — na ausência da árvore você não tem como saber se ele já existe no código, e o custo de errar é assimétrico: uma task a menos é uma dependência faltando que aparece na review, enquanto uma task a mais é um componente de DS duplicado que ninguém vê. Registre-o como import a confirmar e diga isso no plano.
 
@@ -82,9 +87,9 @@ Given this design doc:
 #### C3 — Search Field → F2 `AbC123`, node `45:12`, COMPONENT_SET  (origem: link fornecido)
 
 ## Árvore de Componentes de DS
-| C1 | CTA Button   | Implementar | —  | … | `CtaButton`   | UI Component |
-| C2 | Pricing Tier | Implementar | —  | … | `PricingTier` | UI Component |
-| C3 | Search Field | Importar    | —  | … | `@ds/Search`  | —            |
+| C1 | CTA Button   | Implementar | —  | … | `CtaButton`   | UI Team Component |
+| C2 | Pricing Tier | Implementar | —  | … | `PricingTier` | UI Team Component |
+| C3 | Search Field | Importar    | —  | … | `@ds/Search`  | —                 |
 ```
 
 Correct task output:
@@ -121,14 +126,14 @@ Task 2: Pricing Section (Figma)    — T2, node `2:1`, depends on: none
 ```
 
 **Figma task validation (run before finalizing the plan):**
-1. Todo nó da `## Árvore de Componentes de DS` com veredito `Implementar`/`Atualizar`/`Derivar` tem uma task Layer 1 correspondente — e **nenhum** nó `Importar` tem task (esses viram import na task de tela). Sem a árvore: cada entrada `C#` de origem local tem sua task
+1. Todo nó da `## Árvore de Componentes de DS` com veredito `Implementar`/`Atualizar`/`Derivar` tem uma task Layer 1 correspondente — e **nenhum** nó `Importar` tem task (esses viram import na task de tela). **Nenhum nó `Adiado` existe na árvore** — se existir, o plan não pode ser escrito (design pausado). Sem a árvore: cada entrada `C#` de origem local tem sua task
 2. Every entry in **Telas** has a corresponding Layer 2 task with its node ID
 3. No Layer 2 task includes implementation work for a component that has its own Layer 1 task
 4. Layer 2 tasks depend on Layer 1 tasks whose components were originally children of that frame (extracted COMPONENT/COMPONENT_SET or INSTANCE references)
 5. Nenhuma task separada de container/esqueleto de página existe. Toda task `UI Screen` diz qual layout de página existente do projeto ela reusa — ou registra explicitamente que o projeto não tem nenhum e que essa task vai criá-lo
 6. **Toda** task de UI (Layer 1 e Layer 2) carrega no bloco `**Figma:**` os breakpoints e as **Medidas de aceite** (quando `## Contrato de Layout` está presente)
 7. As dependências (`**Depends on:**`) das tasks de componente reproduzem a coluna **Depende de** da árvore, na ordem folhas→raiz: nenhuma task aparece antes de algo de que ela depende. Para `derivar`, a base é a primeira dependência; para composto, todos os filhos são dependências
-8. Toda task `UI Component` derivada da árvore carrega o bloco `**Design System:**` com `Veredito` preenchido, e toda task `atualizar` lista o arquivo do componente base em `**Files:** Modify`
+8. Toda task `UI Team Component`/`UI DS Component` derivada da árvore carrega o bloco `**Design System:**` com `Veredito` preenchido, e toda task `atualizar` lista o arquivo do componente base em `**Files:** Modify`. Toda task `UI DS Component` carrega `**Variantes:**` copiado de `Variantes a implementar` da `C#` (incluindo os estados interativos declarados), a linha `**Tokens do Figma:**` com o caminho do artefato, e `Create` paths junto da feature (nunca no diretório compartilhado)
 9. Toda anotação de `### Anotações de Design` e toda linha de `## Casos de Borda & Estados` tem ao menos uma task dona. Uma anotação sem dono é um requisito confirmado com o usuário que ninguém vai implementar
 
 **If no Figma Resources:** Skip this section entirely. Proceed with standard task generation.
@@ -202,12 +207,13 @@ File overlap validation is a safety net, not a substitute for thinking about tas
 
 ## Task Type & Roteamento
 
-Toda task carrega uma linha obrigatória `**Type:**` (junto de `**Files:**`/`**Depends on:**`) com um destes valores: `UI Screen` | `UI Component` | `UI Logic` | `Backend` | `General`. O `Type` determina para qual implementer a task é despachada e como é verificada:
+Toda task carrega uma linha obrigatória `**Type:**` (junto de `**Files:**`/`**Depends on:**`) com um destes valores: `UI Screen` | `UI Team Component` | `UI DS Component` | `UI Logic` | `Backend` | `General`. O `Type` determina para qual implementer a task é despachada e como é verificada:
 
 | Type | O que é | Dispatch | Verificação | MCP · cap |
 |---|---|---|---|---|
 | **UI Screen** | Página/tela/view; composição de componentes dentro do layout de página do projeto | `figma-design-implementer` | staleness vs Contrato de Layout + `figma-token-verifier` (máx 2 tentativas) | Sim · budget ~12 calls/wave |
-| **UI Component** | Um componente/`COMPONENT_SET`: primitivo, genérico de DS ou derivado; todas as variantes, isolado, exportado | `figma-component-implementer` | self-review contra o screenshot/tokens já em contexto (sem re-fetch) | Sim · budget ~12 calls/wave |
+| **UI Team Component** | Componente com original no **arquivo das telas** (Origem local): todas as variantes do catálogo, isolado, exportado; tokens do próprio original (tema correto) | `figma-component-implementer` (modo team) | self-review (layout/variantes/assets) + `figma-token-verifier` (máx 2 tentativas, sem re-fetch) | Sim · budget ~12 calls/wave |
+| **UI DS Component** | Componente com original em **arquivo de DS** (Origem externa), em escopo reduzido: só as `Variantes a implementar`, código junto da feature; estrutura lida no arquivo do DS, valores de token do `figma-tokens.md` | `figma-component-implementer` (modo ds) | self-review + `figma-token-verifier` resolvendo os valores esperados direto do `figma-tokens.md` (máx 2 tentativas) | Sim · budget ~12 calls/wave |
 | **UI Logic** | Comportamento/estado no cliente sem nova superfície visual (hooks, estado, validação, fetch/binding, rota, animação) | `tdd-implementer` | testes (TDD) | Não · sem cap |
 | **Backend** | Servidor: endpoints, serviços, models, migrations, regras de negócio, integrações | `tdd-implementer` | testes (TDD) | Não · sem cap |
 | **General** | Cross-cutting sem UI nem lógica de produto: config, tooling, scripts, docs, chore, refactor | `tdd-implementer` | testes quando aplicável | Não · sem cap |
@@ -223,7 +229,7 @@ Toda task carrega uma linha obrigatória `**Type:**` (junto de `**Files:**`/`**D
 - Create: `caminho/exato/do/arquivo.py`
 - Modify: `caminho/exato/do/arquivo/existente.py:123-145`
 - Test: `tests/caminho/exato/do/teste.py`
-**Type:** UI Screen | UI Component | UI Logic | Backend | General
+**Type:** UI Screen | UI Team Component | UI DS Component | UI Logic | Backend | General
 **Depends on:** none | Task X, Task Y
 
 - [ ] **Passo 1: Escrever o teste que falha**
@@ -266,7 +272,7 @@ Use this format for tasks that implement UI components with Figma designs. The d
 - Create: `caminho/exato/do/componente`
 - Create: `caminho/exato/dos/estilos` (se aplicável)
 **Assets:** `<diretório de assets do projeto>/` — implementer may download & create icon/image files here as needed (exact files unknown at plan time)
-**Type:** UI Component | UI Screen
+**Type:** UI Team Component | UI DS Component | UI Screen
 **Depends on:** none | Task X, Task Y
 
 **Figma:**
@@ -274,12 +280,13 @@ Use this format for tasks that implement UI components with Figma designs. The d
 - **Node ID:** `<id>`
 - **Breakpoints:** <breakpoint_name> (<width>px), ...
 - **Medidas de aceite:** container max-width `<valor>`, margens laterais `<valor>`, gaps `<valor>`, colunas `<n>`, min/max de `<peça>` no breakpoint `<breakpoint_name>` (do Contrato de Layout)
+- **Tokens do Figma:** `.afyapowers/features/<feature>/artifacts/figma-tokens.md` — caminho do artefato de valores de token (tema das telas); o implementer LÊ o arquivo, nunca recebe o conteúdo colado
 
-**Design System:** <!-- só em tasks UI Component, quando o design tem Árvore de Componentes de DS -->
+**Design System:** <!-- só em tasks UI Team Component / UI DS Component, quando o design tem Árvore de Componentes de DS -->
 - **Veredito:** implementar | atualizar | derivar
 - **Base:** `<nome no código>` (`<import path>`) — só para `derivar` (a base que o wrapper compõe) e `atualizar` (o set estendido); omita nos outros casos
 - **Compõe de:** `<nome>` (`<import path>`), `<nome>` (`<import path>`) — só para composto (`implementar` com filhos em Depende de); omita quando não compõe nada
-- **Variantes:** <todas as variantes/estados que o ORIGINAL declara>
+- **Variantes:** <as variantes que ESTA task implementa — UI Team Component: todas que o original declara; UI DS Component: a linha `Variantes a implementar` da C# (variantes semânticas usadas + estados interativos declarados)>
 - **Anotações do Figma:** <anotações do Dev Mode relevantes a este nó — estados interativos, animação, a11y, regras de conteúdo — verbatim>
 - **Estados a cobrir:** <linhas de `## Casos de Borda & Estados` que este componente é dono>
 
@@ -290,11 +297,13 @@ Use this format for tasks that implement UI components with Figma designs. The d
 ```
 
 **Building the Figma block:**
-- **Type:** `UI Component` para tasks de componente (Layer 1); `UI Screen` para tasks de tela (Layer 2). Ver "Task Type & Roteamento" acima.
+- **Type:** para tasks de componente (Layer 1), copie o **Task Type da árvore** (`UI Team Component` para Origem local, `UI DS Component` para Origem externa); `UI Screen` para tasks de tela (Layer 2). Ver "Task Type & Roteamento" acima.
+- **Tokens do Figma:** obrigatório em toda task `UI Screen` e `UI DS Component` quando `artifacts/figma-tokens.md` existe (a fase design o produz sempre que há Figma); recomendado também em `UI Team Component` (serve de cross-check). É sempre o **caminho** do arquivo — nunca cole a tabela na task: uma cópia degradada reintroduz valores fabricados.
+- **Nunca fabrique medidas ou valores de token.** Toda medida numa task de UI tem fonte nomeada: o `## Contrato de Layout` (Medidas de aceite) ou o `artifacts/figma-tokens.md` (valores de token, via caminho). Uma medida "derivada do frame", "estimada" ou escolhida de um token "plausível" da tabela é fabricação — se a fonte não existe, omita a medida e diga de onde ela viria.
 - **Bloco `**Layout de página:**`** — só em tasks `UI Screen`. Aponte o layout de página que o projeto já usa; as Medidas de aceite são o critério de aceite dele. Escreva `nenhum` apenas quando o projeto realmente não tem nenhum — e então a task cria o mínimo necessário seguindo a convenção do projeto, sem props/slots de escape especulativos. Nunca gere uma task separada só para o container.
-- **Bloco `**Design System:**`** — copie da linha correspondente da `## Árvore de Componentes de DS`: `Veredito`, `Nome no código`, `Depende de` (vira `Base` para `derivar`/`atualizar` e `Compõe de` para composto, cada filho com o import path que a árvore registrou), e todas as variantes que o original declara. **Omita o bloco inteiro** quando o design não tem a árvore — o implementer então executa o procedimento de veredito ausente, que checa a existência antes de construir qualquer coisa. Nunca escreva um veredito que a árvore não confirmou.
+- **Bloco `**Design System:**`** — copie da linha correspondente da `## Árvore de Componentes de DS`: `Veredito`, `Nome no código`, `Depende de` (vira `Base` para `derivar`/`atualizar` e `Compõe de` para composto, cada filho com o import path que a árvore registrou), e as variantes conforme o Type (`UI Team Component`: todas que o original declara; `UI DS Component`: a linha `Variantes a implementar` da entrada `C#`, incluindo os estados interativos). **Omita o bloco inteiro** quando o design não tem a árvore — o implementer então executa o procedimento de veredito ausente, que checa a existência antes de construir qualquer coisa. Nunca escreva um veredito que a árvore não confirmou.
 - **Anotações do Figma / Estados a cobrir** — recorte de `### Anotações de Design` e `## Casos de Borda & Estados` só o que pertence a este nó. Sem isso, estados interativos, animações e regras de a11y confirmadas com o usuário no design não chegam a ninguém: o implementer vê apenas o frame default. Uma anotação sem task dona é informação perdida.
-- **File Key / Node ID — para tasks `UI Component`, use as coordenadas DO ORIGINAL.** A `## Árvore de Componentes de DS` dá o veredito e a `C#`; as coordenadas vêm da entrada `C#` correspondente em `### Componentes` (`Arquivo do original` + `Node ID do original`). **Nunca** o node-id de uma instância listada no `Conteúdo` de uma `T#`, e nunca o File Key da tela quando a entrada `C#` aponta para outro arquivo (o do DS, por exemplo).
+- **File Key / Node ID — para tasks `UI Team Component`/`UI DS Component`, use as coordenadas DO ORIGINAL.** A `## Árvore de Componentes de DS` dá o veredito e a `C#`; as coordenadas vêm da entrada `C#` correspondente em `### Componentes` (`Arquivo do original` + `Node ID do original`). **Nunca** o node-id de uma instância listada no `Conteúdo` de uma `T#`, e nunca o File Key da tela quando a entrada `C#` aponta para outro arquivo (o do DS, por exemplo).
 
   Isso é a diferença entre o implementer ler o componente e ler *uma configuração* dele. A instância mostra só a variante que aquela tela usou; o original declara todos os eixos. Apontar para a instância entrega um componente permanentemente mais pobre que o real — e como ele *funciona* na tela que originou a task, ninguém percebe.
 
@@ -306,7 +315,9 @@ Use this format for tasks that implement UI components with Figma designs. The d
 **Mixed plans:** Figma and non-Figma tasks coexist in the same plan with standard dependency handling. A feature might have Tasks 1-2 as data models (standard TDD), Tasks 3-5 as UI components (Figma), and Task 6 as integration (standard TDD).
 
 ## Remember
-- Toda task carrega `**Type:**` (`UI Screen` | `UI Component` | `UI Logic` | `Backend` | `General`) — determina dispatch e verificação; plan sem `**Type:**` cai no heurístico legado
+- Toda task carrega `**Type:**` (`UI Screen` | `UI Team Component` | `UI DS Component` | `UI Logic` | `Backend` | `General`) — determina dispatch e verificação; plan sem `**Type:**` cai no heurístico legado
+- `UI DS Component` = escopo reduzido: `**Variantes:**` vem de `Variantes a implementar` da C#, arquivos criados junto da feature (nunca no diretório compartilhado), valores de token do `figma-tokens.md` (caminho na task)
+- Nó `Adiado` na árvore = design pausado; um plano não pode ser escrito enquanto existir um
 - Exact file paths always
 - Describe behavior and edge cases completely (not just "add validation") — but never include code snippets
 - Exact commands with expected output
@@ -318,8 +329,8 @@ Use this format for tasks that implement UI components with Figma designs. The d
 - Layout de página é da task de tela, nunca uma task separada: ela reusa o layout que o projeto já usa (bloco `**Layout de página:**`) e só cria um quando não existe nenhum — seguindo a convenção do projeto, sem API de escape especulativa
 - Componentes (Layer 1) são PROIBIDOS de setar max-width, centralização ou margens de página — regra imposta em runtime pelos implementers e checada pelo `code-quality-reviewer`
 - **Toda** task de UI (Layer 1/Layer 2) carrega no bloco `**Figma:**` as Medidas de aceite (do Contrato de Layout) para os breakpoints relevantes
-- A `## Árvore de Componentes de DS` é a autoridade sobre quais componentes precisam de task: `Importar` **não** gera task (vira import path na task de tela); `Implementar`/`Atualizar`/`Derivar` geram task `UI Component` com o bloco `**Design System:**` preenchido
-- Toda task `UI Component` carrega veredito, base/compõe-de com import paths, variantes e fonte do catálogo — sem isso o implementer não sabe se deve importar, estender, derivar ou construir, e construir do zero um componente que já existe é o pior resultado possível
+- A `## Árvore de Componentes de DS` é a autoridade sobre quais componentes precisam de task: `Importar` **não** gera task (vira import path na task de tela); `Implementar`/`Atualizar`/`Derivar` geram task `UI Team Component`/`UI DS Component` (conforme a Origem da C#) com o bloco `**Design System:**` preenchido
+- Toda task `UI Team Component`/`UI DS Component` carrega veredito, base/compõe-de com import paths, variantes e fonte do catálogo — sem isso o implementer não sabe se deve importar, estender, derivar ou construir, e construir do zero um componente que já existe é o pior resultado possível
 - Anotações do Figma e casos de borda são recortados por nó nas tasks de UI — o que não tem task dona não é implementado por ninguém
 
 ## Required Sub-Skills
